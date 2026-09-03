@@ -61,18 +61,24 @@ cd backend
 
 ## 4. 패키지 구조와 레이어
 
+도메인 구분은 `docs/api/api-spec.md` 15.1 「API 60개 한눈에 보기」의 영역과 1:1이다.
+
 ```
 com.greenpocket
-├── profile/      주거·청년 프로필
-├── bill/         전기 고지서, OCR
-├── diagnosis/    같은 지역 가구 평균 비교 진단
-├── simulation/   Green What-if, 전기 요금 계산 엔진
-├── benefit/      지원제도 매칭·신청 관리
-├── pocket/       적립 후보, 모의 이체
+├── user/         데모 사용자, 지역 메타, 데모 초기화        API 4  · 4절
+├── profile/      주거 프로필                              API 3  · 5절
+├── bill/         관리비·전기·수도·가스 고지서, OCR (ocr/)   API 9  · 6절
+├── diagnosis/    지역 평균·작년 동월 비교 진단              API 3  · 7절
+├── eco/          에코마일리지 연동·목표·진행·평가 결과       API 20 · 8~11절
+│   └── mission/  실천 미션 선택·일일 기록·재조정
+├── greenlife/    탄소중립포인트 녹색생활실천                API 5  · 12절
+├── pocket/       잔액·적립 내역·마일리지 전환·출금 계좌      API 14 · 13절
+├── mypage/       마이페이지, 리포트 보관함                  API 2  · 14절
 └── global/       config, exception, entity, response  ← 공통
 ```
 
 각 도메인은 `controller / service / repository / entity / dto` 하위 구조를 가진다.
+`mypage/`는 다른 도메인의 서비스를 조합해 보여주기만 하므로 `repository / entity`를 두지 않는다.
 
 ### 레이어 규칙
 
@@ -120,17 +126,47 @@ com.greenpocket
 
 | 대상 | 규칙 | 예 |
 | --- | --- | --- |
-| 테이블·컬럼 | `snake_case` | `electricity_bill`, `charged_amount` |
-| 엔티티·필드 | `PascalCase` / `camelCase` | `ElectricityBill`, `chargedAmount` |
-| 엔드포인트 | 소문자 `kebab-case`, 복수형 | `/api/electricity-bills` |
+| 테이블·컬럼 | `snake_case` — **`schema.sql`에 정의된 이름을 그대로 쓴다** | `utility_monthly_record`, `charged_amount` |
+| 엔티티·필드 | `PascalCase` / `camelCase` | `UtilityMonthlyRecord`, `chargedAmount` |
+| 엔드포인트 | `api-spec.md`에 적힌 경로를 그대로 쓴다 | `/api/v1/bills`, `/api/v1/eco/rounds/{id}/goal` |
 | DTO | `<기능>Request` / `<기능>Response` | `BillCreateRequest` |
+
+**테이블·컬럼명을 새로 짓지 않는다.** `docs/database/schema.sql`이 데이터 기준이므로 엔티티는 그 이름에 맞춘다. ENUM 값도 DDL 정의와 1:1이다.
 
 ---
 
 ## 9. 금액·계산 규칙
 
-- **금액 계산에 `double`이나 `float`를 쓰지 않는다.** 부동소수점 오차로 금액이 어긋난다. 금액은 정수형(원 단위) 또는 `BigDecimal`을 사용한다.
-- **전기 요금은 반드시 요금 계산 엔진(`simulation`)을 통해 계산한다.**
-  `현재 청구액 × 절감률` 같은 근사 계산은 기능명세서에서 금지하고 있다.
-- 계산 결과에는 **적용한 요금표 버전**을 함께 저장한다.
-- 요율·배출계수 같은 상수를 코드에 하드코딩하지 않는다. DB 또는 설정으로 관리하고 출처와 기준일을 남긴다.
+- **금액 계산에 `double`이나 `float`를 쓰지 않는다.** 부동소수점 오차로 금액이 어긋난다. 금액은 **정수형(원 단위)**, 사용량·비율은 `BigDecimal`을 쓴다.
+- 타입은 `api-spec.md` 1.4절과 DDL을 따른다 — 금액 정수 원 · 사용량 `DECIMAL(12,3)` · 비율 `DECIMAL(7,3)` · 신뢰도 `DECIMAL(5,4)`.
+- **공식 요금표 기반 요금 계산 엔진은 MVP 제외 범위다.** 항목별 예상 절감액은 `S_i = B_base,i × r_i ÷ 100` 비례 계산이다. 요금표를 끌어와 계산하지 않는다.
+- **배출계수·단가를 코드에 하드코딩하지 않는다.** 계수는 `eco_round_utility.carbon_factor_g`, 단가는 `greenlife_item.unit_price`처럼 **DB에 저장된 값을 읽어 쓴다.** 계산 조건(기준 기간·등록 항목·계수)을 결과와 함께 저장한다.
+- **구간 경계는 상위 구간으로 간다.** `R = 5.000 / 10.000 / 15.000` → 각각 10,000M / 30,000M / 50,000M. `4.999`는 0M.
+- **포켓 잔액은 캐시 컬럼을 두지 않는다.** 조회할 때마다 `SUM(CREDIT) − SUM(DEBIT)`를 **`COMPLETED` 거래만으로** 계산한다.
+- **검증 기준값은 `api-spec.md` 부록 B**에 있다. 계산 로직을 구현하면 그 표의 값으로 테스트한다.
+
+---
+
+## 10. 멱등·중복 방지
+
+DB가 1차 방어선이고 애플리케이션은 **DB가 막았을 때 어떤 응답을 주는가**를 책임진다.
+
+| 대상 | 보장 수단 | 재요청 시 응답 |
+| --- | --- | --- |
+| 고지서 | `UNIQUE(user_id, record_source, billing_month, utility_type)` | `409 BILL_DUPLICATED` |
+| 마일리지 전환 | `UNIQUE(source_type, source_key)` — 회차당 1회 | `409 CONVERSION_ALREADY_DONE` |
+| 출금 | `UNIQUE(idempotency_key)` | **`200` + 기존 거래** (409 아님) |
+| 녹색생활 월 정산 | `yearMonth`가 키 | **`200` + `created: false`** |
+| 기본 출금 계좌 | `default_slot` 생성 컬럼 + UNIQUE | 이전 기본 계좌 해제 후 1건 유지 |
+
+- **`Idempotency-Key` 재요청에 409를 주지 않는다.** 기존 거래를 `200`으로 돌려주는 것이 명세다(`api-spec.md` 1.6절).
+- **실패한 거래는 잔액을 바꾸지 않는다.** `FAILED`로 남기고 재시도해도 거래가 중복 생성되지 않아야 한다.
+- 계좌번호는 `VARBINARY`로 암호화 저장하고 **원문을 로그에 남기지 않는다.**
+
+---
+
+## 11. 데이터 없음 처리
+
+- **비교 기준선이 없어도 에러가 아니다.** `200` + `available: false` + `unavailableReason`으로 응답한다 (예: `REGION_DATA_NOT_PUBLISHED`, `SAMPLE_TOO_SMALL`, `NO_BASELINE`).
+- **값을 추정하거나 그럴듯한 숫자를 채워 넣지 않는다.** 수도·가스 지역 평균은 현재 미확보 상태이며, 데이터가 들어오면 API 변경 없이 `true`로 바뀐다(결정 C-12).
+- OCR·연동 같은 비동기 작업은 `202` + `jobId`로 응답하고, 폴링 결과가 `SUCCEEDED`가 아니면 완료로 취급하지 않는다.
