@@ -28,12 +28,12 @@ export default [
   {
     path: '/whatif',
     name: 'wf-home',
-    // TODO: WF-01/WF-03/WF-06 을 붙이면서 실제 화면으로 교체한다
-    component: () => import('@/views/ComingSoonView.vue'),
-    meta: {
-      tab: 'whatif',
-      title: 'Green What-if',
-      subtitle: '작년 사용량을 불러오면 목표를 정할 수 있어요',
-    },
+    /*
+     * WF-01 · WF-02 · WF-03 은 라우트가 아니라 한 홈의 세 상태다(api-spec.md 10.1).
+     * 뷰가 GET /eco/home 의 screen 값으로 분기한다. WF-06 도 여기에 붙는다.
+     */
+    component: () => import('@/views/eco/WhatIfHomeView.vue'),
+    // 제목·부제가 화면 상태마다 달라 subtitle 은 뷰가 AppTabLayout 에 직접 넘긴다
+    meta: { tab: 'whatif', title: 'Green What-if' },
   },
 ]
