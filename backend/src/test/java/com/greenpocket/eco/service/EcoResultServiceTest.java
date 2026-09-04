@@ -74,6 +74,7 @@ class EcoResultServiceTest {
 		assertThat(response.roundId()).isEqualTo(ROUND_ID);
 		assertThat(response.confirmedAt()).isEqualTo("2026-12-05T00:00+09:00");
 		assertThat(response.finalRate()).isEqualByComparingTo("12.499");
+		assertThat(response.targetRate()).isEqualByComparingTo("10.000");
 		assertThat(response.achieved()).isTrue();
 		assertThat(response.tier()).isEqualTo(TargetTier.TIER_10);
 		assertThat(response.tierLabel()).isEqualTo("10~15% 구간");
@@ -141,7 +142,7 @@ class EcoResultServiceTest {
 			LocalDate.of(2026, 4, 1),
 			LocalDate.of(2026, 9, 1),
 			RoundStatus.IN_PROGRESS,
-			new BigDecimal("10.000"),
+			new BigDecimal("11.322"),
 			null,
 			420_600L,
 			null,

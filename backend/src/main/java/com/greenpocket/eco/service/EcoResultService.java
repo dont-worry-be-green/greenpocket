@@ -40,6 +40,8 @@ public class EcoResultService {
 	public EcoResultResponse getResult(Long userId, Long roundId) {
 		ResultRoundSnapshot round = findConfirmedRound(userId, roundId);
 		TargetTier tier = tierForRate(round.finalRate());
+		TargetTier targetTier = tierForRate(round.targetRate());
+		BigDecimal targetRate = targetTier == null ? null : targetTier.targetRate();
 		ConvertibleMileageResponse convertibleMileage = pocketQueryService.getConvertibleMileage(userId);
 
 		return new EcoResultResponse(
@@ -49,8 +51,8 @@ public class EcoResultService {
 			toOffsetDateTime(round.confirmedAt()),
 			CONFIRMED_SOURCE,
 			round.finalRate(),
-			round.targetRate(),
-			isAchieved(round.finalRate(), round.targetRate()),
+			targetRate,
+			isAchieved(round.finalRate(), targetRate),
 			tier,
 			tier == null ? null : tier.label() + " 구간",
 			round.confirmedMileage(),
