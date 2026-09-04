@@ -28,6 +28,9 @@ import com.greenpocket.eco.dto.EcoLinkProgressResponse;
 import com.greenpocket.eco.dto.EcoLinkStartResponse;
 import com.greenpocket.eco.dto.EcoMissionLogRequest;
 import com.greenpocket.eco.dto.EcoMissionLogResponse;
+import com.greenpocket.eco.dto.EcoMissionAdjustResponse;
+import com.greenpocket.eco.dto.EcoMissionUpdateRequest;
+import com.greenpocket.eco.dto.EcoMissionUpdateResponse;
 import com.greenpocket.eco.dto.EcoHomeResponse;
 import com.greenpocket.eco.dto.EcoMonthlyReportResponse;
 import com.greenpocket.eco.dto.EcoResultResponse;
@@ -38,6 +41,7 @@ import com.greenpocket.eco.service.EcoApplicationService;
 import com.greenpocket.eco.service.EcoGoalService;
 import com.greenpocket.eco.service.EcoLinkService;
 import com.greenpocket.eco.service.EcoMissionService;
+import com.greenpocket.eco.service.EcoMissionAdjustService;
 import com.greenpocket.eco.service.EcoProgressService;
 import com.greenpocket.eco.service.EcoResultService;
 import com.greenpocket.eco.service.EcoRoundService;
@@ -57,6 +61,7 @@ public class EcoController {
 	private final EcoResultService ecoResultService;
 	private final EcoApplicationService ecoApplicationService;
 	private final EcoMissionService ecoMissionService;
+	private final EcoMissionAdjustService ecoMissionAdjustService;
 
 	@Operation(summary = "Green What-if 홈 조회", description = "연동 및 평가 상태에 따라 렌더링할 화면과 진행 현황을 반환합니다.")
 	@ApiResponses({
@@ -280,5 +285,39 @@ public class EcoController {
 		@RequestBody EcoMissionLogRequest request
 	) {
 		return ApiResponse.success(ecoMissionService.saveMissionLog(userId, roundId, date, request));
+	}
+
+	@Operation(summary = "실천 미션 다시 고르기", description = "최근 실적을 바탕으로 기기군이 겹치지 않는 미션을 추천하며 자동 저장하지 않습니다.")
+	@ApiResponses({
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "미션 조정 화면 조회 성공 또는 고지서 없음"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "에너지원 또는 조회 월 형식 오류"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Demo Key 인증 실패"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "평가 회차 없음")
+	})
+	@GetMapping("/rounds/{roundId}/mission-adjust")
+	public ApiResponse<EcoMissionAdjustResponse> getMissionAdjust(
+		@Parameter(hidden = true) @CurrentUserId Long userId,
+		@Parameter(description = "평가 회차 ID", example = "1") @PathVariable Long roundId,
+		@Parameter(description = "조정할 에너지원", example = "ELECTRICITY") @RequestParam String utility,
+		@Parameter(description = "조회 월(YYYY-MM), 생략 시 최신 등록 월", example = "2026-08")
+		@RequestParam(required = false) String month
+	) {
+		return ApiResponse.success(ecoMissionAdjustService.getMissionAdjust(userId, roundId, utility, month));
+	}
+
+	@Operation(summary = "선택 미션 갱신", description = "목표 구간은 유지하고 선택한 실천 미션만 다시 계산해 저장합니다.")
+	@ApiResponses({
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "선택 미션 갱신 성공"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "미션 ID 오류"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Demo Key 인증 실패"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "평가 회차 없음")
+	})
+	@PutMapping("/rounds/{roundId}/missions")
+	public ApiResponse<EcoMissionUpdateResponse> updateMissions(
+		@Parameter(hidden = true) @CurrentUserId Long userId,
+		@Parameter(description = "평가 회차 ID", example = "1") @PathVariable Long roundId,
+		@RequestBody EcoMissionUpdateRequest request
+	) {
+		return ApiResponse.success(ecoGoalService.updateMissions(userId, roundId, request));
 	}
 }

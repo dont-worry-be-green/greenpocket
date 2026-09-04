@@ -31,6 +31,8 @@ import com.greenpocket.eco.dto.EcoGoalPreviewResponse;
 import com.greenpocket.eco.dto.EcoGoalRequest;
 import com.greenpocket.eco.dto.EcoGoalResponse;
 import com.greenpocket.eco.dto.EcoGoalSaveResponse;
+import com.greenpocket.eco.dto.EcoMissionUpdateRequest;
+import com.greenpocket.eco.dto.EcoMissionUpdateResponse;
 import com.greenpocket.eco.entity.RoundStatus;
 import com.greenpocket.eco.entity.TargetTier;
 import com.greenpocket.eco.entity.UsageUnit;
@@ -183,6 +185,53 @@ public class EcoGoalService {
 			round.expectedSavingAmount(),
 			utilities,
 			missions
+		);
+	}
+
+	@Transactional
+	public EcoMissionUpdateResponse updateMissions(
+		Long userId,
+		Long roundId,
+		EcoMissionUpdateRequest request
+	) {
+		findRound(userId, roundId);
+		if (request == null || request.selectedMissionIds() == null) {
+			throw invalidRequest("selectedMissionIds", Map.of("required", true));
+		}
+
+		List<CalculatedMission> missions = calculateMissions(
+			request.selectedMissionIds(),
+			utilityMap(roundId)
+		);
+		ecoGoalRepository.deleteSavedMissions(roundId);
+		for (CalculatedMission mission : missions) {
+			ecoGoalRepository.saveMission(
+				userId,
+				roundId,
+				mission.mission().id(),
+				mission.computedRate() == null ? ZERO_RATE : mission.computedRate(),
+				mission.counted(),
+				mission.exclusionReason()
+			);
+		}
+
+		BigDecimal combinedMissionRate = scale(missions.stream()
+			.filter(CalculatedMission::counted)
+			.map(CalculatedMission::computedRate)
+			.filter(java.util.Objects::nonNull)
+			.reduce(BigDecimal.ZERO, BigDecimal::add));
+		return new EcoMissionUpdateResponse(
+			roundId,
+			combinedMissionRate,
+			missions.stream()
+				.map(mission -> new EcoMissionUpdateResponse.Item(
+					mission.mission().id(),
+					mission.computedRate(),
+					mission.counted(),
+					mission.exclusionReason()
+				))
+				.toList(),
+			true
 		);
 	}
 

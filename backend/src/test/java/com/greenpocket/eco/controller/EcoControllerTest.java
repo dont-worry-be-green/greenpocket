@@ -32,6 +32,8 @@ import com.greenpocket.eco.dto.EcoHomeResponse;
 import com.greenpocket.eco.dto.EcoLinkProgressResponse;
 import com.greenpocket.eco.dto.EcoLinkStartResponse;
 import com.greenpocket.eco.dto.EcoMissionLogResponse;
+import com.greenpocket.eco.dto.EcoMissionAdjustResponse;
+import com.greenpocket.eco.dto.EcoMissionUpdateResponse;
 import com.greenpocket.eco.dto.EcoMonthlyReportResponse;
 import com.greenpocket.eco.dto.EcoResultResponse;
 import com.greenpocket.eco.dto.EcoSettlementResponse;
@@ -49,6 +51,7 @@ import com.greenpocket.eco.service.EcoGoalService;
 import com.greenpocket.eco.service.EcoApplicationService;
 import com.greenpocket.eco.service.EcoLinkService;
 import com.greenpocket.eco.service.EcoMissionService;
+import com.greenpocket.eco.service.EcoMissionAdjustService;
 import com.greenpocket.eco.service.EcoProgressService;
 import com.greenpocket.eco.service.EcoResultService;
 import com.greenpocket.eco.service.EcoRoundService;
@@ -67,6 +70,7 @@ class EcoControllerTest {
 	private EcoResultService ecoResultService;
 	private EcoApplicationService ecoApplicationService;
 	private EcoMissionService ecoMissionService;
+	private EcoMissionAdjustService ecoMissionAdjustService;
 	private MockMvc mockMvc;
 
 	@BeforeEach
@@ -78,6 +82,7 @@ class EcoControllerTest {
 		ecoResultService = mock(EcoResultService.class);
 		ecoApplicationService = mock(EcoApplicationService.class);
 		ecoMissionService = mock(EcoMissionService.class);
+		ecoMissionAdjustService = mock(EcoMissionAdjustService.class);
 		mockMvc = MockMvcBuilders.standaloneSetup(
 			new EcoController(
 				ecoLinkService,
@@ -86,11 +91,80 @@ class EcoControllerTest {
 				ecoProgressService,
 				ecoResultService,
 				ecoApplicationService,
-				ecoMissionService
+				ecoMissionService,
+				ecoMissionAdjustService
 			)
 		)
 			.setCustomArgumentResolvers(new CurrentUserIdArgumentResolver())
 			.build();
+	}
+
+	@Test
+	void returnsMissionAdjustRecommendation() throws Exception {
+		when(ecoMissionAdjustService.getMissionAdjust(USER_ID, 7L, "ELECTRICITY", "2026-08"))
+			.thenReturn(new EcoMissionAdjustResponse(
+				7L,
+				UtilityType.ELECTRICITY,
+				"2026-08",
+				new BigDecimal("11.000"),
+				"도시가스와 수도 감축률을 유지할 때예요",
+				new BigDecimal("83.000"),
+				new EcoMissionAdjustResponse.Comparison(
+					new BigDecimal("3.000"),
+					new BigDecimal("-1.887")
+				),
+				1,
+				List.of(new EcoMissionAdjustResponse.Mission(
+					14L,
+					"조명 끄기",
+					new BigDecimal("8.000"),
+					MissionDifficulty.EASY,
+					"조명",
+					"공식 절감 수치",
+					"월 기준 사용량으로 환산",
+					"한국에너지공단",
+					false,
+					true,
+					false
+				)),
+				new EcoMissionAdjustResponse.Preview(
+					new BigDecimal("3.000"),
+					new BigDecimal("11.000"),
+					true
+				),
+				new EcoMissionAdjustResponse.TierDowngrade(false, 1, "목표 구간을 유지해도 좋아요")
+			));
+
+		mockMvc.perform(get("/api/v1/eco/rounds/7/mission-adjust")
+				.param("utility", "ELECTRICITY")
+				.param("month", "2026-08")
+				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.utilityType").value("ELECTRICITY"))
+			.andExpect(jsonPath("$.data.missions[0].recommended").value(true))
+			.andExpect(jsonPath("$.data.preview.coversRequired").value(true));
+	}
+
+	@Test
+	void updatesSelectedMissions() throws Exception {
+		when(ecoGoalService.updateMissions(anyLong(), anyLong(), any()))
+			.thenReturn(new EcoMissionUpdateResponse(
+				7L,
+				new BigDecimal("18.000"),
+				List.of(new EcoMissionUpdateResponse.Item(13L, new BigDecimal("18.000"), true, null)),
+				true
+			));
+
+		mockMvc.perform(put("/api/v1/eco/rounds/7/missions")
+				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{ "selectedMissionIds": [13] }
+					"""))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.combinedMissionRate").value(18.000))
+			.andExpect(jsonPath("$.data.items[0].missionId").value(13))
+			.andExpect(jsonPath("$.data.todayMissionsUpdated").value(true));
 	}
 
 	@Test
