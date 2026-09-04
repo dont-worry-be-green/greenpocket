@@ -18,6 +18,12 @@ export function formatWon(amount) {
   return `${Math.round(amount).toLocaleString('ko-KR')}원`
 }
 
+/** 입력창처럼 단위 없이 숫자만 표시할 때 사용한다. 12400 → '12,400' */
+export function formatNumber(value) {
+  if (isBlank(value)) return EMPTY
+  return Math.round(value).toLocaleString('ko-KR')
+}
+
 /** 비교 차액에만 쓴다. 4300 → '+4,300원' · -4300 → '-4,300원' */
 export function formatSignedWon(amount) {
   if (isBlank(amount)) return EMPTY
@@ -90,4 +96,24 @@ export function formatMonth(yearMonth) {
   if (!yearMonth) return EMPTY
   const [year, month] = yearMonth.split('-')
   return `${year}년 ${Number(month)}월`
+}
+
+/** ISO-8601 일시 → '2026-08-02 14:22' */
+export function formatDateTime(dateTime) {
+  if (!dateTime) return EMPTY
+  const date = new Date(dateTime)
+  if (Number.isNaN(date.getTime())) return EMPTY
+  return new Intl.DateTimeFormat('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+    .format(date)
+    .replace(/\. /g, '-')
+    .replace(/\./g, '')
+    .replace('24:', '00:')
 }
