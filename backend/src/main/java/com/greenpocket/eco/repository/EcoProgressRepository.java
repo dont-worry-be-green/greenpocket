@@ -206,6 +206,65 @@ public class EcoProgressRepository {
 			.single();
 	}
 
+	public void upsertMonthlyReport(
+		Long userId,
+		Long roundId,
+		LocalDate reportMonth,
+		BigDecimal monthlyRate,
+		BigDecimal cumulativeRate,
+		BigDecimal targetRate,
+		BigDecimal requiredRate,
+		int remainingMonths,
+		boolean achieved,
+		String byUtilityJson
+	) {
+		jdbcClient.sql("""
+				INSERT INTO eco_monthly_report (
+				    user_id, eco_round_id, report_month,
+				    monthly_rate, cumulative_rate, target_rate,
+				    required_rate, remaining_months, is_achieved,
+				    by_utility, calculated_at
+				)
+				VALUES (
+				    :userId, :roundId, :reportMonth,
+				    :monthlyRate, :cumulativeRate, :targetRate,
+				    :requiredRate, :remainingMonths, :achieved,
+				    CAST(:byUtility AS JSON), CURRENT_TIMESTAMP
+				)
+				ON DUPLICATE KEY UPDATE
+				    eco_round_id = VALUES(eco_round_id),
+				    monthly_rate = VALUES(monthly_rate),
+				    cumulative_rate = VALUES(cumulative_rate),
+				    target_rate = VALUES(target_rate),
+				    required_rate = VALUES(required_rate),
+				    remaining_months = VALUES(remaining_months),
+				    is_achieved = VALUES(is_achieved),
+				    by_utility = VALUES(by_utility),
+				    calculated_at = CURRENT_TIMESTAMP
+				""")
+			.param("userId", userId)
+			.param("roundId", roundId)
+			.param("reportMonth", reportMonth)
+			.param("monthlyRate", monthlyRate)
+			.param("cumulativeRate", cumulativeRate)
+			.param("targetRate", targetRate)
+			.param("requiredRate", requiredRate)
+			.param("remainingMonths", remainingMonths)
+			.param("achieved", achieved)
+			.param("byUtility", byUtilityJson)
+			.update();
+	}
+
+	public void deleteMonthlyReport(Long userId, LocalDate reportMonth) {
+		jdbcClient.sql("""
+				DELETE FROM eco_monthly_report
+				WHERE user_id = :userId AND report_month = :reportMonth
+				""")
+			.param("userId", userId)
+			.param("reportMonth", reportMonth)
+			.update();
+	}
+
 	private static ProgressRoundSnapshot roundSnapshot(java.sql.ResultSet resultSet) throws java.sql.SQLException {
 		return new ProgressRoundSnapshot(
 			resultSet.getLong("id"),
