@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,7 @@ public class EcoApplicationService {
 	private final EcoApplicationRepository ecoApplicationRepository;
 	private final Clock clock;
 
+	@Autowired
 	public EcoApplicationService(EcoApplicationRepository ecoApplicationRepository) {
 		this(ecoApplicationRepository, Clock.system(KOREA_ZONE_ID));
 	}

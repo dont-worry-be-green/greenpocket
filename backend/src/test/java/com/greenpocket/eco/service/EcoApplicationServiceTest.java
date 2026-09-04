@@ -15,6 +15,7 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import com.greenpocket.eco.dto.EcoApplicationResponse;
 import com.greenpocket.eco.entity.ApplicationStatus;
@@ -38,6 +39,17 @@ class EcoApplicationServiceTest {
 		ecoApplicationRepository = mock(EcoApplicationRepository.class);
 		Clock clock = Clock.fixed(Instant.parse("2026-09-03T09:45:00Z"), KOREA_ZONE_ID);
 		ecoApplicationService = new EcoApplicationService(ecoApplicationRepository, clock);
+	}
+
+	@Test
+	void createsServiceBeanWithRepositoryDependency() {
+		try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext()) {
+			context.registerBean(EcoApplicationRepository.class, () -> ecoApplicationRepository);
+			context.register(EcoApplicationService.class);
+			context.refresh();
+
+			assertThat(context.getBean(EcoApplicationService.class)).isNotNull();
+		}
 	}
 
 	@Test
