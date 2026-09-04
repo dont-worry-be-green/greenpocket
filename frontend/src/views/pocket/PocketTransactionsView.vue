@@ -1,12 +1,14 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 import AppSubLayout from '@/components/layout/AppSubLayout.vue'
 import GpTag from '@/components/ui/GpTag.vue'
 import IconLeaf from '@/components/ui/icons/IconLeaf.vue'
 import IconPocket from '@/components/ui/icons/IconPocket.vue'
+import { usePocketStore } from '@/stores/pocket'
 import { formatDateTime, formatMonth, formatSignedWon } from '@/utils/format'
 
+const store = usePocketStore()
 const activeTab = ref('credit')
 
 const creditHistory = {
@@ -40,28 +42,39 @@ const creditHistory = {
   ],
 }
 
-const withdrawalHistory = {
-  groups: [
-    {
-      yearMonth: '2026-09',
-      subtotal: 12400,
-      items: [
-        {
-          transactionId: 3,
-          transactionCode: 'GP-2609-0025',
-          label: '신한은행 110-123-456789',
-          amount: 12400,
-          completedAt: '2026-09-25T14:22:00+09:00',
-          statusLabel: '출금 완료',
-        },
-      ],
-    },
-  ],
+const statusLabels = {
+  REQUESTED: '출금 요청',
+  PROCESSING: '처리 중',
+  COMPLETED: '출금 완료',
+  FAILED: '출금 실패',
+  CANCELED: '출금 취소',
 }
 
+const withdrawalHistory = computed(() => {
+  const groups = new Map()
+  for (const item of store.withdrawals?.content ?? []) {
+    const dateTime = item.completedAt ?? item.requestedAt
+    const yearMonth = dateTime?.slice(0, 7) ?? '날짜 없음'
+    if (!groups.has(yearMonth)) groups.set(yearMonth, [])
+    groups.get(yearMonth).push({
+      ...item,
+      completedAt: dateTime,
+      label: item.accountSnapshot
+        ? `${item.accountSnapshot.bankName} ${item.accountSnapshot.accountNo}`
+        : '출금 계좌',
+      statusLabel: statusLabels[item.transactionStatus] ?? item.transactionStatus,
+    })
+  }
+  return {
+    groups: [...groups].map(([yearMonth, items]) => ({ yearMonth, items })),
+  }
+})
+
 const activeHistory = computed(() =>
-  activeTab.value === 'credit' ? creditHistory : withdrawalHistory,
+  activeTab.value === 'credit' ? creditHistory : withdrawalHistory.value,
 )
+
+onMounted(() => store.fetchWithdrawals())
 </script>
 
 <template>
@@ -90,7 +103,37 @@ const activeHistory = computed(() =>
         </button>
       </div>
 
-      <section v-for="group in activeHistory.groups" :key="`${activeTab}-${group.yearMonth}`">
+      <div
+        v-if="activeTab === 'withdrawal' && store.withdrawalsLoading"
+        class="bg-surface rounded-lg p-5 text-center"
+      >
+        <p class="text-body-sm text-muted m-0">출금 내역을 불러오는 중이에요.</p>
+      </div>
+      <div
+        v-else-if="activeTab === 'withdrawal' && store.withdrawalsError"
+        class="bg-surface rounded-lg p-5 text-center"
+      >
+        <p class="text-body-sm text-muted mt-0 mb-3">{{ store.withdrawalsError.message }}</p>
+        <button
+          type="button"
+          class="text-label text-primary min-h-11 border-0 bg-transparent"
+          @click="store.fetchWithdrawals()"
+        >
+          다시 시도
+        </button>
+      </div>
+      <div
+        v-else-if="activeTab === 'withdrawal' && !activeHistory.groups.length"
+        class="bg-surface rounded-lg p-5 text-center"
+      >
+        <p class="text-body-sm text-muted m-0">아직 출금 내역이 없어요.</p>
+      </div>
+
+      <section
+        v-for="group in activeHistory.groups"
+        v-else
+        :key="`${activeTab}-${group.yearMonth}`"
+      >
         <div class="mb-3">
           <h2 class="text-list-title text-muted m-0">{{ formatMonth(group.yearMonth) }}</h2>
         </div>
