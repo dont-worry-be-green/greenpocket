@@ -20,10 +20,26 @@
 | 빌드 | Vite | Webpack, Vue CLI |
 | 상태관리 | **Pinia (Setup Store)** | Vuex, Pinia Options Store |
 | 라우팅 | Vue Router | |
-| 스타일 | **Tailwind CSS** | shadcn-vue, Vuetify, PrimeVue, Element Plus, CSS-in-JS |
+| 스타일 | **Tailwind CSS v4** | Tailwind v3 관행, shadcn-vue, Vuetify, PrimeVue, Element Plus, CSS-in-JS |
 | HTTP | axios (공통 인스턴스) | 컴포넌트에서 `fetch` 직접 호출 |
 
 **UI 컴포넌트 라이브러리를 도입하지 않는다.** 버튼·카드·모달·토스트 등은 Tailwind로 직접 만들어 `components/ui/`에 둔다.
+
+### Tailwind v4 — 버전 주의 ⚠️
+
+**v3와 설정 방식이 다르다.** 널리 알려진 v3 관행을 그대로 쓰면 **에러 없이 조용히 무시되어** 원인을 찾기 어렵다.
+
+| 하지 말 것 | 올바른 것 |
+| --- | --- |
+| `tailwind.config.js` 생성 | **설정 파일이 없다.** 색·간격 등 토큰은 CSS `@theme` 블록에 정의한다 |
+| `@tailwind base/components/utilities` | `@import "tailwindcss";` 한 줄 |
+| `postcss.config.js`·`autoprefixer` 추가 | `vite.config.js`의 `@tailwindcss/vite` 플러그인 하나로 끝난다 |
+| `bg-opacity-50` · `flex-shrink-0` · `outline-none` | `bg-black/50` · `shrink-0` · `outline-hidden` |
+| `shadow-sm`·`rounded-sm`·`blur-sm`을 v3 감각으로 사용 | **스케일이 한 칸 밀렸다.** v3의 `shadow-sm`은 v4의 `shadow-xs`다 |
+
+- 위 마지막 항목은 **에러가 나지 않고 결과만 달라진다.** 시안과 그림자·모서리가 미묘하게 다르면 이것부터 확인한다.
+- `flex`·`grid`·`px-4`·`text-sm`·`md:`·`hover:` 등 대부분의 유틸리티는 v3와 같다. 차이는 **설정과 일부 유틸리티 이름**에 몰려 있다.
+- 참고한 예제가 v3 기준이면 **그대로 옮기지 말고 위 표로 변환한다.**
 
 ---
 
