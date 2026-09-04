@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AppSubLayout from '@/components/layout/AppSubLayout.vue'
@@ -14,20 +14,23 @@ const amount = ref(0)
 const isSubmitting = ref(false)
 
 const balance = computed(() => 12400)
-const defaultAccount = {
-  accountId: 1,
-  bankName: '신한은행',
-  accountNo: '110-123-456789',
-  holder: '아이엠',
-}
+const defaultAccount = computed(() => store.defaultAccount)
 const validationMessage = computed(() => {
   if (!Number.isInteger(amount.value) || amount.value <= 0) return '출금 금액을 입력해 주세요.'
   if (amount.value > balance.value) return '출금 가능 잔액보다 큰 금액은 신청할 수 없어요.'
+  if (store.accountsLoaded && !defaultAccount.value) return '출금 계좌를 먼저 등록해 주세요.'
   return ''
 })
-const canSubmit = computed(() => !validationMessage.value && !isSubmitting.value)
+const canSubmit = computed(
+  () =>
+    !validationMessage.value &&
+    Boolean(defaultAccount.value) &&
+    !store.accountsLoading &&
+    !isSubmitting.value,
+)
 
 amount.value = balance.value
+onMounted(() => store.fetchWithdrawalAccounts())
 
 function selectAmount(value) {
   if (value > balance.value) return
@@ -37,16 +40,9 @@ function selectAmount(value) {
 async function submit() {
   if (!canSubmit.value) return
   isSubmitting.value = true
-  store.withdrawalResult = {
-    transactionId: 1,
-    transactionStatus: 'COMPLETED',
-    amount: amount.value,
-    requestedAt: '2026-09-25T14:22:00+09:00',
-    accountSnapshot: defaultAccount,
-    notice: '영업일 기준 1~2일 내에 입금될 예정이에요.',
-  }
+  const result = await store.withdraw(amount.value, defaultAccount.value.accountId)
   isSubmitting.value = false
-  router.push('/pocket/withdraw/complete')
+  if (result) router.push('/pocket/withdraw/complete')
 }
 </script>
 
@@ -90,7 +86,29 @@ async function submit() {
 
       <section>
         <h2 class="text-body-strong text-muted mb-3">출금 계좌</h2>
-        <div class="bg-surface flex min-h-16 items-center gap-3 rounded-lg px-4">
+        <div
+          v-if="store.accountsLoading"
+          class="bg-surface flex min-h-16 items-center justify-center rounded-lg px-4"
+        >
+          <p class="text-body-sm text-muted m-0">출금 계좌를 불러오는 중이에요.</p>
+        </div>
+        <div
+          v-else-if="store.accountsError"
+          class="bg-surface flex min-h-16 items-center justify-between gap-3 rounded-lg px-4"
+        >
+          <p class="text-body-sm text-muted m-0">{{ store.accountsError.message }}</p>
+          <button
+            type="button"
+            class="text-label text-primary shrink-0 border-0 bg-transparent"
+            @click="store.fetchWithdrawalAccounts()"
+          >
+            다시 시도
+          </button>
+        </div>
+        <div
+          v-else-if="defaultAccount"
+          class="bg-surface flex min-h-16 items-center gap-3 rounded-lg px-4"
+        >
           <span
             class="bg-primary-bg text-primary flex size-9 items-center justify-center rounded-md"
             ><IconPocket :size="20"
@@ -99,6 +117,9 @@ async function submit() {
             {{ defaultAccount.bankName }} {{ defaultAccount.accountNo }}
           </p>
           <span class="text-icon-off">›</span>
+        </div>
+        <div v-else class="bg-surface rounded-lg p-5 text-center">
+          <p class="text-body-sm text-muted m-0">등록된 출금 계좌가 없어요.</p>
         </div>
         <button
           type="button"
@@ -111,6 +132,9 @@ async function submit() {
       <div class="bg-confirmed-bg text-body-sm text-muted rounded-lg p-4">
         출금 신청은 평일 09:00 ~ 18:00에 가능하며, 신청 후 영업일 기준 1~2일 내 입금됩니다.
       </div>
+      <p v-if="store.withdrawalError" class="text-body-sm text-negative m-0 text-center">
+        {{ store.withdrawalError.message }}
+      </p>
     </div>
 
     <template #footer>
