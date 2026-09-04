@@ -9,6 +9,7 @@ import IconChevronLeft from './icons/IconChevronLeft.vue'
 
 defineProps({
   title: { type: String, default: '' },
+  centerTitle: { type: Boolean, default: false },
 })
 defineEmits(['back'])
 </script>
@@ -23,7 +24,12 @@ defineEmits(['back'])
     >
       <IconChevronLeft :size="22" />
     </button>
-    <h1 class="text-list-title text-ink m-0 truncate">{{ title }}</h1>
+    <h1
+      class="text-list-title text-ink m-0 truncate"
+      :class="centerTitle ? 'pointer-events-none absolute inset-x-14 text-center' : ''"
+    >
+      {{ title }}
+    </h1>
     <div class="ml-auto flex items-center">
       <!-- 오른쪽 보조 액션(닫기·저장 등) -->
       <slot name="action" />
