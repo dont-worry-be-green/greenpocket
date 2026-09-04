@@ -4,7 +4,6 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.concurrent.ThreadLocalRandom;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -30,22 +29,24 @@ import com.greenpocket.pocket.repository.PocketTransactionRepository;
 public class PocketConversionService {
 
 	private static final ZoneId KOREA_ZONE_ID = ZoneId.of("Asia/Seoul");
-	private static final int TRANSACTION_CODE_ATTEMPTS = 100;
 	private static final String EXTERNAL_URL = "https://ecomileage.seoul.go.kr/mileage/convert";
 	private static final String CONVERSION_NOTICE = "현금으로 바꿔야 그린포켓 계좌로 들어와요";
 
 	private final PocketTransactionRepository pocketTransactionRepository;
 	private final EcoMileageQueryService ecoMileageQueryService;
+	private final PocketTransactionCodeGenerator transactionCodeGenerator;
 	private final Clock clock;
 
 	@Autowired
 	public PocketConversionService(
 		PocketTransactionRepository pocketTransactionRepository,
-		EcoMileageQueryService ecoMileageQueryService
+		EcoMileageQueryService ecoMileageQueryService,
+		PocketTransactionCodeGenerator transactionCodeGenerator
 	) {
 		this(
 			pocketTransactionRepository,
 			ecoMileageQueryService,
+			transactionCodeGenerator,
 			Clock.system(KOREA_ZONE_ID)
 		);
 	}
@@ -53,10 +54,12 @@ public class PocketConversionService {
 	PocketConversionService(
 		PocketTransactionRepository pocketTransactionRepository,
 		EcoMileageQueryService ecoMileageQueryService,
+		PocketTransactionCodeGenerator transactionCodeGenerator,
 		Clock clock
 	) {
 		this.pocketTransactionRepository = pocketTransactionRepository;
 		this.ecoMileageQueryService = ecoMileageQueryService;
+		this.transactionCodeGenerator = transactionCodeGenerator;
 		this.clock = clock;
 	}
 
@@ -93,7 +96,7 @@ public class PocketConversionService {
 		PocketTransaction transaction = PocketTransaction.requestedEcoMileage(
 			userId,
 			round.roundId(),
-			generateTransactionCode(requestedAt),
+			transactionCodeGenerator.generate(requestedAt),
 			round.confirmedMileage(),
 			conversionLabel(round),
 			requestedAt
@@ -170,20 +173,6 @@ public class PocketConversionService {
 			transaction.getId()
 		);
 		return credits - debits;
-	}
-
-	private String generateTransactionCode(LocalDateTime requestedAt) {
-		String prefix = "GP-%02d%02d-".formatted(
-			requestedAt.getYear() % 100,
-			requestedAt.getMonthValue()
-		);
-		for (int attempt = 0; attempt < TRANSACTION_CODE_ATTEMPTS; attempt++) {
-			String code = prefix + "%04d".formatted(ThreadLocalRandom.current().nextInt(10_000));
-			if (!pocketTransactionRepository.existsByTransactionCode(code)) {
-				return code;
-			}
-		}
-		throw new BusinessException(CommonErrorCode.INTERNAL_ERROR);
 	}
 
 	private String conversionLabel(ConfirmedMileageRoundSnapshot round) {

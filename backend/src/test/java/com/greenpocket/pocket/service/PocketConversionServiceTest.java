@@ -51,6 +51,7 @@ class PocketConversionServiceTest {
 		pocketConversionService = new PocketConversionService(
 			pocketTransactionRepository,
 			ecoMileageQueryService,
+			new PocketTransactionCodeGenerator(pocketTransactionRepository),
 			clock
 		);
 	}
