@@ -26,14 +26,18 @@ import com.greenpocket.eco.dto.EcoGoalResponse;
 import com.greenpocket.eco.dto.EcoGoalSaveResponse;
 import com.greenpocket.eco.dto.EcoLinkProgressResponse;
 import com.greenpocket.eco.dto.EcoLinkStartResponse;
+import com.greenpocket.eco.dto.EcoMissionLogRequest;
+import com.greenpocket.eco.dto.EcoMissionLogResponse;
 import com.greenpocket.eco.dto.EcoHomeResponse;
 import com.greenpocket.eco.dto.EcoMonthlyReportResponse;
 import com.greenpocket.eco.dto.EcoResultResponse;
 import com.greenpocket.eco.dto.EcoSettlementResponse;
 import com.greenpocket.eco.dto.EcoStatusResponse;
+import com.greenpocket.eco.dto.EcoTodayMissionsResponse;
 import com.greenpocket.eco.service.EcoApplicationService;
 import com.greenpocket.eco.service.EcoGoalService;
 import com.greenpocket.eco.service.EcoLinkService;
+import com.greenpocket.eco.service.EcoMissionService;
 import com.greenpocket.eco.service.EcoProgressService;
 import com.greenpocket.eco.service.EcoResultService;
 import com.greenpocket.eco.service.EcoRoundService;
@@ -52,6 +56,7 @@ public class EcoController {
 	private final EcoProgressService ecoProgressService;
 	private final EcoResultService ecoResultService;
 	private final EcoApplicationService ecoApplicationService;
+	private final EcoMissionService ecoMissionService;
 
 	@Operation(summary = "Green What-if 홈 조회", description = "연동 및 평가 상태에 따라 렌더링할 화면과 진행 현황을 반환합니다.")
 	@ApiResponses({
@@ -241,5 +246,39 @@ public class EcoController {
 		@Parameter(description = "평가 회차 ID", example = "1") @PathVariable Long roundId
 	) {
 		return ApiResponse.success(ecoApplicationService.apply(userId, roundId));
+	}
+
+	@Operation(summary = "오늘의 실천 조회", description = "선택한 미션 중 요청 날짜의 계절에 맞는 미션과 완료 상태를 반환합니다.")
+	@ApiResponses({
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "오늘의 실천 조회 성공 또는 계절 미션 없음"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "날짜 형식 오류"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Demo Key 인증 실패"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "평가 회차 없음")
+	})
+	@GetMapping("/rounds/{roundId}/missions/today")
+	public ApiResponse<EcoTodayMissionsResponse> getTodayMissions(
+		@Parameter(hidden = true) @CurrentUserId Long userId,
+		@Parameter(description = "평가 회차 ID", example = "1") @PathVariable Long roundId,
+		@Parameter(description = "조회 날짜(YYYY-MM-DD), 생략 시 오늘", example = "2026-09-03")
+		@RequestParam(required = false) String date
+	) {
+		return ApiResponse.success(ecoMissionService.getTodayMissions(userId, roundId, date));
+	}
+
+	@Operation(summary = "오늘의 실천 체크 저장", description = "요청 날짜의 완료 미션 ID 목록을 한 행에 통째로 덮어씁니다.")
+	@ApiResponses({
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "오늘의 실천 저장 성공"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "날짜 형식 또는 미션 ID 오류"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Demo Key 인증 실패"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "평가 회차 없음")
+	})
+	@PutMapping("/rounds/{roundId}/mission-logs/{date}")
+	public ApiResponse<EcoMissionLogResponse> saveMissionLog(
+		@Parameter(hidden = true) @CurrentUserId Long userId,
+		@Parameter(description = "평가 회차 ID", example = "1") @PathVariable Long roundId,
+		@Parameter(description = "저장 날짜(YYYY-MM-DD)", example = "2026-09-03") @PathVariable String date,
+		@RequestBody EcoMissionLogRequest request
+	) {
+		return ApiResponse.success(ecoMissionService.saveMissionLog(userId, roundId, date, request));
 	}
 }
