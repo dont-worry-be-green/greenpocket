@@ -3,6 +3,7 @@ package com.greenpocket.eco.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -23,6 +24,8 @@ import com.greenpocket.eco.dto.EcoGoalPreviewResponse;
 import com.greenpocket.eco.dto.EcoGoalRequest;
 import com.greenpocket.eco.dto.EcoGoalResponse;
 import com.greenpocket.eco.dto.EcoGoalSaveResponse;
+import com.greenpocket.eco.dto.EcoMissionUpdateRequest;
+import com.greenpocket.eco.dto.EcoMissionUpdateResponse;
 import com.greenpocket.eco.entity.MissionDifficulty;
 import com.greenpocket.eco.entity.RoundStatus;
 import com.greenpocket.eco.entity.TargetTier;
@@ -196,6 +199,67 @@ class EcoGoalServiceTest {
 		assertThat(response.combinedTargetRate()).isNull();
 		assertThat(response.utilities()).isNull();
 		assertThat(response.missions()).isNull();
+	}
+
+	@Test
+	void updatesOnlySelectedMissionsWithoutChangingGoalTargets() {
+		when(ecoGoalRepository.findActiveMissions()).thenReturn(List.of(
+			airConditionerTemperatureMission(),
+			airConditionerHourMission()
+		));
+
+		EcoMissionUpdateResponse response = ecoGoalService.updateMissions(
+			USER_ID,
+			ROUND_ID,
+			new EcoMissionUpdateRequest(List.of(12L, 13L))
+		);
+
+		assertThat(response.combinedMissionRate()).isEqualByComparingTo("18.000");
+		assertThat(response.todayMissionsUpdated()).isTrue();
+		assertThat(response.items()).satisfiesExactly(
+			first -> {
+				assertThat(first.missionId()).isEqualTo(12L);
+				assertThat(first.counted()).isFalse();
+				assertThat(first.exclusionReason()).isEqualTo("냉방 겹침 · 합계 제외");
+			},
+			second -> {
+				assertThat(second.missionId()).isEqualTo(13L);
+				assertThat(second.counted()).isTrue();
+			}
+		);
+		verify(ecoGoalRepository).deleteSavedMissions(ROUND_ID);
+		verify(ecoGoalRepository, never()).clearUtilityTargets(anyLong());
+		verify(ecoGoalRepository, never()).updateRoundGoal(anyLong(), any(), anyLong(), anyLong());
+	}
+
+	@Test
+	void clearsSelectedMissionsWhenUpdateListIsEmpty() {
+		EcoMissionUpdateResponse response = ecoGoalService.updateMissions(
+			USER_ID,
+			ROUND_ID,
+			new EcoMissionUpdateRequest(List.of())
+		);
+
+		assertThat(response.combinedMissionRate()).isEqualByComparingTo("0.000");
+		assertThat(response.items()).isEmpty();
+		verify(ecoGoalRepository).deleteSavedMissions(ROUND_ID);
+		verify(ecoGoalRepository, never()).saveMission(anyLong(), anyLong(), anyLong(), any(), anyBoolean(), any());
+	}
+
+	@Test
+	void rejectsUnknownMissionDuringMissionUpdate() {
+		assertThatThrownBy(() -> ecoGoalService.updateMissions(
+			USER_ID,
+			ROUND_ID,
+			new EcoMissionUpdateRequest(List.of(999L))
+		))
+			.isInstanceOf(BusinessException.class)
+			.satisfies(error -> {
+				BusinessException businessException = (BusinessException)error;
+				assertThat(businessException.getField()).isEqualTo("selectedMissionIds");
+				assertThat(businessException.getDetails()).containsEntry("invalidMissionIds", List.of(999L));
+			});
+		verify(ecoGoalRepository, never()).deleteSavedMissions(anyLong());
 	}
 
 	@Test
