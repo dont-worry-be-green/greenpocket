@@ -17,6 +17,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import {
+  applyRound,
   createGoal,
   getCurrentRound,
   getEcoHome,
@@ -24,9 +25,11 @@ import {
   getEcoStatus,
   getGoal,
   getGoalForm,
+  getTodayMissions,
   linkEco,
   markResultViewed,
   previewGoal,
+  saveMissionLog,
   updateGoal,
 } from '@/api/eco'
 
@@ -41,6 +44,7 @@ export const useEcoStore = defineStore('eco', () => {
   const goalPreview = ref(null)
   const goal = ref(null)
   const goalSaveResult = ref(null)
+  const todayMissions = ref(null)
   const resultModalDismissed = ref(false)
 
   const isLoading = ref(false)
@@ -51,6 +55,9 @@ export const useEcoStore = defineStore('eco', () => {
   const previewError = ref(null)
   const goalSaveLoading = ref(false)
   const goalSaveError = ref(null)
+  const todayMissionsLoading = ref(false)
+  const missionSaveLoading = ref(false)
+  const applicationLoading = ref(false)
 
   /** 늦게 도착한 preview 응답을 버린다. 칩을 빨리 누르면 순서가 뒤집힌다 */
   let previewSequence = 0
@@ -190,12 +197,78 @@ export const useEcoStore = defineStore('eco', () => {
     }
   }
 
+  // ── 오늘의 실천 · 참여 신청 (WF-06) ───────────────────────────────────
+
+  /** 홈과 **따로 돈다.** 체크를 저장하면 이것만 다시 받고 화면 전체를 새로 그리지 않는다 */
+  async function fetchTodayMissions(id, params = {}) {
+    todayMissionsLoading.value = true
+    try {
+      todayMissions.value = await getTodayMissions(id, params)
+      return todayMissions.value
+    } catch (nextError) {
+      error.value = nextError
+      return null
+    } finally {
+      todayMissionsLoading.value = false
+    }
+  }
+
+  /**
+   * 하루치를 통째로 덮어쓴다 — 서버가 `completedMissionIds` 전량을 받는다(토글 1건이 아니다).
+   *
+   * 응답의 `completedCount` 로 홈의 요약(3/5)도 같이 맞춘다. 화면이 따로 세면
+   * 저장이 실패했을 때 숫자만 앞서간다.
+   */
+  async function saveTodayMissionLog(id, date, completedMissionIds) {
+    missionSaveLoading.value = true
+    try {
+      const data = await saveMissionLog(id, date, { completedMissionIds })
+      await fetchTodayMissions(id, { date })
+      if (data && home.value?.todayMissions) {
+        home.value = {
+          ...home.value,
+          todayMissions: { completedCount: data.completedCount, totalCount: data.totalCount },
+        }
+      }
+      return data
+    } catch (nextError) {
+      error.value = nextError
+      return null
+    } finally {
+      missionSaveLoading.value = false
+    }
+  }
+
+  /** 참여 신청 (B-4-05). 신청하면 배너가 사라지도록 홈의 application 을 응답으로 갈아끼운다 */
+  async function applyForRound(id) {
+    applicationLoading.value = true
+    try {
+      const data = await applyRound(id)
+      if (data && home.value) {
+        home.value = {
+          ...home.value,
+          application: {
+            ...home.value.application,
+            applicationStatus: data.applicationStatus,
+            showBanner: data.showBanner,
+          },
+        }
+      }
+      return data
+    } catch (nextError) {
+      error.value = nextError
+      return null
+    } finally {
+      applicationLoading.value = false
+    }
+  }
+
   // ── 결산 모달 (WF-09) ─────────────────────────────────────────────────
 
   /**
    * 로컬 플래그를 **먼저** 세우고 서버에는 알리기만 한다.
-   * `POST .../result/view` 는 아직 백엔드에 없어서 404 다. 여기서 토스트를 띄우면
-   * 모달을 닫을 때마다 에러가 뜬다. 실패해도 화면은 이미 닫혀 있어야 한다.
+   * 닫는 동작이 네트워크를 기다리면 안 되고, 실패해도 모달은 이미 닫혀 있어야 한다.
+   * 204 라 응답이 `undefined` 이므로 성공 판정은 try/catch 로만 한다.
    */
   async function dismissResultModal(id) {
     resultModalDismissed.value = true
@@ -203,7 +276,7 @@ export const useEcoStore = defineStore('eco', () => {
     try {
       await markResultViewed(id)
     } catch {
-      // 서버가 붙기 전까지는 무시한다 (백엔드 이슈로 등록됨)
+      // 닫기는 이미 끝났다. 여기서 토스트를 띄우면 닫을 때마다 에러가 뜬다
     }
   }
 
@@ -217,6 +290,7 @@ export const useEcoStore = defineStore('eco', () => {
     goalPreview,
     goal,
     goalSaveResult,
+    todayMissions,
     resultModalDismissed,
     isLoading,
     error,
@@ -224,6 +298,9 @@ export const useEcoStore = defineStore('eco', () => {
     previewError,
     goalSaveLoading,
     goalSaveError,
+    todayMissionsLoading,
+    missionSaveLoading,
+    applicationLoading,
     screen,
     roundId,
     goalSet,
@@ -238,6 +315,9 @@ export const useEcoStore = defineStore('eco', () => {
     fetchGoal,
     fetchGoalPreview,
     saveGoal,
+    fetchTodayMissions,
+    saveTodayMissionLog,
+    applyForRound,
     dismissResultModal,
   }
 })

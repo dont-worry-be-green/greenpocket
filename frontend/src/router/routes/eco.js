@@ -49,4 +49,15 @@ export default [
     component: () => import('@/views/eco/GoalSettingView.vue'),
     meta: { tab: 'whatif', title: '평가 기간 목표 정하기' },
   },
+  {
+    path: '/whatif/report',
+    name: 'wf-report',
+    /*
+     * WF-07. 화면은 아직 없다 — WF-06 의 「자세히」가 갈 곳을 먼저 만들어 둔다.
+     * 라우트가 없으면 router.push 가 빈 화면으로 떨어져 무반응이 된다(COM-08).
+     * **실제 화면이 붙으면 component 한 줄만 바꾼다.**
+     */
+    component: () => import('@/views/ComingSoonView.vue'),
+    meta: { tab: 'whatif', title: '전달 리포트' },
+  },
 ]

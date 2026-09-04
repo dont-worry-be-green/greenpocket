@@ -10,6 +10,8 @@ import IconLightning from '@/components/ui/icons/IconLightning.vue'
 
 defineProps({
   utilityType: { type: String, required: true },
+  // WF-06 목표 카드의 3열처럼 좁은 자리용. 기본 48px 타일은 3열에 들어가지 않는다
+  small: { type: Boolean, default: false },
 })
 
 const UTILITY = {
@@ -21,10 +23,10 @@ const UTILITY = {
 
 <template>
   <span
-    class="flex size-(--gp-tile) shrink-0 items-center justify-center rounded-md"
-    :class="UTILITY[utilityType]?.tone"
+    class="flex shrink-0 items-center justify-center rounded-md"
+    :class="[UTILITY[utilityType]?.tone, small ? 'size-(--gp-tile-sm)' : 'size-(--gp-tile)']"
     aria-hidden="true"
   >
-    <component :is="UTILITY[utilityType]?.icon" :size="22" />
+    <component :is="UTILITY[utilityType]?.icon" :size="small ? 18 : 22" />
   </span>
 </template>
