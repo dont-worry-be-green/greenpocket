@@ -18,6 +18,23 @@
 
 **UI 컴포넌트 라이브러리를 도입하지 않는다.** 버튼·카드·모달·토스트 등은 Tailwind로 직접 만들어 `components/ui/`에 둔다.
 
+### 디자인 토큰 — `src/assets/main.css` 하나가 전부다
+
+205개 토큰이 `@theme static` 블록에 있고, **토큰이 곧 Tailwind 클래스**다.
+
+| 쓸 것 | 쓰지 말 것 |
+| --- | --- |
+| `bg-primary` · `text-muted` · `border-divider` | `bg-green-600` (Tailwind 기본 팔레트), `#078753` |
+| `text-body` · `text-amount` · `text-caption` (크기+굵기+행간이 함께 붙는다) | `text-[15px] font-normal leading-[1.6]` |
+| `rounded-lg`(16) · `rounded-md`(12) — 7단계만 | `rounded-[14px]` |
+| `p-4`·`gap-3` (Tailwind 기본 4px 스케일이 시안과 맞는다) | 별도 간격 토큰 |
+| `h-(--gp-cta-h)` · `size-(--gp-fab)` — 유틸리티가 없는 치수 | `h-[48px]` |
+
+- **색 이름 3개만 원본과 다르다.** `text-strong`→`ink`, `text`→`ink-soft`, `bg`→`canvas`. 값은 같다.
+- 필요한 토큰이 없으면 `main.css`에 **추가**한다. 화면에서 hex를 쓰지 않는다.
+- **`@theme static`인 이유** — 기본 `@theme`는 안 쓰인 토큰을 지워서 `var(--gp-cta-h)`가 조용히 깨진다.
+- 시안 원본(`design-system/greenpocket.css`)은 **쓰지 않는다.** px 하드코딩 428곳에 아트보드 좌표계라 실제 화면에서 깨진다. 토큰만 위 `@theme`로 흡수했다.
+
 ### Tailwind v4 — 버전 주의 ⚠️
 
 **v3와 설정 방식이 다르다.** 널리 알려진 v3 관행을 그대로 쓰면 **에러 없이 조용히 무시되어** 원인을 찾기 어렵다.
@@ -144,7 +161,10 @@ frontend/src/
 
 기능명세서 COM-06·COM-07에 정의된 규칙이다. **화면마다 다르게 구현하면 안 된다.**
 **서버는 숫자와 enum만 내려준다.** 포맷팅은 전부 FE 책임이다.
-**`utils/format.js`의 포맷터를 쓰고, 컴포넌트에서 `toLocaleString`을 직접 부르지 않는다.** 없는 포맷이 필요하면 이 파일에 추가한다.
+**`utils/format.js`의 포맷터를 쓰고, 컴포넌트에서 `toLocaleString`·`toFixed`를 직접 부르지 않는다.** 없는 포맷이 필요하면 이 파일에 추가한다.
+
+공통 컴포넌트가 `components/ui/`에 7개 있다 — `GpButton` `GpCard` `GpTag` `GpDelta` `GpBandPicker` `GpMissionRow` `GpTabBar`.
+비슷한 것을 새로 만들기 전에 먼저 확인한다. `GpDelta`·`GpTag`가 위 증감·상태 라벨 규칙을 이미 지키고 있다.
 
 - **금액:** 천 단위 구분기호 + `원`. 마일리지는 `M` (1M = 1원).
 - **증감:** 부호 대신 **화살표 + 숫자 + 말** (`↓12% 줄었어요`, `↑2% 늘었어요`). 비교 차액만 `+4,300원`처럼 부호를 붙인다.

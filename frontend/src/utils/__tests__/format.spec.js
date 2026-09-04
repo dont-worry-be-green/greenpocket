@@ -4,6 +4,8 @@ import {
   formatSignedWon,
   formatMileage,
   formatChangeRate,
+  changeRateParts,
+  formatDifficulty,
   formatUsage,
   formatMonth,
 } from '../format'
@@ -47,6 +49,39 @@ describe('formatChangeRate', () => {
 
   it('0 은 화살표를 쓰지 않는다', () => {
     expect(formatChangeRate(0)).toBe('지난달과 같아요')
+  })
+})
+
+describe('changeRateParts', () => {
+  it('방향과 숫자와 말을 나눠 준다', () => {
+    expect(changeRateParts(12)).toEqual({ direction: 'down', value: '12', word: '줄었어요' })
+    expect(changeRateParts(-2)).toEqual({ direction: 'up', value: '2', word: '늘었어요' })
+  })
+
+  it('0 은 화살표 없는 same 이다. ↓0% 로 그리면 안 된다', () => {
+    expect(changeRateParts(0).direction).toBe('same')
+    expect(changeRateParts(0).word).toBe('지난달과 같아요')
+  })
+
+  it('값이 없으면 none 이다', () => {
+    expect(changeRateParts(null).direction).toBe('none')
+  })
+
+  it('11.322 의 자릿수를 깎지 않는다 (결정 C-13)', () => {
+    expect(changeRateParts(11.322).value).toBe('11.322')
+    expect(changeRateParts(12.0).value).toBe('12')
+  })
+})
+
+describe('formatDifficulty', () => {
+  it('난이도 enum 을 한국어로 바꾼다', () => {
+    expect(formatDifficulty('EASY')).toBe('쉬움')
+    expect(formatDifficulty('NORMAL')).toBe('보통')
+    expect(formatDifficulty('HARD')).toBe('어려움')
+  })
+
+  it('모르는 값은 - 로 떨어뜨린다', () => {
+    expect(formatDifficulty(undefined)).toBe('-')
   })
 })
 
