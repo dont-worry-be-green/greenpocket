@@ -26,6 +26,11 @@ import {
   ECO_GOAL_FORM_UNREGISTERED,
   ECO_GOAL_SAVED,
 } from '@/fixtures/ecoGoal'
+import {
+  ECO_APPLICATION_APPLIED,
+  ECO_HOME_IN_PROGRESS,
+  ECO_TODAY_MISSIONS,
+} from '@/fixtures/ecoHome'
 import { buildGoalPreview } from '@/fixtures/ecoPreview'
 
 import client from './client'
@@ -41,12 +46,20 @@ const fake = async (value, ms = 220) => {
 /*
  * 픽스처만으로는 못 만드는 "상태"를 여기 둔다.
  *   linkPollCount  연동 진행 단계 — 호출 N 회차 = 진행 N 단계
+ *   linking        연동 작업이 도는 중. GET /eco/home 이 WF_02_LINKING 을 돌려주는 근거다
+ *   linked         연동 완료 여부. GET /eco/home 의 screen 이 여기서 갈린다
  *   savedGoal      저장한 목표. 다시 들어왔을 때 고른 구간·미션이 남아 있어야 한다(B-2 편집)
+ *   applied        참여 신청 여부. 신청하면 배너가 사라져야 한다(B-4-05)
+ *   completedMissionIds  오늘 체크한 실천. null 이면 픽스처 기본값을 쓴다
  * 새로고침하면 사라진다. 서버가 붙으면 통째로 사라질 코드다.
  */
 const demoState = {
   linkPollCount: 0,
+  linking: false,
+  linked: false,
   savedGoal: null,
+  applied: false,
+  completedMissionIds: null,
 }
 
 // ── 8절 · 연동 ──────────────────────────────────────────────────────────
@@ -64,6 +77,7 @@ export function getEcoStatus() {
 export function linkEco(payload = {}) {
   if (USE_FIXTURES) {
     demoState.linkPollCount = 0
+    demoState.linking = true
     return fake({ linkJobId: 'demo-link-job', status: 'RUNNING', estimatedSeconds: 12 }, 400)
   }
   return client.post('/eco/link', payload)
@@ -81,6 +95,8 @@ export function getEcoLinkJob(linkJobId) {
       const step = ++demoState.linkPollCount
       const done = step > ECO_LINK_UTILITIES.length
       if (done) {
+        demoState.linking = false
+        demoState.linked = true
         return {
           linkJobId,
           status: 'SUCCEEDED',
@@ -168,15 +184,27 @@ export function getGoal(roundId) {
   return client.get(`/eco/rounds/${roundId}/goal`)
 }
 
-/** GET /eco/rounds/{roundId}/missions/today — 오늘의 실천 (B-3-05) */
+/**
+ * GET /eco/rounds/{roundId}/missions/today — 오늘의 실천 (B-3-05).
+ * 목표를 정하지 않았으면 목록이 비고 `emptyReason` 이 온다. **에러가 아니다**(핵심 규칙 8).
+ */
 export function getTodayMissions(roundId, params = {}) {
-  // 배치 2(WF-06)에서 fixtures/ecoHome.js 의 ECO_TODAY_MISSIONS 를 붙인다
+  if (USE_FIXTURES) return fake(todayMissionsFixture)
   return client.get(`/eco/rounds/${roundId}/missions/today`, { params })
 }
 
-/** PUT /eco/rounds/{roundId}/mission-logs/{date} — 실천 체크 (B-3-06) */
+/**
+ * PUT /eco/rounds/{roundId}/mission-logs/{date} — 실천 체크 (B-3-06).
+ * 하루치를 **통째로** 덮어쓴다(`completedMissionIds` 전량). 토글 1건을 보내는 게 아니다.
+ */
 export function saveMissionLog(roundId, date, payload) {
-  // 배치 2(WF-06)
+  if (USE_FIXTURES) {
+    return fake(() => {
+      demoState.completedMissionIds = [...(payload?.completedMissionIds ?? [])]
+      const today = todayMissionsFixture()
+      return { date, completedCount: today.completedCount, totalCount: today.totalCount }
+    }, 180)
+  }
   return client.put(`/eco/rounds/${roundId}/mission-logs/${date}`, payload)
 }
 
@@ -197,9 +225,32 @@ export function updateMissions(roundId, payload) {
 
 // ── 10절 · 진행 현황·전달 리포트 ────────────────────────────────────────
 
-/** GET /eco/home — What-if 홈. `screen` 으로 WF-01 ~ WF-09 를 가른다 (B-4-01) */
+/**
+ * GET /eco/home — What-if 홈. `screen` 으로 WF-01 ~ WF-09 를 가른다 (B-4-01).
+ *
+ * **`screen` 판정을 뷰에 두지 않는다.** 서버가 정하는 값이라 화면이 흉내 내기 시작하면
+ * 연동 후 두 판정이 어긋난다. 여기서 데모 상태를 보고 서버처럼 답한다.
+ */
 export function getEcoHome() {
-  // 배치 2(WF-06)에서 fixtures/ecoHome.js 를 붙인다
+  if (USE_FIXTURES) {
+    return fake(() => {
+      if (demoState.linking) return { ...ECO_HOME_IN_PROGRESS, screen: 'WF_02_LINKING' }
+      if (!demoState.linked) return { ...ECO_HOME_IN_PROGRESS, screen: 'WF_01_UNLINKED' }
+      if (!demoState.savedGoal) return { ...ECO_HOME_IN_PROGRESS, screen: 'WF_03_NO_GOAL' }
+      return {
+        ...ECO_HOME_IN_PROGRESS,
+        application: {
+          ...ECO_HOME_IN_PROGRESS.application,
+          applicationStatus: demoState.applied ? 'APPLIED' : 'NOT_APPLIED',
+          showBanner: !demoState.applied,
+        },
+        todayMissions: {
+          completedCount: todayMissionsFixture().completedCount,
+          totalCount: ECO_TODAY_MISSIONS.totalCount,
+        },
+      }
+    })
+  }
   return client.get('/eco/home')
 }
 
@@ -220,8 +271,8 @@ export function getRoundResult(roundId) {
 /**
  * POST /eco/rounds/{roundId}/result/view — 결산 모달을 봤다고 표시 (B-5-01 · WF-09).
  *
- * ⚠️ **백엔드 미구현이다.** 지금은 404 가 온다. 204 라 성공해도 응답 본문이 `undefined` 이므로
- * `if (data)` 로 판정하면 성공을 실패로 읽는다. 호출부는 try/catch 로만 판정한다.
+ * ⚠️ **204 라 응답 본문이 `undefined` 다.** `if (data)` 로 판정하면 성공을 실패로 읽는다.
+ * 호출부는 try/catch 로만 판정한다. (백엔드 구현 완료 — EcoController.viewResult)
  */
 export function markResultViewed(roundId) {
   return client.post(`/eco/rounds/${roundId}/result/view`)
@@ -235,11 +286,32 @@ export function getSettlement(roundId) {
 
 /** POST /eco/rounds/{roundId}/application — 에코마일리지 회원 신청 (B-4-05) */
 export function applyRound(roundId) {
-  // 배치 2(WF-06 신청 배너)
+  if (USE_FIXTURES) {
+    return fake(() => {
+      demoState.applied = true
+      return { ...ECO_APPLICATION_APPLIED, roundId }
+    }, 400)
+  }
   return client.post(`/eco/rounds/${roundId}/application`)
 }
 
 // ── 픽스처 전용 헬퍼. USE_FIXTURES 를 끄면 아래는 아무도 부르지 않는다 ──
+
+/**
+ * 오늘 체크한 실천을 반영해 돌려준다. `completedCount` 를 화면이 세지 않고 **서버가 준 값**을
+ * 쓰도록, 여기서 서버처럼 다시 세어 넣는다.
+ */
+function todayMissionsFixture() {
+  const checked = demoState.completedMissionIds
+  const missions = ECO_TODAY_MISSIONS.missions.map((mission) =>
+    checked === null ? mission : { ...mission, completed: checked.includes(mission.missionId) },
+  )
+  return {
+    ...ECO_TODAY_MISSIONS,
+    missions,
+    completedCount: missions.filter((mission) => mission.completed).length,
+  }
+}
 
 /** WF-04(전부 등록) 이 기본이고 `?preview=WF-05` 일 때만 수도 미등록판을 준다 */
 function previewGoalForm() {
