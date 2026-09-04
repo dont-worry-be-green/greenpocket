@@ -15,11 +15,14 @@
 | 우선순위 | 문서 | 내용 |
 | --- | --- | --- |
 | **1 (최상위)** | `docs/feature-spec/기능명세서.md` | 기능 ID, 규칙·데이터·예외, 완료 조건, 우선순위(P0/P1/P2) |
-| 2 | `docs/database/schema.sql` | 배포용 DDL. 테이블·컬럼·ENUM·제약 |
+| 2 | `docs/database/schema.sql` | 스키마 기준 원본. 테이블·컬럼·ENUM·제약 |
 | 3 | `docs/api/api-spec.md` | 공통 규약, 엔드포인트 60개, 매핑표, 검증 체크리스트 |
 | 참고 | `docs/개발기획서.md` | 배경·목표·데이터 출처. 구현 세부의 근거로 삼지 않는다 |
 
 `docs/feature-spec/기능명세서.xlsx`가 기능명세의 **원본**이다. `.md`는 읽기용 사본이라 두 파일이 다르면 엑셀이 기준이며, 「결정 사항」·「확인 필요 사항」 시트는 엑셀에만 있다.
+
+> ⚠️ **`schema.sql`을 DB에 직접 실행하지 않는다.** 맨 앞에 `DROP TABLE` 13개가 있어 기존 데이터가 전부 사라진다.
+> 이 파일은 스키마를 읽고 맞추는 **기준 문서**이고, DB에 적용되는 것은 `backend/src/main/resources/db/migration/`의 Flyway 마이그레이션이다.
 
 ### 스펙 문서는 필요한 섹션만 읽는다
 
@@ -169,14 +172,16 @@ greenpocket/
 │   ├── ISSUE_TEMPLATE/    이슈 템플릿 (기능 개발 / 버그 수정)
 │   └── pull_request_template.md
 ├── backend/               Spring Boot 4.1.1 / Java 21 / MySQL
-│   └── AGENTS.md          백엔드 전용 규칙
+│   ├── AGENTS.md          백엔드 전용 규칙
+│   └── src/main/resources/db/migration/
+│                          Flyway 마이그레이션 (적용된 파일은 수정 금지)
 ├── frontend/              Vue 3 / Vite / JavaScript
 │   └── AGENTS.md          프론트엔드 전용 규칙
 ├── docs/                  스펙 문서 (단일 진실 공급원)
 │   ├── README.md          문서 지도 · 우선순위 · 문서 갱신 절차
 │   ├── 개발기획서.md       배경·목표·MVP 범위·역할 분담
 │   ├── feature-spec/      기능명세서.xlsx (원본) · 기능명세서.md (사본)
-│   ├── database/          schema.sql — 배포용 DDL
+│   ├── database/          schema.sql — 스키마 기준 원본 (실제 적용은 Flyway)
 │   ├── api/               api-spec.md — 엔드포인트 60개
 │   └── design/            design-system.md · tokens.css (작성 예정)
 └── infra/
@@ -184,16 +189,17 @@ greenpocket/
 
 > **규칙을 수정할 때는 `AGENTS.md`만 고친다.** `CLAUDE.md`·`GEMINI.md`는 import용 포인터라 여기에 규칙을 직접 적으면 에이전트마다 다른 규칙을 보게 된다.
 
-### 아직 만들어지지 않은 것 — 착각하지 않는다
+위 구조는 **목표 형태다.** 아직 만들어지지 않은 것이 있으므로, **있다고 가정하지 말고 작업 전에 직접 확인한다.**
 
-위 구조는 **목표 형태**다. 지금 저장소의 실제 상태는 다음과 같고, 없는 것을 있다고 가정하고 코드를 쓰면 안 된다.
+### 기반 작업물 — 없다고 혼자 만들지 않는다
 
-| 대상 | 상태 | 처음 손대는 사람이 할 일 |
-| --- | --- | --- |
-| `backend/src/main/resources/db/migration/` | **비어 있음.** V1 마이그레이션이 없다 | `docs/database/schema.sql`을 `V1__init_schema.sql`로 옮긴다. `ddl-auto: validate`라 이게 없으면 **아무도 앱을 띄우지 못한다** |
-| `backend/.../global/` | 하위 폴더만 있고 클래스 없음 | 공통 응답·예외 클래스는 **임의로 만들지 말고 사용자에게 확인**한다. 각자 만들면 응답 포맷이 갈라진다 |
-| `frontend/` | **Vue 프로젝트 미생성.** `package.json`도 없다 | 스캐폴딩 자체가 별도 작업이다. `frontend/AGENTS.md`의 구조·검증 명령어는 그 이후에 유효하다 |
-| `docs/design/` | 파일 없음 (결정 B-3, 작성 예정) | 디자인 토큰이 필요하면 만들지 말고 확인한다 |
+아래는 전원이 공유하는 기반이라 한 사람이 만들면 나머지가 그 형태에 묶인다. **없으면 만들지 말고 사용자에게 알린다.**
+
+| 대상 | 없을 때 |
+| --- | --- |
+| `backend/.../global/` 공통 응답·예외 클래스 | 각자 만들면 응답 포맷이 갈라져 프론트 연동이 깨진다 |
+| `frontend/` Vue 프로젝트 (`package.json`) | 스캐폴딩은 별도 작업이다. 없으면 `frontend/AGENTS.md`의 디렉토리 구조·`npm` 명령어는 아직 유효하지 않다 |
+| `docs/design/` 디자인 토큰 (결정 B-3) | 토큰을 임의로 정의하지 않는다 |
 
 ### 문서를 고치면 같이 고칠 것
 

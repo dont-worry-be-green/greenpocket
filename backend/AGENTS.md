@@ -41,15 +41,6 @@ cd backend
 `application.yaml`에 **`ddl-auto: validate`** 가 설정되어 있다.
 엔티티와 실제 테이블 구조가 다르면 **애플리케이션이 아예 뜨지 않는다.**
 
-### ⚠️ 아직 V1이 없다
-
-`src/main/resources/db/migration/` 이 **비어 있다.** 테이블이 하나도 없으므로 `ddl-auto: validate`가 첫 엔티티에서 바로 실패한다.
-
-- 첫 작업자가 `docs/database/schema.sql`(테이블 13 · FK 16 · UNIQUE 16 · CHECK 9)을 **`V1__init_schema.sql`로 옮긴다.**
-- **DDL을 다시 쓰거나 요약하지 않는다.** `schema.sql`이 데이터 기준이므로 내용을 그대로 옮긴다. 제약을 빼면 고지서 중복·출금 중복·마일리지 전환 중복이 전부 통과한다.
-- V1은 전원이 공유하는 파일이다. **만들기 전에 사용자에게 알린다.** 이미 있으면 손대지 않는다.
-- 시드 데이터(지역 기준선·미션 카탈로그·녹색생활실천 항목)는 `db/seed/`에 따로 둔다.
-
 ### 절대 규칙
 
 1. **엔티티를 추가·변경하면 반드시 마이그레이션 SQL을 함께 작성한다.**
@@ -58,13 +49,17 @@ cd backend
    Flyway 체크섬이 깨져 부팅에 실패한다. 변경이 필요하면 **새 버전 파일을 추가한다.**
 3. **`ddl-auto` 값을 `update`나 `create`로 바꾸지 않는다.**
    문제를 감추고 데이터를 파괴한다. 부팅 에러의 해결책이 아니다.
+4. **마이그레이션에 `DROP TABLE`·`SET FOREIGN_KEY_CHECKS`·`TRUNCATE`를 쓰지 않는다.**
+   마이그레이션은 앞으로 한 번만 실행되는 단계다. 히스토리가 유실되거나 `flyway repair` 후 재실행되면 그 구문이 데이터를 전부 지운다.
+   `docs/database/schema.sql` 맨 앞에는 이 블록이 있으므로, 옮겨 쓸 때 **`CREATE TABLE`부터 가져온다.**
 
 ### 파일 규칙
 
 - 위치: `src/main/resources/db/migration/`
 - 형식: `V<번호>__<스네이크_케이스_설명>.sql` — 예: `V2__add_pocket_transaction.sql`
-- 시드 데이터: `src/main/resources/db/seed/`
-- **새 마이그레이션을 만들기 전에 기존 파일의 최대 번호를 확인한다.** 번호가 겹치면 Flyway가 실패하며, 여러 명이 동시에 작업 중이라 충돌 가능성이 높다.
+- 시드 데이터는 마이그레이션이 아니라 `src/main/resources/db/seed/`에 둔다.
+- **작업 전에 `ls src/main/resources/db/migration/` 으로 현재 최대 번호를 확인한다.** 번호가 겹치면 Flyway가 실패하며, 여러 명이 동시에 작업 중이라 충돌 가능성이 높다.
+- 스키마 기준은 `docs/database/schema.sql`이다. 컬럼을 바꾸면 **그 파일과 새 마이그레이션을 함께** 고친다.
 
 ---
 

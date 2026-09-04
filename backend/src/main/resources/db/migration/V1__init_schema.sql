@@ -1,51 +1,18 @@
 -- ============================================================
---  그린포켓 (GreenPocket) 스키마 기준 DDL
---  2026 KB IT's Your Life 해커톤 · 돈워리, 비그린
+--  V1 · 그린포켓 초기 스키마
 --
---  기준     : ERD Cloud export + 2026-09-03 팀 결정 (C-1 ~ C-13)
---  DBMS     : MySQL 8.4 · InnoDB · utf8mb4 · utf8mb4_0900_ai_ci
---  규모     : 테이블 13 · 외래키 16 · UNIQUE 16 · CHECK 9
+--  원본   : docs/database/schema.sql (스키마의 단일 진실 공급원)
+--  DBMS   : MySQL 8.4 · InnoDB · utf8mb4 · utf8mb4_0900_ai_ci
+--  규모   : 테이블 13 · 외래키 16 · UNIQUE 16 · CHECK 9
 --
---  ERD Cloud export 는 다이어그램 원본이라 PK 외 제약이 빠져 있습니다.
---  이 파일이 스키마의 기준(단일 진실 공급원)입니다.
+--  ⚠️ 이 파일은 이미 적용된 마이그레이션입니다. 절대 수정하지 마세요.
+--     내용을 고치면 Flyway 체크섬이 깨져 애플리케이션이 부팅하지 않고,
+--     이미 이 버전을 적용한 팀원의 DB는 되돌릴 수 없습니다.
+--     스키마 변경은 새 파일(V2__*.sql)에 ALTER TABLE 로 작성합니다.
 --
---  ⚠️ 이 파일을 DB에 직접 실행하지 마세요.
---     아래 DROP TABLE 13개가 기존 데이터를 전부 지웁니다.
---     DB 적용은 backend/src/main/resources/db/migration/ 의 Flyway 마이그레이션으로 합니다.
---     스키마를 바꿀 때는 이 파일과 새 마이그레이션을 함께 고치고,
---     이미 적용된 마이그레이션 파일은 절대 수정하지 않습니다.
---
---  2026-09-03 결정 반영
---    4  FK·UNIQUE·CHECK·AUTO_INCREMENT 복원 (A안)
---    8  app_user 에 에코마일리지 등록 주소 4컬럼 추가
---    9  DELETE FROM app_user 한 줄로 사용자 데이터 CASCADE 정리
---    1  last_visited_tab 미도입 (기능 자체 제외)
---    2  pocket_name 미도입 (포켓 이름 "그린포켓" 고정)
---    3  upload_batch_id · revision_history 미도입 (고지서 묶음·수정 이력 미관리)
---    5  source_url 미도입 (기관명만 노출)
---    6  user_mission 스냅샷 컬럼 미도입 (mission_catalog 조인)
---    7  eco_monthly_report.source_batch_id 미도입 ((user_id, report_month) 로 재계산)
---   11  지역난방 미지원 (utility_type 은 전기·가스·수도 3종 유지)
+--  원본과 다른 점 — DROP TABLE / SET FOREIGN_KEY_CHECKS 블록을 뺐습니다.
+--  마이그레이션은 한 번만 앞으로 실행되는 단계라 기존 테이블을 지우면 안 됩니다.
 -- ============================================================
-
-SET NAMES utf8mb4;
-SET FOREIGN_KEY_CHECKS = 0;
-
-DROP TABLE IF EXISTS `pocket_transaction`;
-DROP TABLE IF EXISTS `withdrawal_account`;
-DROP TABLE IF EXISTS `greenlife_activity`;
-DROP TABLE IF EXISTS `greenlife_item`;
-DROP TABLE IF EXISTS `mission_daily_log`;
-DROP TABLE IF EXISTS `user_mission`;
-DROP TABLE IF EXISTS `mission_catalog`;
-DROP TABLE IF EXISTS `eco_monthly_report`;
-DROP TABLE IF EXISTS `eco_round_utility`;
-DROP TABLE IF EXISTS `eco_round`;
-DROP TABLE IF EXISTS `region_utility_snapshot`;
-DROP TABLE IF EXISTS `utility_monthly_record`;
-DROP TABLE IF EXISTS `app_user`;
-
-SET FOREIGN_KEY_CHECKS = 1;
 
 CREATE TABLE `app_user` (
 	`id`	BIGINT	NOT NULL	AUTO_INCREMENT	COMMENT '사용자 ID | 사용자 내부 식별자',

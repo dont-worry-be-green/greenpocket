@@ -9,7 +9,7 @@
 | API 수 | **60개** (P0 43 · P1 17) |
 | 인증 | 로그인 없음. `X-Demo-Key` 헤더로 데모 사용자 식별 (결정 A-4) |
 | 서버 | Spring Boot · MySQL 8.4 · Base URL `/api/v1` |
-| 배포 DDL | `docs/database/schema.sql` — FK·UNIQUE·CHECK 포함본. **배포에 쓰는 유일한 DDL** |
+| 스키마 기준 | `docs/database/schema.sql` — FK·UNIQUE·CHECK 포함본. **DB 적용은 `backend/src/main/resources/db/migration/`의 Flyway 마이그레이션으로 한다** |
 
 > **우선순위 규칙** — 두 기준 문서가 어긋나면 **기능은 엑셀, 데이터는 `schema.sql`**이 이깁니다.
 > 이전 버전에서 열어 두었던 결정 13건은 2026-09-03에 전부 확정됐고 이 문서에 반영돼 있습니다. 무엇을 어떻게 정했는지는 **16절**을 보세요.
@@ -382,7 +382,7 @@ GET   /bills/ocr/{jobId}   200           → { status, progress, result | error 
 ```
 
 - 서버 동작: `DELETE FROM app_user WHERE id = :uid` **한 줄.** FK CASCADE로 사용자 데이터 8개 테이블이 전부 정리되고 마스터(`mission_catalog` · `greenlife_item` · `region_utility_snapshot`)만 남습니다.
-- 배포 DDL(`docs/database/schema.sql`)에 FK 16개를 복원해 두었고, 위 동작을 MariaDB에서 실제로 확인했습니다(결정 4·9).
+- 스키마 기준(`docs/database/schema.sql`)에 FK 16개를 복원해 두었고, 위 동작을 MariaDB에서 실제로 확인했습니다(결정 4·9).
 
 ---
 
