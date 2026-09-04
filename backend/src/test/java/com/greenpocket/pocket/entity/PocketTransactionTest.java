@@ -78,4 +78,28 @@ class PocketTransactionTest {
 		assertThat(transaction.getIdempotencyKey()).isEqualTo("550e8400-e29b-41d4-a716-446655440000");
 		assertThat(transaction.getCompletedAt()).isEqualTo(completedAt);
 	}
+
+	@Test
+	void createsCompletedGreenlifeMonthlyCredit() {
+		LocalDateTime completedAt = LocalDateTime.of(2026, 8, 10, 0, 0);
+
+		PocketTransaction transaction = PocketTransaction.completedGreenlifeCredit(
+			42L,
+			"GP-2608-0001",
+			"2026-07",
+			3_140L,
+			"녹색생활실천 7월분",
+			completedAt
+		);
+
+		assertThat(transaction.getUserId()).isEqualTo(42L);
+		assertThat(transaction.getDirection()).isEqualTo(TransactionDirection.CREDIT);
+		assertThat(transaction.getTransactionType()).isEqualTo(TransactionType.GREENLIFE);
+		assertThat(transaction.getTransactionStatus()).isEqualTo(TransactionStatus.COMPLETED);
+		assertThat(transaction.getSourceType()).isEqualTo(TransactionSourceType.GREENLIFE_MONTH);
+		assertThat(transaction.getSourceKey()).isEqualTo("2026-07");
+		assertThat(transaction.getAmount()).isEqualTo(3_140L);
+		assertThat(transaction.getRequestedAt()).isEqualTo(completedAt);
+		assertThat(transaction.getCompletedAt()).isEqualTo(completedAt);
+	}
 }
