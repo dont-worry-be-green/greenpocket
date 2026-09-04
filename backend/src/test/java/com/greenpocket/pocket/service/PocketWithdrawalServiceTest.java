@@ -66,6 +66,7 @@ class PocketWithdrawalServiceTest {
 			pocketTransactionRepository,
 			withdrawalAccountRepository,
 			accountNumberCipher,
+			new PocketTransactionCodeGenerator(pocketTransactionRepository),
 			clock
 		);
 	}
@@ -263,6 +264,10 @@ class PocketWithdrawalServiceTest {
 				() -> mock(WithdrawalAccountRepository.class)
 			);
 			context.registerBean(AccountNumberCipher.class, () -> mock(AccountNumberCipher.class));
+			context.registerBean(
+				PocketTransactionCodeGenerator.class,
+				() -> mock(PocketTransactionCodeGenerator.class)
+			);
 			context.register(PocketWithdrawalService.class);
 			context.refresh();
 

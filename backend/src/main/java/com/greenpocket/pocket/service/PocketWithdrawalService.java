@@ -5,7 +5,6 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.concurrent.ThreadLocalRandom;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -37,24 +36,26 @@ import com.greenpocket.pocket.repository.WithdrawalAccountRepository;
 public class PocketWithdrawalService {
 
 	private static final ZoneId KOREA_ZONE_ID = ZoneId.of("Asia/Seoul");
-	private static final int TRANSACTION_CODE_ATTEMPTS = 100;
 	private static final String WITHDRAWAL_NOTICE = "영업일 기준 1~2일 내에 입금될 예정이에요";
 
 	private final PocketTransactionRepository pocketTransactionRepository;
 	private final WithdrawalAccountRepository withdrawalAccountRepository;
 	private final AccountNumberCipher accountNumberCipher;
+	private final PocketTransactionCodeGenerator transactionCodeGenerator;
 	private final Clock clock;
 
 	@Autowired
 	public PocketWithdrawalService(
 		PocketTransactionRepository pocketTransactionRepository,
 		WithdrawalAccountRepository withdrawalAccountRepository,
-		AccountNumberCipher accountNumberCipher
+		AccountNumberCipher accountNumberCipher,
+		PocketTransactionCodeGenerator transactionCodeGenerator
 	) {
 		this(
 			pocketTransactionRepository,
 			withdrawalAccountRepository,
 			accountNumberCipher,
+			transactionCodeGenerator,
 			Clock.system(KOREA_ZONE_ID)
 		);
 	}
@@ -63,11 +64,13 @@ public class PocketWithdrawalService {
 		PocketTransactionRepository pocketTransactionRepository,
 		WithdrawalAccountRepository withdrawalAccountRepository,
 		AccountNumberCipher accountNumberCipher,
+		PocketTransactionCodeGenerator transactionCodeGenerator,
 		Clock clock
 	) {
 		this.pocketTransactionRepository = pocketTransactionRepository;
 		this.withdrawalAccountRepository = withdrawalAccountRepository;
 		this.accountNumberCipher = accountNumberCipher;
+		this.transactionCodeGenerator = transactionCodeGenerator;
 		this.clock = clock;
 	}
 
@@ -128,7 +131,7 @@ public class PocketWithdrawalService {
 		PocketTransaction transaction = PocketTransaction.completedWithdrawal(
 			userId,
 			account,
-			generateTransactionCode(requestedAt),
+			transactionCodeGenerator.generate(requestedAt),
 			idempotencyKey,
 			amount,
 			snapshot,
@@ -193,20 +196,6 @@ public class PocketWithdrawalService {
 			transaction.getId()
 		);
 		return credits - debits;
-	}
-
-	private String generateTransactionCode(LocalDateTime requestedAt) {
-		String prefix = "GP-%02d%02d-".formatted(
-			requestedAt.getYear() % 100,
-			requestedAt.getMonthValue()
-		);
-		for (int attempt = 0; attempt < TRANSACTION_CODE_ATTEMPTS; attempt++) {
-			String code = prefix + "%04d".formatted(ThreadLocalRandom.current().nextInt(10_000));
-			if (!pocketTransactionRepository.existsByTransactionCode(code)) {
-				return code;
-			}
-		}
-		throw new IllegalStateException("거래 코드를 생성하지 못했습니다.");
 	}
 
 	static LocalDate calculateExpectedDate(LocalDate requestedDate) {

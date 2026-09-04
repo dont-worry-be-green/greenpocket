@@ -168,7 +168,7 @@ DB가 1차 방어선이고 애플리케이션은 **DB가 막았을 때 어떤 �
 | 대상 | 보장 수단 | 재요청 시 응답 |
 | --- | --- | --- |
 | 고지서 | `UNIQUE(user_id, record_source, billing_month, utility_type)` | `409 BILL_DUPLICATED` |
-| 마일리지 전환 | `UNIQUE(source_type, source_key)` — 회차당 1회 | `409 CONVERSION_ALREADY_DONE` |
+| 마일리지 전환 | `UNIQUE(user_id, source_type, source_key)` — 사용자별 회차당 1회 | `409 CONVERSION_ALREADY_DONE` |
 | 출금 | `UNIQUE(idempotency_key)` | **`200` + 기존 거래** (409 아님) |
 | 녹색생활 월 정산 | `yearMonth`가 키 | **`200` + `created: false`** |
 | 기본 출금 계좌 | 앱이 `default_slot`을 기본 계좌면 `user_id`, 아니면 `NULL`로 동기화 + UNIQUE | 이전 기본 계좌 해제 후 1건 유지 |

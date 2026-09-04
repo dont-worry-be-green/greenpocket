@@ -288,7 +288,7 @@ CREATE TABLE `pocket_transaction` (
 	`created_at`	TIMESTAMP	NOT NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '생성 일시 | 거래 원장 생성 시각',
 	`updated_at`	TIMESTAMP	NOT NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '수정 일시 | 거래 상태 최종 수정 시각',
 	PRIMARY KEY (`id`),
-	UNIQUE KEY `uq_pocket_tx_source` (`source_type`,`source_key`),
+	UNIQUE KEY `uq_pocket_tx_user_source` (`user_id`,`source_type`,`source_key`),
 	UNIQUE KEY `uq_pocket_tx_idempotency` (`idempotency_key`),
 	UNIQUE KEY `uq_pocket_tx_code` (`transaction_code`),
 	KEY `ix_pocket_tx_user_status` (`user_id`,`transaction_status`,`completed_at`),
@@ -343,8 +343,8 @@ ALTER TABLE `pocket_transaction` ADD CONSTRAINT `fk_pt_account` FOREIGN KEY (`wi
 --  ① 같은 달 같은 항목 고지서 중복   ERROR 1062  uq_umr_user_source_month_utility   결정 A-3
 --  ② 상태값 오타 'LINKD'             ERROR 1265  ENUM
 --  ③ 음수 거래 금액                  ERROR 4025  ck_pocket_tx_amount
---  ④ 마일리지 전환 회차당 2회        ERROR 1062  uq_pocket_tx_source                D-2-02
---  ⑤ 녹색생활실천 월 정산 2회        ERROR 1062  uq_pocket_tx_source                C-2-06
+--  ④ 같은 사용자 마일리지 전환 회차당 2회  ERROR 1062  uq_pocket_tx_user_source          D-2-02
+--  ⑤ 같은 사용자 녹색생활실천 월 정산 2회  ERROR 1062  uq_pocket_tx_user_source          C-2-06
 --  ⑥ 출금 중복 탭                    ERROR 1062  uq_pocket_tx_idempotency           D-3-03
 --  ⑦ 기본 출금계좌 2건               ERROR 1062  uq_withdrawal_account_default      D-3-01
 --  ⑧ 근거 없는 미션 저장             ERROR 1364  evidence_amount NOT NULL           B-3-01

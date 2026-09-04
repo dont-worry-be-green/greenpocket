@@ -142,6 +142,29 @@ public class PocketTransaction {
 		return transaction;
 	}
 
+	public static PocketTransaction completedGreenlifeCredit(
+		Long userId,
+		String transactionCode,
+		String sourceKey,
+		Long amount,
+		String label,
+		LocalDateTime completedAt
+	) {
+		PocketTransaction transaction = new PocketTransaction();
+		transaction.userId = userId;
+		transaction.transactionCode = transactionCode;
+		transaction.direction = TransactionDirection.CREDIT;
+		transaction.transactionType = TransactionType.GREENLIFE;
+		transaction.amount = amount;
+		transaction.transactionStatus = TransactionStatus.COMPLETED;
+		transaction.sourceType = TransactionSourceType.GREENLIFE_MONTH;
+		transaction.sourceKey = sourceKey;
+		transaction.label = label;
+		transaction.requestedAt = completedAt;
+		transaction.completedAt = completedAt;
+		return transaction;
+	}
+
 	public void retryEcoMileage(Long amount, LocalDateTime requestedAt) {
 		if (transactionType != TransactionType.ECO_MILEAGE || transactionStatus != TransactionStatus.FAILED) {
 			throw new IllegalStateException("실패한 에코마일리지 전환만 재시도할 수 있습니다.");
