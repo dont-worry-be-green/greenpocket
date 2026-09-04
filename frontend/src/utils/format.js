@@ -79,6 +79,26 @@ export function formatDifficulty(difficulty) {
 }
 
 /**
+ * 방향이 없는 비율. 비중(shareRate)·목표 절감률처럼 그 자체가 값인 퍼센트에 쓴다.
+ * 증감(늘었다/줄었다)에는 쓰지 않는다 — 그건 formatChangeRate 다.
+ *   64.000 → '64%'  ·  11.322 → '11.322%'
+ */
+export function formatPercent(rate) {
+  if (isBlank(rate)) return EMPTY
+  return `${Number(Number(rate).toFixed(3))}%`
+}
+
+/**
+ * 요금 종류 enum 을 한국어 라벨로 바꾼다 (api-spec.md 3절 UtilityType).
+ * 화면마다 '가스'/'도시가스'로 갈리지 않게 한 곳에 둔다.
+ */
+const UTILITY_TYPE_LABEL = { ELECTRICITY: '전기', GAS: '도시가스', WATER: '수도' }
+
+export function formatUtilityType(utilityType) {
+  return UTILITY_TYPE_LABEL[utilityType] ?? EMPTY
+}
+
+/**
  * 사용량. 단위와 소수 자리수는 서버가 `displayPrecision` 으로 알려준다.
  * (전기 0 = 정수 kWh, 수도·가스 1 = 소수 첫째 자리)
  */
@@ -96,6 +116,17 @@ export function formatMonth(yearMonth) {
   if (!yearMonth) return EMPTY
   const [year, month] = yearMonth.split('-')
   return `${year}년 ${Number(month)}월`
+}
+
+/**
+ * 평가 회차 기간. 같은 해면 뒤쪽 연도를 접는다 (B-1-07 완료 조건).
+ *   ('2026-04','2026-09') → '2026-04 ~ 09'  ·  ('2025-10','2026-03') → '2025-10 ~ 2026-03'
+ */
+export function formatRoundPeriod(periodStart, periodEnd) {
+  if (!periodStart || !periodEnd) return EMPTY
+  const [startYear] = periodStart.split('-')
+  const [endYear, endMonth] = periodEnd.split('-')
+  return `${periodStart} ~ ${startYear === endYear ? endMonth : periodEnd}`
 }
 
 /** ISO-8601 일시 → '2026-08-02 14:22' */
