@@ -1,0 +1,27 @@
+/*
+ * Tailwind CSS v4 — 설정 파일(tailwind.config.js)이 없다.
+ * 색·간격 등 토큰은 아래 @theme 블록에 정의한다. (frontend/AGENTS.md 1절)
+ */
+@import 'tailwindcss';
+
+@theme {
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI', Roboto,
+    'Helvetica Neue', sans-serif;
+}
+
+/*
+ * 디자인 토큰(색·타이포 스케일)은 시안 확정 후 docs/design/tokens.css 를 근거로 위 @theme 에 추가한다.
+ * 확정 전에 임의의 브랜드 색을 만들어 넣지 않는다.
+ */
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-neutral-100 font-sans text-neutral-900 antialiased;
+  }
+}
