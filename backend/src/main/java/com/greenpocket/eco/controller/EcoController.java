@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.greenpocket.eco.dto.EcoApplicationResponse;
 import com.greenpocket.eco.dto.EcoCurrentRoundResponse;
 import com.greenpocket.eco.dto.EcoGoalFormResponse;
 import com.greenpocket.eco.dto.EcoGoalPreviewResponse;
@@ -30,6 +31,7 @@ import com.greenpocket.eco.dto.EcoMonthlyReportResponse;
 import com.greenpocket.eco.dto.EcoResultResponse;
 import com.greenpocket.eco.dto.EcoSettlementResponse;
 import com.greenpocket.eco.dto.EcoStatusResponse;
+import com.greenpocket.eco.service.EcoApplicationService;
 import com.greenpocket.eco.service.EcoGoalService;
 import com.greenpocket.eco.service.EcoLinkService;
 import com.greenpocket.eco.service.EcoProgressService;
@@ -49,6 +51,7 @@ public class EcoController {
 	private final EcoGoalService ecoGoalService;
 	private final EcoProgressService ecoProgressService;
 	private final EcoResultService ecoResultService;
+	private final EcoApplicationService ecoApplicationService;
 
 	@Operation(summary = "Green What-if 홈 조회", description = "연동 및 평가 상태에 따라 렌더링할 화면과 진행 현황을 반환합니다.")
 	@ApiResponses({
@@ -224,5 +227,19 @@ public class EcoController {
 		@Parameter(description = "평가 회차 ID", example = "7") @PathVariable Long roundId
 	) {
 		return ApiResponse.success(ecoResultService.getSettlement(userId, roundId));
+	}
+
+	@Operation(summary = "에코마일리지 참여 신청", description = "외부 누리집 복귀 후 참여 신청 상태를 APPLIED로 모의 전환합니다.")
+	@ApiResponses({
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "참여 신청 성공 또는 기존 신청 결과 반환"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Demo Key 인증 실패"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "평가 회차 없음")
+	})
+	@PostMapping("/rounds/{roundId}/application")
+	public ApiResponse<EcoApplicationResponse> applyForMileage(
+		@Parameter(hidden = true) @CurrentUserId Long userId,
+		@Parameter(description = "평가 회차 ID", example = "1") @PathVariable Long roundId
+	) {
+		return ApiResponse.success(ecoApplicationService.apply(userId, roundId));
 	}
 }
