@@ -34,6 +34,7 @@ import com.greenpocket.eco.dto.EcoMissionUpdateResponse;
 import com.greenpocket.eco.dto.EcoHomeResponse;
 import com.greenpocket.eco.dto.EcoMonthlyReportResponse;
 import com.greenpocket.eco.dto.EcoResultResponse;
+import com.greenpocket.eco.dto.EcoRoundListResponse;
 import com.greenpocket.eco.dto.EcoSettlementResponse;
 import com.greenpocket.eco.dto.EcoStatusResponse;
 import com.greenpocket.eco.dto.EcoTodayMissionsResponse;
@@ -120,6 +121,18 @@ public class EcoController {
 		@PathVariable String linkJobId
 	) {
 		return ApiResponse.success(ecoLinkService.getLinkProgress(userId, linkJobId));
+	}
+
+	@Operation(summary = "에코마일리지 평가 회차 목록", description = "현재·이전 평가 회차를 최신 기간순으로 반환합니다.")
+	@ApiResponses({
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "평가 회차 목록 조회 성공"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Demo Key 인증 실패")
+	})
+	@GetMapping("/rounds")
+	public ApiResponse<EcoRoundListResponse> getRounds(
+		@Parameter(hidden = true) @CurrentUserId Long userId
+	) {
+		return ApiResponse.success(ecoRoundService.getRounds(userId));
 	}
 
 	@Operation(summary = "현재 에코마일리지 평가 회차 조회")
