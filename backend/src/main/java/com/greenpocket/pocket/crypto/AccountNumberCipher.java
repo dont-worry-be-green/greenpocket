@@ -11,6 +11,7 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -26,6 +27,7 @@ public class AccountNumberCipher {
 	private final SecretKeySpec key;
 	private final SecureRandom secureRandom;
 
+	@Autowired
 	public AccountNumberCipher(
 		@Value("${ACCOUNT_NUMBER_ENCRYPTION_KEY_BASE64}") String encodedKey
 	) {
