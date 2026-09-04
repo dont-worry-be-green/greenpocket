@@ -34,6 +34,7 @@ import com.greenpocket.eco.dto.EcoMissionUpdateResponse;
 import com.greenpocket.eco.dto.EcoHomeResponse;
 import com.greenpocket.eco.dto.EcoMonthlyReportResponse;
 import com.greenpocket.eco.dto.EcoResultResponse;
+import com.greenpocket.eco.dto.EcoRoundListResponse;
 import com.greenpocket.eco.dto.EcoSettlementResponse;
 import com.greenpocket.eco.dto.EcoStatusResponse;
 import com.greenpocket.eco.dto.EcoTodayMissionsResponse;
@@ -120,6 +121,18 @@ public class EcoController {
 		@PathVariable String linkJobId
 	) {
 		return ApiResponse.success(ecoLinkService.getLinkProgress(userId, linkJobId));
+	}
+
+	@Operation(summary = "에코마일리지 평가 회차 목록", description = "현재·이전 평가 회차를 최신 기간순으로 반환합니다.")
+	@ApiResponses({
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "평가 회차 목록 조회 성공"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Demo Key 인증 실패")
+	})
+	@GetMapping("/rounds")
+	public ApiResponse<EcoRoundListResponse> getRounds(
+		@Parameter(hidden = true) @CurrentUserId Long userId
+	) {
+		return ApiResponse.success(ecoRoundService.getRounds(userId));
 	}
 
 	@Operation(summary = "현재 에코마일리지 평가 회차 조회")
@@ -222,6 +235,22 @@ public class EcoController {
 		@Parameter(description = "평가 회차 ID", example = "7") @PathVariable Long roundId
 	) {
 		return ApiResponse.success(ecoResultService.getResult(userId, roundId));
+	}
+
+	@Operation(summary = "결산 모달 확인 처리", description = "확정 결과를 확인한 시각을 최초 1회 저장해 모달 재노출을 방지합니다.")
+	@ApiResponses({
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "결산 모달 확인 처리 성공"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Demo Key 인증 실패"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "평가 회차 없음"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "평가 결과 미확정")
+	})
+	@PostMapping("/rounds/{roundId}/result/view")
+	public ResponseEntity<Void> viewResult(
+		@Parameter(hidden = true) @CurrentUserId Long userId,
+		@Parameter(description = "평가 회차 ID", example = "7") @PathVariable Long roundId
+	) {
+		ecoResultService.viewResult(userId, roundId);
+		return ResponseEntity.noContent().build();
 	}
 
 	@Operation(summary = "마일리지 적립 확정 조회", description = "확정 마일리지와 포켓 전환 가능 여부를 반환합니다.")

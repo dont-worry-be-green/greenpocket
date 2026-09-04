@@ -3,6 +3,8 @@ package com.greenpocket.eco.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -166,6 +168,39 @@ class EcoResultServiceTest {
 			.isInstanceOf(BusinessException.class)
 			.satisfies(error -> assertThat(((BusinessException)error).getErrorCode())
 				.isEqualTo(EcoErrorCode.ECO_ROUND_NOT_FOUND));
+	}
+
+	@Test
+	void marksConfirmedResultAsViewed() {
+		when(ecoResultRepository.findRound(USER_ID, ROUND_ID)).thenReturn(Optional.of(confirmedRound()));
+
+		ecoResultService.viewResult(USER_ID, ROUND_ID);
+
+		verify(ecoResultRepository).markResultViewed(USER_ID, ROUND_ID);
+	}
+
+	@Test
+	void doesNotMarkUnconfirmedResultAsViewed() {
+		ResultRoundSnapshot unconfirmed = new ResultRoundSnapshot(
+			ROUND_ID,
+			LocalDate.of(2026, 4, 1),
+			LocalDate.of(2026, 9, 1),
+			RoundStatus.IN_PROGRESS,
+			new BigDecimal("10.000"),
+			null,
+			420_600L,
+			null,
+			null,
+			0L,
+			null
+		);
+		when(ecoResultRepository.findRound(USER_ID, ROUND_ID)).thenReturn(Optional.of(unconfirmed));
+
+		assertThatThrownBy(() -> ecoResultService.viewResult(USER_ID, ROUND_ID))
+			.isInstanceOf(BusinessException.class)
+			.satisfies(error -> assertThat(((BusinessException)error).getErrorCode())
+				.isEqualTo(EcoErrorCode.ECO_RESULT_NOT_CONFIRMED));
+		verify(ecoResultRepository, never()).markResultViewed(USER_ID, ROUND_ID);
 	}
 
 	private ResultRoundSnapshot confirmedRound() {

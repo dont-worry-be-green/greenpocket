@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.greenpocket.eco.dto.EcoCurrentRoundResponse;
+import com.greenpocket.eco.dto.EcoRoundListResponse;
 import com.greenpocket.eco.entity.EcoLinkStatus;
 import com.greenpocket.eco.entity.UsageUnit;
 import com.greenpocket.eco.exception.EcoErrorCode;
@@ -33,6 +34,21 @@ public class EcoRoundService {
 	private static final ZoneId KOREA_ZONE_ID = ZoneId.of("Asia/Seoul");
 
 	private final EcoRepository ecoRepository;
+
+	public EcoRoundListResponse getRounds(Long userId) {
+		return new EcoRoundListResponse(
+			ecoRepository.findRounds(userId).stream()
+				.map(round -> new EcoRoundListResponse.Item(
+					round.id(),
+					YearMonth.from(round.periodStart()).toString(),
+					YearMonth.from(round.periodEnd()).toString(),
+					round.roundStatus(),
+					round.finalRate(),
+					round.confirmedMileage()
+				))
+				.toList()
+		);
+	}
 
 	public EcoCurrentRoundResponse getCurrentRound(Long userId) {
 		EcoUserSnapshot user = ecoRepository.findUser(userId)

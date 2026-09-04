@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -36,6 +37,7 @@ import com.greenpocket.eco.dto.EcoMissionAdjustResponse;
 import com.greenpocket.eco.dto.EcoMissionUpdateResponse;
 import com.greenpocket.eco.dto.EcoMonthlyReportResponse;
 import com.greenpocket.eco.dto.EcoResultResponse;
+import com.greenpocket.eco.dto.EcoRoundListResponse;
 import com.greenpocket.eco.dto.EcoSettlementResponse;
 import com.greenpocket.eco.dto.EcoStatusResponse;
 import com.greenpocket.eco.dto.EcoTodayMissionsResponse;
@@ -388,6 +390,36 @@ class EcoControllerTest {
 	}
 
 	@Test
+	void returnsRoundHistory() throws Exception {
+		when(ecoRoundService.getRounds(USER_ID)).thenReturn(new EcoRoundListResponse(List.of(
+			new EcoRoundListResponse.Item(
+				7L,
+				"2026-04",
+				"2026-09",
+				RoundStatus.IN_PROGRESS,
+				null,
+				0L
+			),
+			new EcoRoundListResponse.Item(
+				6L,
+				"2025-10",
+				"2026-03",
+				RoundStatus.CONFIRMED,
+				new BigDecimal("12.499"),
+				30_000L
+			)
+		)));
+
+		mockMvc.perform(get("/api/v1/eco/rounds")
+				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.content.length()").value(2))
+			.andExpect(jsonPath("$.data.content[0].roundId").value(7))
+			.andExpect(jsonPath("$.data.content[1].finalRate").value(12.499))
+			.andExpect(jsonPath("$.data.content[1].confirmedMileage").value(30_000));
+	}
+
+	@Test
 	void returnsGoalForm() throws Exception {
 		when(ecoGoalService.getGoalForm(USER_ID, 7L)).thenReturn(new EcoGoalFormResponse(
 			7L,
@@ -533,6 +565,15 @@ class EcoControllerTest {
 			.andExpect(jsonPath("$.data.amount.savedIsPocketEligible").value(false))
 			.andExpect(jsonPath("$.data.utilityResults[0].utilityType").value("ELECTRICITY"))
 			.andExpect(jsonPath("$.data.nextRound.roundId").value(8));
+	}
+
+	@Test
+	void marksResultModalAsViewed() throws Exception {
+		mockMvc.perform(post("/api/v1/eco/rounds/7/result/view")
+				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID))
+			.andExpect(status().isNoContent());
+
+		verify(ecoResultService).viewResult(USER_ID, 7L);
 	}
 
 	@Test

@@ -112,6 +112,25 @@ public class EcoRepository {
 			.optional();
 	}
 
+	public List<EcoRoundListSnapshot> findRounds(Long userId) {
+		return jdbcClient.sql("""
+				SELECT id, period_start, period_end, round_status, final_rate, confirmed_mileage
+				FROM eco_round
+				WHERE user_id = :userId
+				ORDER BY period_start DESC, id DESC
+				""")
+			.param("userId", userId)
+			.query((resultSet, rowNum) -> new EcoRoundListSnapshot(
+				resultSet.getLong("id"),
+				resultSet.getDate("period_start").toLocalDate(),
+				resultSet.getDate("period_end").toLocalDate(),
+				RoundStatus.valueOf(resultSet.getString("round_status")),
+				resultSet.getBigDecimal("final_rate"),
+				resultSet.getObject("confirmed_mileage", Long.class)
+			))
+			.list();
+	}
+
 	public List<EcoUtilitySnapshot> findUtilities(Long roundId) {
 		return jdbcClient.sql("""
 				SELECT utility_type, is_registered, unregistered_reason, carbon_factor_g,
@@ -303,6 +322,16 @@ public class EcoRepository {
 		BigDecimal baselineTotalCarbonG,
 		LocalDateTime baselineQueriedAt,
 		LocalDateTime goalSetAt
+	) {
+	}
+
+	public record EcoRoundListSnapshot(
+		Long id,
+		LocalDate periodStart,
+		LocalDate periodEnd,
+		RoundStatus roundStatus,
+		BigDecimal finalRate,
+		Long confirmedMileage
 	) {
 	}
 
