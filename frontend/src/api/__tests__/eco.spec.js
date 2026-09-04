@@ -32,12 +32,6 @@ const importsFixtures = (path) => /from\s+['"]@\/fixtures/.test(readFileSync(pat
 
 const toPosix = (path) => relative(SRC, path).split(sep).join('/')
 
-/*
- * 아직 남아 있는 위반. **배치 2(WF-06)에서 WhatIfHomeView 가 스토어 구동으로 바뀌면 사라진다.**
- * 그때 이 목록을 비우면 테스트가 다시 통과한다.
- */
-const KNOWN_VIOLATIONS = ['views/eco/WhatIfHomeView.vue']
-
 describe('픽스처 격리', () => {
   const violations = sourceFiles(SRC)
     .filter(importsFixtures)
@@ -45,8 +39,9 @@ describe('픽스처 격리', () => {
     .filter((path) => path !== 'api/eco.js')
     .sort()
 
+  // 예외 목록을 두지 않는다. 깨지면 import 를 지우는 게 정답이지 여기에 파일을 더하는 게 아니다
   it('api/eco.js 말고는 @/fixtures 를 import 하지 않는다', () => {
-    expect(violations).toEqual(KNOWN_VIOLATIONS)
+    expect(violations).toEqual([])
   })
 
   it('api/eco.js 는 픽스처를 알고 있다 — 여기가 유일한 창구다', () => {
@@ -166,5 +161,39 @@ describe('픽스처 shim 동작', () => {
       statuses.push(job.status)
     }
     expect(statuses).toEqual(['RUNNING', 'RUNNING', 'RUNNING', 'SUCCEEDED'])
+  })
+
+  /*
+   * ⚠️ 아래 셋은 **위 테스트들이 만든 상태 위에서 돈다.** shim 의 demoState 가 모듈에 한 벌이라
+   * 목표 저장(위)과 연동 완료(바로 위)가 끝나야 홈이 WF-06 을 준다. 순서를 바꾸지 않는다.
+   */
+  it('연동과 목표 저장이 끝나면 홈이 WF_06 을 준다 — screen 판정이 shim 에 있다', async () => {
+    const home = await ecoApi.getEcoHome()
+    expect(home.screen).toBe('WF_06_IN_PROGRESS')
+  })
+
+  it('실천을 저장하면 completedCount 를 서버가 다시 세고 홈 요약도 따라온다', async () => {
+    const saved = await ecoApi.saveMissionLog(7, '2026-08-14', { completedMissionIds: [12] })
+    expect(saved.completedCount).toBe(1)
+
+    const today = await ecoApi.getTodayMissions(7)
+    expect(today.missions.filter((mission) => mission.completed).map((m) => m.missionId)).toEqual([
+      12,
+    ])
+
+    const home = await ecoApi.getEcoHome()
+    expect(home.todayMissions.completedCount).toBe(1)
+    expect(home.todayMissions.totalCount).toBe(today.totalCount)
+  })
+
+  it('참여 신청하면 홈 배너가 사라진다', async () => {
+    expect((await ecoApi.getEcoHome()).application.showBanner).toBe(true)
+
+    const applied = await ecoApi.applyRound(7)
+    expect(applied.applicationStatus).toBe('APPLIED')
+
+    const home = await ecoApi.getEcoHome()
+    expect(home.application.applicationStatus).toBe('APPLIED')
+    expect(home.application.showBanner).toBe(false)
   })
 })
