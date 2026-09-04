@@ -147,8 +147,8 @@ X-Demo-Key: 9f2c1a7e-4b30-4c88-9a11-6d0e5b7c2f41
 | 엔드포인트 | 키 | DB 제약 |
 |---|---|---|
 | `POST /pocket/withdrawals` | `Idempotency-Key` 헤더 (필수) | `UNIQUE pocket_transaction(idempotency_key)` |
-| `POST /pocket/conversions/{id}/complete` | `Idempotency-Key` 헤더 (필수) | `UNIQUE(source_type='ECO_ROUND', source_key=회차id)` |
-| `POST /greenlife/settlements` | 본문 `yearMonth` 가 키 | `UNIQUE(source_type='GREENLIFE_MONTH', source_key='2026-08')` |
+| `POST /pocket/conversions/{id}/complete` | `Idempotency-Key` 헤더 (필수) | `UNIQUE(user_id, source_type='ECO_ROUND', source_key=회차id)` |
+| `POST /greenlife/settlements` | 본문 `yearMonth` 가 키 | `UNIQUE(user_id, source_type='GREENLIFE_MONTH', source_key='2026-08')` |
 
 **같은 키로 다시 들어오면 새로 만들지 않고, 이전에 만든 거래를 `200 OK`로 그대로 돌려줍니다.** 409를 던지지 않습니다 — 화면에서 오류로 보이면 안 되니까요.
 
@@ -1859,7 +1859,7 @@ requiredRate   = (targetRate × 6 − Σ monthlyRate) / remainingMonths
 
 | 규칙 | 내용 |
 |---|---|
-| 중복 | `UNIQUE(source_type='GREENLIFE_MONTH', source_key='2026-08')`. 재호출 시 `created: false` + **기존 거래 그대로 반환** (200) |
+| 중복 | `UNIQUE(user_id, source_type='GREENLIFE_MONTH', source_key='2026-08')`. 같은 사용자의 재호출 시 `created: false` + **기존 거래 그대로 반환** (200) |
 | 대상 | `reward_status = 'PAID'` 만. `PENDING` 은 절대 포함하지 않음 (C-2-05 · 비즈니스 규칙 3) |
 | 상태 전이 | `PENDING → PAID` **단방향.** 역전이 요청은 거부 |
 
@@ -2039,7 +2039,7 @@ requiredRate   = (targetRate × 6 − Σ monthlyRate) / remainingMonths
 | 규칙 | 내용 |
 |---|---|
 | 외부 이동 필수 | 13.5로 만든 `REQUESTED` 거래가 없으면 `409 CONVERSION_NOT_RETURNED`. **외부 이동 없이 거래가 생기지 않습니다** (D-2-02 완료 조건) |
-| 회차당 1회 | `UNIQUE(source_type='ECO_ROUND', source_key=roundId)` |
+| 회차당 1회 | `UNIQUE(user_id, source_type='ECO_ROUND', source_key=roundId)` |
 | 1일 1회 | `requested_at` 오늘 날짜 조회로 앱 로직 차단 (DB 제약 아님) |
 | 실패 | `transactionStatus: "FAILED"` + **잔액 변경 없음** + 재시도 가능 (D-2-03) |
 | 재요청 | 같은 `Idempotency-Key` → 기존 거래 200 반환 |
