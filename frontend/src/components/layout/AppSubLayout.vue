@@ -14,6 +14,7 @@ import GpBackHeader from '@/components/ui/GpBackHeader.vue'
 const props = defineProps({
   title: { type: String, default: '' },
   back: { type: [String, Object], default: null },
+  centerTitle: { type: Boolean, default: false },
   // 하단에 CTA 를 고정하는 화면은 본문이 가리지 않도록 여백을 넓힌다
   hasFooter: { type: Boolean, default: false },
 })
@@ -29,7 +30,7 @@ function onBack() {
 
 <template>
   <div class="bg-canvas min-h-dvh">
-    <GpBackHeader :title="title" @back="onBack">
+    <GpBackHeader :title="title" :center-title="centerTitle" @back="onBack">
       <template v-if="$slots.headerAction" #action>
         <slot name="headerAction" />
       </template>
