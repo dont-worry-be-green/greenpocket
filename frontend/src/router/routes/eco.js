@@ -36,4 +36,17 @@ export default [
     // 제목·부제가 화면 상태마다 달라 subtitle 은 뷰가 AppTabLayout 에 직접 넘긴다
     meta: { tab: 'whatif', title: 'Green What-if' },
   },
+  {
+    path: '/whatif/goal',
+    name: 'wf-goal',
+    /*
+     * WF-04(등록)·WF-05(일부 미등록)도 한 화면의 두 상태다. goal-form 의
+     * segments[].registered 로 갈리므로 경로를 나누지 않는다.
+     *
+     * roundId 를 경로에 두지 않는다 — 목표는 **현재 회차**에만 정할 수 있어서
+     * 지난 회차 번호가 URL 에 들어오면 서버가 거절한다. 뷰가 스토어에서 가져온다.
+     */
+    component: () => import('@/views/eco/GoalSettingView.vue'),
+    meta: { tab: 'whatif', title: '평가 기간 목표 정하기' },
+  },
 ]
