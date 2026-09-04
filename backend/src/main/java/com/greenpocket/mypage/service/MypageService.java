@@ -90,7 +90,7 @@ public class MypageService {
 				? null
 				: YEAR_MONTH_FORMATTER.format(user.ecoAddressRegisteredAt()),
 			matchesProfile,
-			matchesProfile ? null : MOVING_NOTICE
+			MOVING_NOTICE
 		);
 	}
 
