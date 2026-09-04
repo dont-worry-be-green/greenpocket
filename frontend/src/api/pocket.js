@@ -16,6 +16,10 @@ export function getWithdrawalAccounts() {
   return client.get('/pocket/accounts')
 }
 
+export function getWithdrawals(params = {}) {
+  return client.get('/pocket/withdrawals', { params })
+}
+
 export function requestWithdrawal(payload, idempotencyKey) {
   return client.post('/pocket/withdrawals', payload, {
     headers: { 'Idempotency-Key': idempotencyKey },
