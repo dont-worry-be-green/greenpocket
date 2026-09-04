@@ -31,13 +31,16 @@ import com.greenpocket.eco.dto.EcoGoalSaveResponse;
 import com.greenpocket.eco.dto.EcoHomeResponse;
 import com.greenpocket.eco.dto.EcoLinkProgressResponse;
 import com.greenpocket.eco.dto.EcoLinkStartResponse;
+import com.greenpocket.eco.dto.EcoMissionLogResponse;
 import com.greenpocket.eco.dto.EcoMonthlyReportResponse;
 import com.greenpocket.eco.dto.EcoResultResponse;
 import com.greenpocket.eco.dto.EcoSettlementResponse;
 import com.greenpocket.eco.dto.EcoStatusResponse;
+import com.greenpocket.eco.dto.EcoTodayMissionsResponse;
 import com.greenpocket.eco.entity.ApplicationStatus;
 import com.greenpocket.eco.entity.EcoLinkStatus;
 import com.greenpocket.eco.entity.JobStatus;
+import com.greenpocket.eco.entity.MissionDifficulty;
 import com.greenpocket.eco.entity.RoundStatus;
 import com.greenpocket.eco.entity.TargetTier;
 import com.greenpocket.eco.entity.UsageUnit;
@@ -45,6 +48,7 @@ import com.greenpocket.eco.entity.WhatIfScreen;
 import com.greenpocket.eco.service.EcoGoalService;
 import com.greenpocket.eco.service.EcoApplicationService;
 import com.greenpocket.eco.service.EcoLinkService;
+import com.greenpocket.eco.service.EcoMissionService;
 import com.greenpocket.eco.service.EcoProgressService;
 import com.greenpocket.eco.service.EcoResultService;
 import com.greenpocket.eco.service.EcoRoundService;
@@ -62,6 +66,7 @@ class EcoControllerTest {
 	private EcoProgressService ecoProgressService;
 	private EcoResultService ecoResultService;
 	private EcoApplicationService ecoApplicationService;
+	private EcoMissionService ecoMissionService;
 	private MockMvc mockMvc;
 
 	@BeforeEach
@@ -72,6 +77,7 @@ class EcoControllerTest {
 		ecoProgressService = mock(EcoProgressService.class);
 		ecoResultService = mock(EcoResultService.class);
 		ecoApplicationService = mock(EcoApplicationService.class);
+		ecoMissionService = mock(EcoMissionService.class);
 		mockMvc = MockMvcBuilders.standaloneSetup(
 			new EcoController(
 				ecoLinkService,
@@ -79,11 +85,59 @@ class EcoControllerTest {
 				ecoGoalService,
 				ecoProgressService,
 				ecoResultService,
-				ecoApplicationService
+				ecoApplicationService,
+				ecoMissionService
 			)
 		)
 			.setCustomArgumentResolvers(new CurrentUserIdArgumentResolver())
 			.build();
+	}
+
+	@Test
+	void returnsTodayMissions() throws Exception {
+		when(ecoMissionService.getTodayMissions(USER_ID, 7L, "2026-09-03"))
+			.thenReturn(new EcoTodayMissionsResponse(
+				"2026-09-03",
+				"AUTUMN",
+				1,
+				2,
+				List.of(
+					new EcoTodayMissionsResponse.Mission(
+						12L,
+						"냉방 온도 26℃로 맞추기",
+						UtilityType.ELECTRICITY,
+						MissionDifficulty.EASY,
+						true
+					)
+				),
+				null
+			));
+
+		mockMvc.perform(get("/api/v1/eco/rounds/7/missions/today")
+				.param("date", "2026-09-03")
+				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.date").value("2026-09-03"))
+			.andExpect(jsonPath("$.data.season").value("AUTUMN"))
+			.andExpect(jsonPath("$.data.completedCount").value(1))
+			.andExpect(jsonPath("$.data.missions[0].completed").value(true));
+	}
+
+	@Test
+	void savesTodayMissionLog() throws Exception {
+		when(ecoMissionService.saveMissionLog(anyLong(), anyLong(), anyString(), any()))
+			.thenReturn(new EcoMissionLogResponse("2026-09-03", 2, 5));
+
+		mockMvc.perform(put("/api/v1/eco/rounds/7/mission-logs/2026-09-03")
+				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{ "completedMissionIds": [12, 31] }
+					"""))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.date").value("2026-09-03"))
+			.andExpect(jsonPath("$.data.completedCount").value(2))
+			.andExpect(jsonPath("$.data.totalCount").value(5));
 	}
 
 	@Test
