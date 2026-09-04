@@ -111,6 +111,20 @@ public class EcoResultRepository {
 			.optional();
 	}
 
+	public void markResultViewed(Long userId, Long roundId) {
+		jdbcClient.sql("""
+				UPDATE eco_round
+				SET result_viewed_at = CURRENT_TIMESTAMP,
+				    updated_at = CURRENT_TIMESTAMP
+				WHERE id = :roundId
+				  AND user_id = :userId
+				  AND result_viewed_at IS NULL
+				""")
+			.param("roundId", roundId)
+			.param("userId", userId)
+			.update();
+	}
+
 	private static LocalDateTime toLocalDateTime(Timestamp value) {
 		return value == null ? null : value.toLocalDateTime();
 	}

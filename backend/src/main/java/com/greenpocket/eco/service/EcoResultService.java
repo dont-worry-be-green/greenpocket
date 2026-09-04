@@ -37,6 +37,12 @@ public class EcoResultService {
 	private final EcoResultRepository ecoResultRepository;
 	private final PocketQueryService pocketQueryService;
 
+	@Transactional
+	public void viewResult(Long userId, Long roundId) {
+		findConfirmedRound(userId, roundId);
+		ecoResultRepository.markResultViewed(userId, roundId);
+	}
+
 	public EcoResultResponse getResult(Long userId, Long roundId) {
 		ResultRoundSnapshot round = findConfirmedRound(userId, roundId);
 		TargetTier tier = tierForRate(round.finalRate());
