@@ -27,8 +27,10 @@ import com.greenpocket.eco.dto.EcoGoalPreviewResponse;
 import com.greenpocket.eco.dto.EcoGoalRequest;
 import com.greenpocket.eco.dto.EcoGoalResponse;
 import com.greenpocket.eco.dto.EcoGoalSaveResponse;
+import com.greenpocket.eco.dto.EcoHomeResponse;
 import com.greenpocket.eco.dto.EcoLinkProgressResponse;
 import com.greenpocket.eco.dto.EcoLinkStartResponse;
+import com.greenpocket.eco.dto.EcoMonthlyReportResponse;
 import com.greenpocket.eco.dto.EcoStatusResponse;
 import com.greenpocket.eco.entity.ApplicationStatus;
 import com.greenpocket.eco.entity.EcoLinkStatus;
@@ -36,8 +38,10 @@ import com.greenpocket.eco.entity.JobStatus;
 import com.greenpocket.eco.entity.RoundStatus;
 import com.greenpocket.eco.entity.TargetTier;
 import com.greenpocket.eco.entity.UsageUnit;
+import com.greenpocket.eco.entity.WhatIfScreen;
 import com.greenpocket.eco.service.EcoGoalService;
 import com.greenpocket.eco.service.EcoLinkService;
+import com.greenpocket.eco.service.EcoProgressService;
 import com.greenpocket.eco.service.EcoRoundService;
 import com.greenpocket.global.auth.CurrentUserIdArgumentResolver;
 import com.greenpocket.global.auth.DemoKeyAuthenticationInterceptor;
@@ -50,6 +54,7 @@ class EcoControllerTest {
 	private EcoLinkService ecoLinkService;
 	private EcoRoundService ecoRoundService;
 	private EcoGoalService ecoGoalService;
+	private EcoProgressService ecoProgressService;
 	private MockMvc mockMvc;
 
 	@BeforeEach
@@ -57,8 +62,9 @@ class EcoControllerTest {
 		ecoLinkService = mock(EcoLinkService.class);
 		ecoRoundService = mock(EcoRoundService.class);
 		ecoGoalService = mock(EcoGoalService.class);
+		ecoProgressService = mock(EcoProgressService.class);
 		mockMvc = MockMvcBuilders.standaloneSetup(
-			new EcoController(ecoLinkService, ecoRoundService, ecoGoalService)
+			new EcoController(ecoLinkService, ecoRoundService, ecoGoalService, ecoProgressService)
 		)
 			.setCustomArgumentResolvers(new CurrentUserIdArgumentResolver())
 			.build();
@@ -88,6 +94,73 @@ class EcoControllerTest {
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.linkStatus").value("UNLINKED"))
 			.andExpect(jsonPath("$.data.registeredUtilities.length()").value(3));
+	}
+
+	@Test
+	void returnsWhatIfHomeRoutingAndProgress() throws Exception {
+		when(ecoProgressService.getHome(USER_ID)).thenReturn(new EcoHomeResponse(
+			WhatIfScreen.WF_06_IN_PROGRESS,
+			7L,
+			new EcoHomeResponse.Header("2026-04", "2026-09", 2, List.of(8, 9)),
+			new EcoHomeResponse.Progress(
+				new BigDecimal("9.000"),
+				List.of("2026-04", "2026-05", "2026-06", "2026-07"),
+				TargetTier.TIER_5,
+				TargetTier.TIER_10,
+				List.of(new EcoHomeResponse.TierProgress(TargetTier.TIER_5, 10_000L, "CURRENT")),
+				new BigDecimal("1.000"),
+				30_000L
+			),
+			new EcoHomeResponse.LatestReport(
+				true,
+				"2026-07",
+				OffsetDateTime.parse("2026-08-03T00:00:00+09:00"),
+				new BigDecimal("1.039"),
+				new BigDecimal("10.000"),
+				false
+			),
+			new EcoHomeResponse.Application(
+				ApplicationStatus.NOT_APPLIED,
+				true,
+				"https://ecomileage.seoul.go.kr"
+			),
+			new EcoHomeResponse.Goal(true, new BigDecimal("11.322"), TargetTier.TIER_10, 30_000L),
+			new EcoHomeResponse.TodayMissions(3, 5),
+			null,
+			new EcoHomeResponse.Links(true, true, true)
+		));
+
+		mockMvc.perform(get("/api/v1/eco/home")
+				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.screen").value("WF_06_IN_PROGRESS"))
+			.andExpect(jsonPath("$.data.progress.cumulativeRate").value(9.000))
+			.andExpect(jsonPath("$.data.latestReport.reportMonth").value("2026-07"))
+			.andExpect(jsonPath("$.data.todayMissions.completedCount").value(3));
+	}
+
+	@Test
+	void returnsMonthlyReportEmptyReasonWithoutError() throws Exception {
+		when(ecoProgressService.getMonthlyReport(USER_ID, "2026-07"))
+			.thenReturn(new EcoMonthlyReportResponse(
+				"2026-07",
+				7L,
+				null,
+				"2024·2025년 7월 평균",
+				null,
+				null,
+				null,
+				List.of(),
+				"NO_BILL"
+			));
+
+		mockMvc.perform(get("/api/v1/eco/monthly-report")
+				.param("month", "2026-07")
+				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.result").doesNotExist())
+			.andExpect(jsonPath("$.data.emptyReason").value("NO_BILL"));
 	}
 
 	@Test
