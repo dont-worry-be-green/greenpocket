@@ -14,8 +14,27 @@ export default [
   {
     path: '/pocket',
     name: 'pk-home',
-    // TODO(포켓 담당): PK-01 계좌 미등록 메인으로 교체
-    component: () => import('@/views/ComingSoonView.vue'),
+    component: () => import('@/views/pocket/PocketHomeView.vue'),
     meta: { tab: 'pocket', title: '포켓' },
+  },
+  {
+    path: '/pocket/transactions',
+    name: 'pk-transactions',
+    component: () => import('@/views/pocket/PocketTransactionsView.vue'),
+  },
+  {
+    path: '/pocket/management',
+    name: 'pk-management',
+    component: () => import('@/views/pocket/PocketManagementView.vue'),
+  },
+  {
+    path: '/pocket/withdraw',
+    name: 'pk-withdraw',
+    component: () => import('@/views/pocket/PocketWithdrawalView.vue'),
+  },
+  {
+    path: '/pocket/withdraw/complete',
+    name: 'pk-withdraw-complete',
+    component: () => import('@/views/pocket/PocketWithdrawalCompleteView.vue'),
   },
 ]
