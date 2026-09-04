@@ -22,6 +22,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.greenpocket.eco.dto.EcoCurrentRoundResponse;
+import com.greenpocket.eco.dto.EcoApplicationResponse;
 import com.greenpocket.eco.dto.EcoGoalFormResponse;
 import com.greenpocket.eco.dto.EcoGoalPreviewResponse;
 import com.greenpocket.eco.dto.EcoGoalRequest;
@@ -42,6 +43,7 @@ import com.greenpocket.eco.entity.TargetTier;
 import com.greenpocket.eco.entity.UsageUnit;
 import com.greenpocket.eco.entity.WhatIfScreen;
 import com.greenpocket.eco.service.EcoGoalService;
+import com.greenpocket.eco.service.EcoApplicationService;
 import com.greenpocket.eco.service.EcoLinkService;
 import com.greenpocket.eco.service.EcoProgressService;
 import com.greenpocket.eco.service.EcoResultService;
@@ -59,6 +61,7 @@ class EcoControllerTest {
 	private EcoGoalService ecoGoalService;
 	private EcoProgressService ecoProgressService;
 	private EcoResultService ecoResultService;
+	private EcoApplicationService ecoApplicationService;
 	private MockMvc mockMvc;
 
 	@BeforeEach
@@ -68,17 +71,37 @@ class EcoControllerTest {
 		ecoGoalService = mock(EcoGoalService.class);
 		ecoProgressService = mock(EcoProgressService.class);
 		ecoResultService = mock(EcoResultService.class);
+		ecoApplicationService = mock(EcoApplicationService.class);
 		mockMvc = MockMvcBuilders.standaloneSetup(
 			new EcoController(
 				ecoLinkService,
 				ecoRoundService,
 				ecoGoalService,
 				ecoProgressService,
-				ecoResultService
+				ecoResultService,
+				ecoApplicationService
 			)
 		)
 			.setCustomArgumentResolvers(new CurrentUserIdArgumentResolver())
 			.build();
+	}
+
+	@Test
+	void appliesForEcoMileage() throws Exception {
+		when(ecoApplicationService.apply(USER_ID, 7L)).thenReturn(new EcoApplicationResponse(
+			7L,
+			ApplicationStatus.APPLIED,
+			OffsetDateTime.parse("2026-09-03T18:45:00+09:00"),
+			false
+		));
+
+		mockMvc.perform(post("/api/v1/eco/rounds/7/application")
+				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.roundId").value(7))
+			.andExpect(jsonPath("$.data.applicationStatus").value("APPLIED"))
+			.andExpect(jsonPath("$.data.appliedAt").value("2026-09-03T18:45:00+09:00"))
+			.andExpect(jsonPath("$.data.showBanner").value(false));
 	}
 
 	@Test
