@@ -2073,7 +2073,7 @@ requiredRate   = (targetRate × 6 − Σ monthlyRate) / remainingMonths
 | 메서드 | 경로 | 우선순위 | 설명 |
 |---|---|---|---|
 | `PUT` | `/pocket/accounts/{accountId}` | P0 | 은행·계좌번호·예금주 변경 |
-| `PUT` | `/pocket/accounts/{accountId}/default` | P0 | 기본 계좌 지정. **사용자당 1건만** — `default_slot` 생성 컬럼 + UNIQUE가 DB에서 강제 |
+| `PUT` | `/pocket/accounts/{accountId}/default` | P0 | 기본 계좌 지정. **사용자당 1건만** — 앱이 `default_slot`을 기본 계좌면 `user_id`, 아니면 `null`로 동기화하고 UNIQUE가 중복을 차단 |
 | `DELETE` | `/pocket/accounts/{accountId}` | P1 | `is_active = 0` 소프트 삭제. 거래 이력이 계좌를 참조하므로 물리 삭제하지 않음 |
 
 기본 계좌 지정 응답:
@@ -2354,7 +2354,7 @@ P0·P1 102건 중 아래 12건은 서버 호출이 없습니다. 나머지 90건
 
 | # | 결정 | 무엇을 했나 |
 |---|---|---|
-| **4** | FK·UNIQUE·CHECK·AUTO_INCREMENT를 **다시 붙인다** | `docs/database/schema.sql` 을 배포용 DDL로 새로 만들었습니다. 테이블 13 · **FK 16 · UNIQUE 16 · CHECK 9** · 전 테이블 AUTO_INCREMENT · `default_slot` 생성 컬럼 복구. MariaDB에 올려 14개 규칙이 실제로 차단되는지 확인했고 결과를 DDL 하단 주석에 남겼습니다. ERD Cloud export는 다이어그램 원본으로만 두고 저장소에는 두지 않습니다 |
+| **4** | FK·UNIQUE·CHECK·AUTO_INCREMENT를 **다시 붙인다** | `docs/database/schema.sql` 을 배포용 DDL로 새로 만들었습니다. 테이블 13 · **FK 16 · UNIQUE 16 · CHECK 9** · 전 테이블 AUTO_INCREMENT. `default_slot`은 MySQL 8.4의 생성 컬럼 기반 FK CASCADE 제한을 피하기 위해 일반 NULL 허용 컬럼으로 두고 앱이 값을 동기화하며 UNIQUE가 중복을 차단합니다. ERD Cloud export는 다이어그램 원본으로만 두고 저장소에는 두지 않습니다 |
 | **8** | 에코마일리지에 **등록된 주소를 조회해서 쓴다** | `app_user` 에 `eco_sido_code` · `eco_sigungu_code` · `eco_address_label` · `eco_address_registered_at` 4컬럼 추가. `POST /eco/link` 때 받아 저장하고, `GET /eco/status` · `GET /mypage` 가 `ecoAddress` 로 내려줍니다. 프로필 주소와 시군구가 다르면 `matchesProfile:false` → 이사 안내(B-1-08) |
 
 ## 16.2 만들지 않기로 한 것 (6건)
