@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.greenpocket.eco.dto.EcoResultResponse;
+import com.greenpocket.eco.dto.EcoSettlementResponse;
 import com.greenpocket.eco.entity.RoundStatus;
 import com.greenpocket.eco.entity.TargetTier;
 import com.greenpocket.eco.exception.EcoErrorCode;
@@ -30,6 +31,8 @@ public class EcoResultService {
 
 	private static final ZoneId KOREA_ZONE_ID = ZoneId.of("Asia/Seoul");
 	private static final String CONFIRMED_SOURCE = "에코마일리지 누리집 기준";
+	private static final String ECO_EXTERNAL_URL = "https://ecomileage.seoul.go.kr";
+	private static final List<String> OTHER_MILEAGE_USES = List.of("서울시 세금", "상품권", "관리비 납부");
 
 	private final EcoResultRepository ecoResultRepository;
 	private final PocketQueryService pocketQueryService;
@@ -82,6 +85,31 @@ public class EcoResultService {
 		);
 	}
 
+	public EcoSettlementResponse getSettlement(Long userId, Long roundId) {
+		ResultRoundSnapshot round = findConfirmedRound(userId, roundId);
+		ConvertibleMileageResponse convertibleMileage = pocketQueryService.getConvertibleMileage(userId);
+
+		return new EcoSettlementResponse(
+			round.id(),
+			toYearMonth(round.periodStart()),
+			toYearMonth(round.periodEnd()),
+			round.confirmedMileage(),
+			"확인",
+			round.finalRate(),
+			tierForRate(round.finalRate()),
+			new EcoSettlementResponse.Calculation(
+				round.baselineTotalAmount(),
+				round.actualTotalAmount(),
+				round.savedAmount(),
+				calculationNote(round)
+			),
+			false,
+			isConvertible(round.id(), convertibleMileage),
+			ECO_EXTERNAL_URL,
+			OTHER_MILEAGE_USES
+		);
+	}
+
 	private ResultRoundSnapshot findConfirmedRound(Long userId, Long roundId) {
 		ResultRoundSnapshot round = ecoResultRepository.findRound(userId, roundId)
 			.orElseThrow(() -> new BusinessException(EcoErrorCode.ECO_ROUND_NOT_FOUND));
@@ -100,6 +128,18 @@ public class EcoResultService {
 		}
 		return convertibleMileage.rounds().stream()
 			.noneMatch(value -> value.roundId().equals(round.id()));
+	}
+
+	private boolean isConvertible(Long roundId, ConvertibleMileageResponse convertibleMileage) {
+		return convertibleMileage.convertible() && convertibleMileage.rounds().stream()
+			.anyMatch(value -> value.roundId().equals(roundId));
+	}
+
+	private String calculationNote(ResultRoundSnapshot round) {
+		return "전기·도시가스·수도를 직전 2년 같은 기간(%d~%d월) 평균과 비교했어요".formatted(
+			round.periodStart().getMonthValue(),
+			round.periodEnd().getMonthValue()
+		);
 	}
 
 	private EcoResultResponse.NextRound toNextRound(NextRoundSnapshot round) {

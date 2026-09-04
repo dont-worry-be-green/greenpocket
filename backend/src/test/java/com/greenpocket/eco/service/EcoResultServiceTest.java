@@ -15,6 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.greenpocket.eco.dto.EcoResultResponse;
+import com.greenpocket.eco.dto.EcoSettlementResponse;
 import com.greenpocket.eco.entity.RoundStatus;
 import com.greenpocket.eco.entity.TargetTier;
 import com.greenpocket.eco.entity.UsageUnit;
@@ -95,6 +96,42 @@ class EcoResultServiceTest {
 
 		assertThat(response.mileageConverted()).isTrue();
 		assertThat(response.nextRound()).isNull();
+	}
+
+	@Test
+	void returnsSettlementWithConvertibleConfirmedMileage() {
+		when(ecoResultRepository.findRound(USER_ID, ROUND_ID)).thenReturn(Optional.of(confirmedRound()));
+		when(pocketQueryService.getConvertibleMileage(USER_ID)).thenReturn(convertibleMileage(List.of(
+			new ConvertibleMileageResponse.Round(ROUND_ID, "2026-04", "2026-09", 30_000L)
+		)));
+
+		EcoSettlementResponse response = ecoResultService.getSettlement(USER_ID, ROUND_ID);
+
+		assertThat(response.confirmedMileage()).isEqualTo(30_000L);
+		assertThat(response.statusLabel()).isEqualTo("확인");
+		assertThat(response.cumulativeRate()).isEqualByComparingTo("12.499");
+		assertThat(response.tier()).isEqualTo(TargetTier.TIER_10);
+		assertThat(response.calculation().baselineAmount()).isEqualTo(420_600L);
+		assertThat(response.calculation().note())
+			.isEqualTo("전기·도시가스·수도를 직전 2년 같은 기간(4~9월) 평균과 비교했어요");
+		assertThat(response.isCash()).isFalse();
+		assertThat(response.convertible()).isTrue();
+		assertThat(response.otherUses()).containsExactly("서울시 세금", "상품권", "관리비 납부");
+	}
+
+	@Test
+	void blocksSettlementConversionWhenDailyLimitApplies() {
+		when(ecoResultRepository.findRound(USER_ID, ROUND_ID)).thenReturn(Optional.of(confirmedRound()));
+		when(pocketQueryService.getConvertibleMileage(USER_ID)).thenReturn(new ConvertibleMileageResponse(
+			30_000L,
+			List.of(new ConvertibleMileageResponse.Round(ROUND_ID, "2026-04", "2026-09", 30_000L)),
+			false,
+			ConvertibleMileageResponse.BlockReason.DAILY_LIMIT
+		));
+
+		EcoSettlementResponse response = ecoResultService.getSettlement(USER_ID, ROUND_ID);
+
+		assertThat(response.convertible()).isFalse();
 	}
 
 	@Test

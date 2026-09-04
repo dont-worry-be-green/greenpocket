@@ -32,6 +32,7 @@ import com.greenpocket.eco.dto.EcoLinkProgressResponse;
 import com.greenpocket.eco.dto.EcoLinkStartResponse;
 import com.greenpocket.eco.dto.EcoMonthlyReportResponse;
 import com.greenpocket.eco.dto.EcoResultResponse;
+import com.greenpocket.eco.dto.EcoSettlementResponse;
 import com.greenpocket.eco.dto.EcoStatusResponse;
 import com.greenpocket.eco.entity.ApplicationStatus;
 import com.greenpocket.eco.entity.EcoLinkStatus;
@@ -381,6 +382,38 @@ class EcoControllerTest {
 			.andExpect(jsonPath("$.data.amount.savedIsPocketEligible").value(false))
 			.andExpect(jsonPath("$.data.utilityResults[0].utilityType").value("ELECTRICITY"))
 			.andExpect(jsonPath("$.data.nextRound.roundId").value(8));
+	}
+
+	@Test
+	void returnsMileageSettlement() throws Exception {
+		when(ecoResultService.getSettlement(USER_ID, 7L)).thenReturn(new EcoSettlementResponse(
+			7L,
+			"2026-04",
+			"2026-09",
+			30_000L,
+			"확인",
+			new BigDecimal("12.499"),
+			TargetTier.TIER_10,
+			new EcoSettlementResponse.Calculation(
+				420_600L,
+				370_100L,
+				50_500L,
+				"전기·도시가스·수도를 직전 2년 같은 기간(4~9월) 평균과 비교했어요"
+			),
+			false,
+			true,
+			"https://ecomileage.seoul.go.kr",
+			List.of("서울시 세금", "상품권", "관리비 납부")
+		));
+
+		mockMvc.perform(get("/api/v1/eco/rounds/7/settlement")
+				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.confirmedMileage").value(30_000))
+			.andExpect(jsonPath("$.data.statusLabel").value("확인"))
+			.andExpect(jsonPath("$.data.isCash").value(false))
+			.andExpect(jsonPath("$.data.convertible").value(true))
+			.andExpect(jsonPath("$.data.otherUses.length()").value(3));
 	}
 
 	private EcoGoalPreviewResponse goalPreview() {
