@@ -12,7 +12,14 @@ import { computed } from 'vue'
 import GpButton from '@/components/ui/GpButton.vue'
 import GpCard from '@/components/ui/GpCard.vue'
 import UtilityIcon from './UtilityIcon.vue'
-import { formatDateTime, formatPercent, formatUsage, formatUtilityType, formatWon } from '@/utils/format'
+import {
+  formatDateTime,
+  formatPercent,
+  formatUnit,
+  formatUsage,
+  formatUtilityType,
+  formatWon,
+} from '@/utils/format'
 
 const props = defineProps({
   round: { type: Object, required: true },
@@ -21,10 +28,6 @@ const props = defineProps({
   showMovingNotice: { type: Boolean, default: true },
 })
 defineEmits(['set-goal'])
-
-// 서버는 usageUnit 을 'm3' 로 준다(api-spec.md 8.4). 표기만 ㎥ 로 바꾼다.
-const UNIT_LABEL = { m3: '㎥' }
-const unitLabel = (unit) => UNIT_LABEL[unit] ?? unit
 
 // 등록된 요금만 그린다. 미등록 행은 기준값이 null 이라 금액·비중을 만들 수 없다(B-2-02 · 규칙 8)
 const registeredItems = computed(() => props.round.baseline.items.filter((item) => item.registered))
@@ -64,7 +67,7 @@ const SERIES_COLOR = {
           <div class="text-right">
             <p class="text-body-strong tabular-nums m-0">{{ formatWon(item.amount) }}</p>
             <p class="text-caption text-muted tabular-nums m-0">
-              {{ formatUsage(item.usage, 0, unitLabel(item.usageUnit)) }}
+              {{ formatUsage(item.usage, 0, formatUnit(item.usageUnit)) }}
             </p>
           </div>
         </div>

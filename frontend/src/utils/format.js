@@ -89,6 +89,18 @@ export function formatPercent(rate) {
 }
 
 /**
+ * 퍼센트'포인트'. 증감이 아니라 두 비율의 차이다.
+ * `gapToNextTierPoint`(다음 구간까지 남은 %p) · `shortfallPoint`(미션 합계 부족분)에 쓴다.
+ *
+ * **GpDelta 에 넘기지 않는다.** 그러면 "1.678% 줄었어요"가 되어 뜻이 뒤집힌다.
+ *   1.678 → '1.678%p'  ·  2.000 → '2%p'
+ */
+export function formatPoint(value) {
+  if (isBlank(value)) return EMPTY
+  return `${Number(Number(value).toFixed(3))}%p`
+}
+
+/**
  * 요금 종류 enum 을 한국어 라벨로 바꾼다 (api-spec.md 3절 UtilityType).
  * 화면마다 '가스'/'도시가스'로 갈리지 않게 한 곳에 둔다.
  */
@@ -96,6 +108,42 @@ const UTILITY_TYPE_LABEL = { ELECTRICITY: '전기', GAS: '도시가스', WATER: 
 
 export function formatUtilityType(utilityType) {
   return UTILITY_TYPE_LABEL[utilityType] ?? EMPTY
+}
+
+/**
+ * 목표 구간 enum 라벨 (api-spec.md 3절 TargetTier).
+ *
+ * **서버가 `label`·`tierLabel` 을 주면 그쪽이 우선이다.** goal-form 의 `tiers[]`,
+ * preview 의 `combined.tierLabel`, 결과의 `tierLabel` 은 전부 서버 문구를 그대로 쓴다.
+ * `GET /eco/home` 의 `progress.tiers[]` 에만 라벨이 없어서 그 자리에 쓰는 대체재다.
+ */
+const TIER_LABEL = { TIER_5: '5~10%', TIER_10: '10~15%', TIER_15: '15% 이상' }
+
+export function formatTier(tier) {
+  return TIER_LABEL[tier] ?? EMPTY
+}
+
+/**
+ * 사용량 단위 표기. 서버는 ASCII `'m3'` 로 준다(api-spec.md 3절 UsageUnit).
+ * **비교는 `'m3'` 로 하고 표기만 ㎥ 로 바꾼다.**
+ */
+const USAGE_UNIT_LABEL = { m3: '㎥' }
+
+export function formatUnit(unit) {
+  if (!unit) return ''
+  return USAGE_UNIT_LABEL[unit] ?? unit
+}
+
+/**
+ * 사용량 소수 자리수. 서버가 `displayPrecision` 을 주는 곳에서는 **그 값을 쓴다.**
+ *
+ * 그런데 `displayPrecision` 은 `POST .../goal/preview` 의 `utilities[]` 에만 있다.
+ * `goal-form.segments[]` · `monthly-report.cause.byUtility[]` · `result.utilityResults[]` 에는
+ * 없어서 undefined 가 formatUsage 의 기본값 0 으로 떨어지면 ㎥ 소수가 잘린다.
+ * preview 가 쓰는 규칙(kWh 0 · m3 1)을 단위에서 되짚는 대체재다.
+ */
+export function usagePrecision(unit) {
+  return unit === 'kWh' ? 0 : 1
 }
 
 /**
