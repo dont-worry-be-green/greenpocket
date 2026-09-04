@@ -31,6 +31,7 @@ import com.greenpocket.eco.dto.EcoHomeResponse;
 import com.greenpocket.eco.dto.EcoLinkProgressResponse;
 import com.greenpocket.eco.dto.EcoLinkStartResponse;
 import com.greenpocket.eco.dto.EcoMonthlyReportResponse;
+import com.greenpocket.eco.dto.EcoResultResponse;
 import com.greenpocket.eco.dto.EcoStatusResponse;
 import com.greenpocket.eco.entity.ApplicationStatus;
 import com.greenpocket.eco.entity.EcoLinkStatus;
@@ -42,6 +43,7 @@ import com.greenpocket.eco.entity.WhatIfScreen;
 import com.greenpocket.eco.service.EcoGoalService;
 import com.greenpocket.eco.service.EcoLinkService;
 import com.greenpocket.eco.service.EcoProgressService;
+import com.greenpocket.eco.service.EcoResultService;
 import com.greenpocket.eco.service.EcoRoundService;
 import com.greenpocket.global.auth.CurrentUserIdArgumentResolver;
 import com.greenpocket.global.auth.DemoKeyAuthenticationInterceptor;
@@ -55,6 +57,7 @@ class EcoControllerTest {
 	private EcoRoundService ecoRoundService;
 	private EcoGoalService ecoGoalService;
 	private EcoProgressService ecoProgressService;
+	private EcoResultService ecoResultService;
 	private MockMvc mockMvc;
 
 	@BeforeEach
@@ -63,8 +66,15 @@ class EcoControllerTest {
 		ecoRoundService = mock(EcoRoundService.class);
 		ecoGoalService = mock(EcoGoalService.class);
 		ecoProgressService = mock(EcoProgressService.class);
+		ecoResultService = mock(EcoResultService.class);
 		mockMvc = MockMvcBuilders.standaloneSetup(
-			new EcoController(ecoLinkService, ecoRoundService, ecoGoalService, ecoProgressService)
+			new EcoController(
+				ecoLinkService,
+				ecoRoundService,
+				ecoGoalService,
+				ecoProgressService,
+				ecoResultService
+			)
 		)
 			.setCustomArgumentResolvers(new CurrentUserIdArgumentResolver())
 			.build();
@@ -332,6 +342,45 @@ class EcoControllerTest {
 			.andExpect(jsonPath("$.data.goalSet").value(true))
 			.andExpect(jsonPath("$.data.tier").value("TIER_10"))
 			.andExpect(jsonPath("$.data.utilities[0].expectedSaving").value(26_800));
+	}
+
+	@Test
+	void returnsConfirmedRoundResult() throws Exception {
+		when(ecoResultService.getResult(USER_ID, 7L)).thenReturn(new EcoResultResponse(
+			7L,
+			"2026-04",
+			"2026-09",
+			OffsetDateTime.parse("2026-12-05T00:00:00+09:00"),
+			"에코마일리지 누리집 기준",
+			new BigDecimal("12.499"),
+			new BigDecimal("10.000"),
+			true,
+			TargetTier.TIER_10,
+			"10~15% 구간",
+			30_000L,
+			new EcoResultResponse.Amount(420_600L, 370_100L, 50_500L, false),
+			List.of(new EcoResultResponse.UtilityResult(
+				UtilityType.ELECTRICITY,
+				new BigDecimal("1340.000"),
+				new BigDecimal("1166.000"),
+				UsageUnit.kWh,
+				new BigDecimal("13.000"),
+				new BigDecimal("10.000"),
+				true
+			)),
+			List.of(new EcoResultResponse.MonthlyRate("2026-09", new BigDecimal("17.000"), true)),
+			false,
+			new EcoResultResponse.NextRound(8L, "2026-10", "2027-03", false)
+		));
+
+		mockMvc.perform(get("/api/v1/eco/rounds/7/result")
+				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.finalRate").value(12.499))
+			.andExpect(jsonPath("$.data.tier").value("TIER_10"))
+			.andExpect(jsonPath("$.data.amount.savedIsPocketEligible").value(false))
+			.andExpect(jsonPath("$.data.utilityResults[0].utilityType").value("ELECTRICITY"))
+			.andExpect(jsonPath("$.data.nextRound.roundId").value(8));
 	}
 
 	private EcoGoalPreviewResponse goalPreview() {
