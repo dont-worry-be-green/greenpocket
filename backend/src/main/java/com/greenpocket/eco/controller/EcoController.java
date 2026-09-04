@@ -27,10 +27,13 @@ import com.greenpocket.eco.dto.EcoLinkProgressResponse;
 import com.greenpocket.eco.dto.EcoLinkStartResponse;
 import com.greenpocket.eco.dto.EcoHomeResponse;
 import com.greenpocket.eco.dto.EcoMonthlyReportResponse;
+import com.greenpocket.eco.dto.EcoResultResponse;
+import com.greenpocket.eco.dto.EcoSettlementResponse;
 import com.greenpocket.eco.dto.EcoStatusResponse;
 import com.greenpocket.eco.service.EcoGoalService;
 import com.greenpocket.eco.service.EcoLinkService;
 import com.greenpocket.eco.service.EcoProgressService;
+import com.greenpocket.eco.service.EcoResultService;
 import com.greenpocket.eco.service.EcoRoundService;
 import com.greenpocket.global.auth.CurrentUserId;
 import com.greenpocket.global.response.ApiResponse;
@@ -45,6 +48,7 @@ public class EcoController {
 	private final EcoRoundService ecoRoundService;
 	private final EcoGoalService ecoGoalService;
 	private final EcoProgressService ecoProgressService;
+	private final EcoResultService ecoResultService;
 
 	@Operation(summary = "Green What-if 홈 조회", description = "연동 및 평가 상태에 따라 렌더링할 화면과 진행 현황을 반환합니다.")
 	@ApiResponses({
@@ -190,5 +194,35 @@ public class EcoController {
 		@Parameter(description = "평가 회차 ID", example = "1") @PathVariable Long roundId
 	) {
 		return ApiResponse.success(ecoGoalService.getGoal(userId, roundId));
+	}
+
+	@Operation(summary = "평가 결과 상세 조회", description = "확정된 회차의 종합·요금별·월별 절감 결과를 반환합니다.")
+	@ApiResponses({
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "평가 결과 조회 성공"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Demo Key 인증 실패"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "평가 회차 없음"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "평가 결과 미확정")
+	})
+	@GetMapping("/rounds/{roundId}/result")
+	public ApiResponse<EcoResultResponse> getResult(
+		@Parameter(hidden = true) @CurrentUserId Long userId,
+		@Parameter(description = "평가 회차 ID", example = "7") @PathVariable Long roundId
+	) {
+		return ApiResponse.success(ecoResultService.getResult(userId, roundId));
+	}
+
+	@Operation(summary = "마일리지 적립 확정 조회", description = "확정 마일리지와 포켓 전환 가능 여부를 반환합니다.")
+	@ApiResponses({
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "마일리지 확정 조회 성공"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Demo Key 인증 실패"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "평가 회차 없음"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "평가 결과 미확정")
+	})
+	@GetMapping("/rounds/{roundId}/settlement")
+	public ApiResponse<EcoSettlementResponse> getSettlement(
+		@Parameter(hidden = true) @CurrentUserId Long userId,
+		@Parameter(description = "평가 회차 ID", example = "7") @PathVariable Long roundId
+	) {
+		return ApiResponse.success(ecoResultService.getSettlement(userId, roundId));
 	}
 }
