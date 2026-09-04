@@ -118,4 +118,49 @@ public class PocketTransaction {
 		transaction.completedAt = requestedAt;
 		return transaction;
 	}
+
+	public static PocketTransaction requestedEcoMileage(
+		Long userId,
+		Long ecoRoundId,
+		String transactionCode,
+		Long amount,
+		String label,
+		LocalDateTime requestedAt
+	) {
+		PocketTransaction transaction = new PocketTransaction();
+		transaction.userId = userId;
+		transaction.ecoRoundId = ecoRoundId;
+		transaction.transactionCode = transactionCode;
+		transaction.direction = TransactionDirection.CREDIT;
+		transaction.transactionType = TransactionType.ECO_MILEAGE;
+		transaction.amount = amount;
+		transaction.transactionStatus = TransactionStatus.REQUESTED;
+		transaction.sourceType = TransactionSourceType.ECO_ROUND;
+		transaction.sourceKey = ecoRoundId.toString();
+		transaction.label = label;
+		transaction.requestedAt = requestedAt;
+		return transaction;
+	}
+
+	public void retryEcoMileage(Long amount, LocalDateTime requestedAt) {
+		if (transactionType != TransactionType.ECO_MILEAGE || transactionStatus != TransactionStatus.FAILED) {
+			throw new IllegalStateException("실패한 에코마일리지 전환만 재시도할 수 있습니다.");
+		}
+		this.amount = amount;
+		this.transactionStatus = TransactionStatus.REQUESTED;
+		this.idempotencyKey = null;
+		this.requestedAt = requestedAt;
+		this.completedAt = null;
+		this.failureReason = null;
+	}
+
+	public void completeEcoMileage(String idempotencyKey, LocalDateTime completedAt) {
+		if (transactionType != TransactionType.ECO_MILEAGE || transactionStatus != TransactionStatus.REQUESTED) {
+			throw new IllegalStateException("요청 상태의 에코마일리지 전환만 완료할 수 있습니다.");
+		}
+		this.transactionStatus = TransactionStatus.COMPLETED;
+		this.idempotencyKey = idempotencyKey;
+		this.completedAt = completedAt;
+		this.failureReason = null;
+	}
 }

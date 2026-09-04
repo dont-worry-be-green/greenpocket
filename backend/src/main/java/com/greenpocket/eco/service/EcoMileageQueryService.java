@@ -1,6 +1,7 @@
 package com.greenpocket.eco.service;
 
 import java.util.List;
+import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
 
@@ -19,5 +20,11 @@ public class EcoMileageQueryService {
 
 	public List<ConfirmedMileageRoundSnapshot> findConfirmedMileageRounds(Long userId) {
 		return ecoMileageQueryRepository.findConfirmedMileageRounds(userId);
+	}
+
+	public Optional<ConfirmedMileageRoundSnapshot> findConfirmedMileageRound(Long userId, Long roundId) {
+		return findConfirmedMileageRounds(userId).stream()
+			.filter(round -> round.roundId().equals(roundId))
+			.findFirst();
 	}
 }
