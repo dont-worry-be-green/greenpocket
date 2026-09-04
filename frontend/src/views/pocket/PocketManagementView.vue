@@ -1,24 +1,20 @@
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 
 import AppSubLayout from '@/components/layout/AppSubLayout.vue'
 import GpTag from '@/components/ui/GpTag.vue'
 import IconPocket from '@/components/ui/icons/IconPocket.vue'
+import { usePocketStore } from '@/stores/pocket'
 import { formatWon } from '@/utils/format'
 
+const store = usePocketStore()
 const copyMessage = ref('')
 
 const management = {
   pocket: { accountNo: '1005-1234-5678-90', holder: '아이엠', balance: 12400 },
-  accounts: [
-    {
-      accountId: 1,
-      bankName: '신한은행',
-      accountNo: '110-123-456789',
-      isDefault: true,
-    },
-  ],
 }
+
+onMounted(() => store.fetchWithdrawalAccounts())
 
 async function copyAccount() {
   try {
@@ -62,8 +58,21 @@ async function copyAccount() {
       <section>
         <h2 class="text-body-strong text-muted mb-3">출금 계좌 관리</h2>
         <div class="space-y-3">
+          <div v-if="store.accountsLoading" class="bg-surface rounded-lg p-5 text-center">
+            <p class="text-body-sm text-muted m-0">출금 계좌를 불러오는 중이에요.</p>
+          </div>
+          <div v-else-if="store.accountsError" class="bg-surface rounded-lg p-5 text-center">
+            <p class="text-body-sm text-muted mt-0 mb-3">{{ store.accountsError.message }}</p>
+            <button
+              type="button"
+              class="text-label text-primary min-h-11 border-0 bg-transparent"
+              @click="store.fetchWithdrawalAccounts()"
+            >
+              다시 시도
+            </button>
+          </div>
           <div
-            v-for="account in management.accounts"
+            v-for="account in store.accounts"
             :key="account.accountId"
             class="bg-surface flex min-h-16 items-center gap-3 rounded-lg px-4"
           >
@@ -75,6 +84,12 @@ async function copyAccount() {
               {{ account.bankName }} {{ account.accountNo }}
             </p>
             <GpTag v-if="account.isDefault" tone="estimated">기본 계좌</GpTag>
+          </div>
+          <div
+            v-if="store.accountsLoaded && !store.accounts.length"
+            class="bg-surface rounded-lg p-5 text-center"
+          >
+            <p class="text-body-sm text-muted m-0">등록된 출금 계좌가 없어요.</p>
           </div>
           <button
             type="button"
