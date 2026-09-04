@@ -10,7 +10,7 @@
 | # | 파일 | 무엇 |
 |---|---|---|
 | 1 | `feature-spec/기능명세서.xlsx` | **기능 기준** — 105건. 사람이 필터·정렬해서 볼 때 |
-| 2 | `database/schema.sql` | **데이터 기준** — 배포용 DDL. 제약 전부 포함 |
+| 2 | `database/schema.sql` | **데이터 기준** — 스키마 원본. 제약 전부 포함 |
 | 3 | `api/api-spec.md` | **API 계약** — 엔드포인트 60개 |
 | 4 | `개발기획서.md` | **배경·목표** — 발표용. 세부는 위 셋을 따름 |
 
@@ -29,10 +29,13 @@ AI 에이전트는 엑셀을 읽지 못하므로 `feature-spec/기능명세서.m
 | `feature-spec/기능명세서.xlsx` | **기능명세 원본.** 집계 수식·필터·「결정 사항」·「확인 필요 사항」 시트 있음 |
 | `feature-spec/기능명세서.md` | 같은 내용 읽기용 사본. 검색·diff·AI 참조용 |
 | `api/api-spec.md` | API 명세. 공통 규약·엔드포인트 60개·매핑표·검증 체크리스트 |
-| `database/schema.sql` | **배포용 DDL.** 테이블 13 · FK 16 · UNIQUE 16 · CHECK 9 |
+| `database/schema.sql` | **스키마 기준 원본.** 테이블 13 · FK 16 · UNIQUE 16 · CHECK 9 |
 | `design/` | 디자인 규칙 — `design-system.md` · `tokens.css` (작성 예정, 결정 B-3) |
 
-> **`schema.sql` 이 배포에 쓰는 유일한 DDL입니다.** ERD Cloud export는 PK 외 제약이 담기지 않아 고지서 중복·출금 중복·마일리지 전환 중복이 전부 통과합니다. 저장소에 두지 않으며, 다이어그램을 고칠 때만 ERD Cloud 쪽에서 씁니다.
+> **`schema.sql` 이 스키마의 유일한 기준입니다.** ERD Cloud export는 PK 외 제약이 담기지 않아 고지서 중복·출금 중복·마일리지 전환 중복이 전부 통과합니다. 저장소에 두지 않으며, 다이어그램을 고칠 때만 ERD Cloud 쪽에서 씁니다.
+>
+> **DB에 실제로 적용되는 것은 Flyway 마이그레이션입니다** — `backend/src/main/resources/db/migration/`.
+> V1(`V1__init_schema.sql`)이 이 파일을 그대로 옮긴 것이며, **이미 적용된 마이그레이션은 수정하지 않습니다.**
 
 ---
 
@@ -43,7 +46,7 @@ AI 에이전트는 엑셀을 읽지 못하므로 `feature-spec/기능명세서.m
 | 무엇을 바꾸나 | 같이 고칠 것 |
 |---|---|
 | 기능 추가·삭제·규칙 변경 | 엑셀 → `기능명세서.md` 사본 → `api-spec.md` 해당 절 → (필요하면) `schema.sql` |
-| 컬럼 추가·삭제 | `database/schema.sql` → `api-spec.md` 응답 필드 → ERD Cloud 도 같이 |
+| 컬럼 추가·삭제 | `database/schema.sql` → **새 마이그레이션 `V2__*.sql`** → `api-spec.md` 응답 필드 → ERD Cloud 도 같이 |
 | API 추가·삭제 | `api-spec.md` 본문 → 15.1 목록 |
 | 팀 결정 | 엑셀 「결정 사항」 시트 → 영향받는 기능 행 → `개발기획서.md` 변경 이력 |
 

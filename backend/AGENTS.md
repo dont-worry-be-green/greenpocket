@@ -41,14 +41,15 @@ cd backend
 `application.yaml`에 **`ddl-auto: validate`** 가 설정되어 있다.
 엔티티와 실제 테이블 구조가 다르면 **애플리케이션이 아예 뜨지 않는다.**
 
-### ⚠️ 아직 V1이 없다
+### 현재 상태 — V1까지 적용됨
 
-`src/main/resources/db/migration/` 이 **비어 있다.** 테이블이 하나도 없으므로 `ddl-auto: validate`가 첫 엔티티에서 바로 실패한다.
+| 버전 | 파일 | 내용 |
+| --- | --- | --- |
+| V1 | `db/migration/V1__init_schema.sql` | 초기 스키마 전체 — 테이블 13 · FK 16 · UNIQUE 16 · CHECK 9 |
 
-- 첫 작업자가 `docs/database/schema.sql`(테이블 13 · FK 16 · UNIQUE 16 · CHECK 9)을 **`V1__init_schema.sql`로 옮긴다.**
-- **DDL을 다시 쓰거나 요약하지 않는다.** `schema.sql`이 데이터 기준이므로 내용을 그대로 옮긴다. 제약을 빼면 고지서 중복·출금 중복·마일리지 전환 중복이 전부 통과한다.
-- V1은 전원이 공유하는 파일이다. **만들기 전에 사용자에게 알린다.** 이미 있으면 손대지 않는다.
-- 시드 데이터(지역 기준선·미션 카탈로그·녹색생활실천 항목)는 `db/seed/`에 따로 둔다.
+- **V1을 수정하지 않는다.** 이미 적용된 마이그레이션이라 내용을 바꾸면 체크섬이 깨진다. 스키마 변경은 `V2__*.sql`에 `ALTER TABLE`로 쓴다.
+- V1은 `docs/database/schema.sql`을 그대로 옮긴 것이다. 차이는 원본의 `DROP TABLE` · `SET FOREIGN_KEY_CHECKS` 블록을 뺀 것뿐이다. 마이그레이션은 앞으로만 한 번 실행되는 단계라 기존 테이블을 지우면 안 된다.
+- 시드 데이터(지역 기준선·미션 카탈로그·녹색생활실천 항목)는 마이그레이션이 아니라 `db/seed/`에 따로 둔다.
 
 ### 절대 규칙
 

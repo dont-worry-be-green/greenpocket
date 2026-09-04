@@ -2,12 +2,17 @@
 --  그린포켓 (GreenPocket) 배포용 DDL
 --  2026 KB IT's Your Life 해커톤 · 돈워리, 비그린
 --
---  기준     : docs/db/greenpocket_최신.sql (ERD Cloud export) + 2026-09-03 팀 결정
+--  기준     : ERD Cloud export + 2026-09-03 팀 결정 (C-1 ~ C-13)
 --  DBMS     : MySQL 8.4 · InnoDB · utf8mb4 · utf8mb4_0900_ai_ci
---  규모     : 테이블 13 · 외래키 16 · UNIQUE 16 · CHECK 8
+--  규모     : 테이블 13 · 외래키 16 · UNIQUE 16 · CHECK 9
 --
 --  ERD Cloud export 는 다이어그램 원본이라 PK 외 제약이 빠져 있습니다.
---  이 파일이 실제로 배포·시연에 올라가는 DDL 입니다.
+--  이 파일이 스키마의 기준(단일 진실 공급원)입니다.
+--
+--  ⚠️ 실제로 DB에 적용되는 것은 이 파일이 아니라 Flyway 마이그레이션입니다.
+--     backend/src/main/resources/db/migration/V1__init_schema.sql
+--     스키마를 바꿀 때는 이 파일과 새 마이그레이션(V2, V3 …)을 함께 고칩니다.
+--     이미 적용된 마이그레이션 파일은 절대 수정하지 않습니다.
 --
 --  2026-09-03 결정 반영
 --    4  FK·UNIQUE·CHECK·AUTO_INCREMENT 복원 (A안)

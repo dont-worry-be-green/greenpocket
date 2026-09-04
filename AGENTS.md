@@ -169,14 +169,16 @@ greenpocket/
 │   ├── ISSUE_TEMPLATE/    이슈 템플릿 (기능 개발 / 버그 수정)
 │   └── pull_request_template.md
 ├── backend/               Spring Boot 4.1.1 / Java 21 / MySQL
-│   └── AGENTS.md          백엔드 전용 규칙
+│   ├── AGENTS.md          백엔드 전용 규칙
+│   └── src/main/resources/db/migration/
+│                          Flyway — V1__init_schema.sql (적용됨, 수정 금지)
 ├── frontend/              Vue 3 / Vite / JavaScript
 │   └── AGENTS.md          프론트엔드 전용 규칙
 ├── docs/                  스펙 문서 (단일 진실 공급원)
 │   ├── README.md          문서 지도 · 우선순위 · 문서 갱신 절차
 │   ├── 개발기획서.md       배경·목표·MVP 범위·역할 분담
 │   ├── feature-spec/      기능명세서.xlsx (원본) · 기능명세서.md (사본)
-│   ├── database/          schema.sql — 배포용 DDL
+│   ├── database/          schema.sql — 스키마 기준 원본 (실제 적용은 Flyway)
 │   ├── api/               api-spec.md — 엔드포인트 60개
 │   └── design/            design-system.md · tokens.css (작성 예정)
 └── infra/
@@ -190,7 +192,6 @@ greenpocket/
 
 | 대상 | 상태 | 처음 손대는 사람이 할 일 |
 | --- | --- | --- |
-| `backend/src/main/resources/db/migration/` | **비어 있음.** V1 마이그레이션이 없다 | `docs/database/schema.sql`을 `V1__init_schema.sql`로 옮긴다. `ddl-auto: validate`라 이게 없으면 **아무도 앱을 띄우지 못한다** |
 | `backend/.../global/` | 하위 폴더만 있고 클래스 없음 | 공통 응답·예외 클래스는 **임의로 만들지 말고 사용자에게 확인**한다. 각자 만들면 응답 포맷이 갈라진다 |
 | `frontend/` | **Vue 프로젝트 미생성.** `package.json`도 없다 | 스캐폴딩 자체가 별도 작업이다. `frontend/AGENTS.md`의 구조·검증 명령어는 그 이후에 유효하다 |
 | `docs/design/` | 파일 없음 (결정 B-3, 작성 예정) | 디자인 토큰이 필요하면 만들지 말고 확인한다 |
