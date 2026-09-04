@@ -178,6 +178,27 @@ class WithdrawalAccountServiceTest {
 				assertThat(exception.getErrorCode()).isEqualTo(PocketErrorCode.POCKET_ACCOUNT_NOT_FOUND));
 	}
 
+	@Test
+	void softDeletesOwnedActiveAccount() {
+		WithdrawalAccount account = account(ACCOUNT_ID, true);
+		when(withdrawalAccountRepository.findByIdAndUserIdAndIsActiveTrue(ACCOUNT_ID, USER_ID))
+			.thenReturn(Optional.of(account));
+
+		withdrawalAccountService.deleteAccount(USER_ID, ACCOUNT_ID);
+
+		verify(account).deactivate();
+	}
+
+	@Test
+	void rejectsDeletingMissingOrOtherUsersAccount() {
+		when(withdrawalAccountRepository.findByIdAndUserIdAndIsActiveTrue(ACCOUNT_ID, USER_ID))
+			.thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> withdrawalAccountService.deleteAccount(USER_ID, ACCOUNT_ID))
+			.isInstanceOfSatisfying(BusinessException.class, exception ->
+				assertThat(exception.getErrorCode()).isEqualTo(PocketErrorCode.POCKET_ACCOUNT_NOT_FOUND));
+	}
+
 	private WithdrawalAccount account(Long accountId, boolean isDefault) {
 		WithdrawalAccount account = mock(WithdrawalAccount.class);
 		when(account.getId()).thenReturn(accountId);

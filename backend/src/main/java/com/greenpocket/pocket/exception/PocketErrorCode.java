@@ -6,7 +6,10 @@ import com.greenpocket.global.exception.ErrorCode;
 
 public enum PocketErrorCode implements ErrorCode {
 
-	POCKET_ACCOUNT_NOT_FOUND(HttpStatus.NOT_FOUND, "등록된 출금 계좌를 찾을 수 없어요.");
+	POCKET_ACCOUNT_REQUIRED(HttpStatus.CONFLICT, "출금 계좌를 먼저 등록해 주세요."),
+	POCKET_ACCOUNT_NOT_FOUND(HttpStatus.NOT_FOUND, "등록된 출금 계좌를 찾을 수 없어요."),
+	POCKET_INSUFFICIENT_BALANCE(HttpStatus.CONFLICT, "출금 가능한 잔액이 부족해요."),
+	POCKET_AMOUNT_INVALID(HttpStatus.BAD_REQUEST, "출금 금액은 0원보다 큰 정수여야 해요.");
 
 	private final HttpStatus status;
 	private final String message;

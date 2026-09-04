@@ -3,6 +3,7 @@ package com.greenpocket.pocket.controller;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -180,6 +181,25 @@ class WithdrawalAccountControllerTest {
 				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+	}
+
+	@Test
+	void deletesAccount() throws Exception {
+		mockMvc.perform(delete("/api/v1/pocket/accounts/{accountId}", ACCOUNT_ID)
+				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true));
+	}
+
+	@Test
+	void returnsNotFoundWhenDeletingMissingOrOtherUsersAccount() throws Exception {
+		org.mockito.Mockito.doThrow(new BusinessException(PocketErrorCode.POCKET_ACCOUNT_NOT_FOUND))
+			.when(withdrawalAccountService).deleteAccount(USER_ID, ACCOUNT_ID);
+
+		mockMvc.perform(delete("/api/v1/pocket/accounts/{accountId}", ACCOUNT_ID)
+				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.error.code").value("POCKET_ACCOUNT_NOT_FOUND"));
 	}
 
 	private WithdrawalAccountResponse accountResponse() {
