@@ -24,4 +24,13 @@ public record ApiError(
 	public static ApiError of(ErrorCode errorCode, String field, Map<String, Object> details) {
 		return new ApiError(errorCode.code(), errorCode.message(), field, details);
 	}
+
+	public static ApiError of(
+		ErrorCode errorCode,
+		String message,
+		String field,
+		Map<String, Object> details
+	) {
+		return new ApiError(errorCode.code(), message, field, details);
+	}
 }

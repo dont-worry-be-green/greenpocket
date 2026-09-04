@@ -9,11 +9,20 @@ public class BusinessException extends RuntimeException {
 	private final Map<String, Object> details;
 
 	public BusinessException(ErrorCode errorCode) {
-		this(errorCode, null, null);
+		this(errorCode, errorCode.message(), null, null);
 	}
 
 	public BusinessException(ErrorCode errorCode, String field, Map<String, Object> details) {
-		super(errorCode.message());
+		this(errorCode, errorCode.message(), field, details);
+	}
+
+	public BusinessException(
+		ErrorCode errorCode,
+		String message,
+		String field,
+		Map<String, Object> details
+	) {
+		super(message);
 		this.errorCode = errorCode;
 		this.field = field;
 		this.details = details == null ? null : Map.copyOf(details);
