@@ -16,6 +16,14 @@
  * `screen` **하나만** 덮어쓴다. 데이터는 덮지 않으며 `fetchHome()` 은 preview 여부와
  * 무관하게 항상 부른다. (WF-04·WF-05 는 목표 화면 쪽 preview 라 여기서 다루지 않는다)
  *
+ * 그래서 WF-09 결산 모달은 `?preview=` 로 열리지 않는다 — `resultModal` 은 screen 이 아니라
+ * **데이터**라, 그 상태를 만드는 일은 `api/eco.js` 의 픽스처 shim 이 한다.
+ * 여기서는 `store.showResultModal` 만 본다.
+ *
+ * ── WF-09 결산 모달 ─────────────────────────────────────────────────────
+ * ⚠️ `resultModal.roundId` 는 **지난 회차**다. 홈이 보여 주는 진행 중 회차(`store.roundId`)가
+ * 아니라 방금 확정된 직전 회차라, 결과 화면으로 보낼 때 반드시 모달의 번호를 쓴다.
+ *
  * ── WF-06 이 홈을 두 번 부르는 이유 ─────────────────────────────────────
  * `home.goal` 은 `goalSet · combinedTargetRate · tier · expectedMileage` 넷뿐이라
  * 시안의 요금별 3열이 나오지 않는다. 그건 `GET /eco/rounds/{roundId}/goal` 의 `utilities[]` 다.
@@ -29,6 +37,7 @@ import EcoGoalCard from '@/components/eco/EcoGoalCard.vue'
 import EcoLatestReportCard from '@/components/eco/EcoLatestReportCard.vue'
 import EcoLinkingPanel from '@/components/eco/EcoLinkingPanel.vue'
 import EcoProgressPanel from '@/components/eco/EcoProgressPanel.vue'
+import EcoResultModal from '@/components/eco/EcoResultModal.vue'
 import EcoTodayMissions from '@/components/eco/EcoTodayMissions.vue'
 import EcoUnlinkedPanel from '@/components/eco/EcoUnlinkedPanel.vue'
 import AppTabLayout from '@/components/layout/AppTabLayout.vue'
@@ -37,7 +46,7 @@ import GpCard from '@/components/ui/GpCard.vue'
 import { useEcoStore } from '@/stores/eco'
 import { formatRoundPeriod } from '@/utils/format'
 
-// WhatIfScreen enum (api-spec.md 3절). WF-09 결산 모달은 배치 4 라 지금은 본문만 WF-06 과 같다
+// WhatIfScreen enum (api-spec.md 3절). WF-09 는 본문이 WF-06 과 같고 그 위에 결산 모달만 얹힌다
 const SCREENS = [
   'WF_01_UNLINKED',
   'WF_02_LINKING',
@@ -66,9 +75,16 @@ const linkingUtilities = computed(() => store.linkJob?.utilityStatus ?? [])
 
 const goalUtilities = computed(() => store.goal?.utilities ?? null)
 
-// 첫 응답이 오기 전. 그릴 수 있는 것이 아직 없다
-const isBootstrapping = computed(() => !store.home && store.isLoading)
-const hasFatalError = computed(() => !store.home && !store.isLoading && Boolean(store.error))
+/*
+ * 첫 응답이 오기 전. 그릴 수 있는 것이 아직 없다.
+ *
+ * ⚠️ **`isLoading` 을 조건에 넣지 않는다.** `fetchHome()` 은 `onMounted` 에서 부르는데
+ * 첫 렌더는 그보다 먼저다. 그 한 틱 동안 `home` 은 null 인데 `isLoading` 도 아직 false 라,
+ * `isLoading` 을 보면 두 분기가 모두 빠지고 본문이 `store.home.progress` 를 읽어 터진다.
+ * `?preview=` 로 바로 들어오면 화면이 이미 정해져 있어서 반드시 그 경로를 탄다.
+ */
+const isBootstrapping = computed(() => !store.home && !store.error)
+const hasFatalError = computed(() => !store.home && Boolean(store.error))
 
 const subtitle = computed(() => {
   if (screen.value === 'WF_02_LINKING') return '작년 사용량을 불러오는 중이에요'
@@ -172,6 +188,24 @@ function onApply(externalUrl) {
   if (store.roundId) store.applyForRound(store.roundId)
 }
 
+/**
+ * WF-09 결산 모달 닫기. 서버에도 알려 다음 홈 응답이 WF-06 으로 내려오게 한다(B-5-01).
+ * ⚠️ 회차는 **모달의 것**이다 — `store.roundId` 는 진행 중인 회차라 엉뚱한 회차를 읽음 처리한다.
+ */
+function onDismissResultModal() {
+  store.dismissResultModal(store.home?.resultModal?.roundId)
+}
+
+/**
+ * 결과 화면으로. 보러 가는 것도 확인한 것이라 함께 닫는다 — 돌아왔을 때 같은 모달이 다시 서 있으면
+ * 방금 본 것을 또 보라는 말이 된다.
+ */
+function goToResult() {
+  const id = store.home?.resultModal?.roundId
+  onDismissResultModal()
+  if (id) router.push(`/whatif/rounds/${id}/result`)
+}
+
 function retry() {
   store.fetchHome()
 }
@@ -200,7 +234,7 @@ function retry() {
 
     <EcoLinkingPanel v-else-if="screen === 'WF_02_LINKING'" :utilities="linkingUtilities" />
 
-    <!-- WF-06 · WF-09. 결산 모달은 배치 4 에서 이 위에 얹는다 -->
+    <!-- WF-06 · WF-09. 본문은 같고 WF-09 만 아래 결산 모달이 위에 얹힌다 -->
     <div v-else-if="isInProgress" class="space-y-5">
       <EcoProgressPanel :progress="store.home.progress" />
 
@@ -243,5 +277,16 @@ function retry() {
     <GpCard v-else>
       <p class="text-body text-muted m-0">불러오는 중이에요…</p>
     </GpCard>
+
+    <!--
+      WF-09. 본문 밖에 두는 이유 — 모달은 어느 분기에 있든 데이터(`resultModal`)만 있으면 뜬다.
+      본문 안에 넣으면 로딩·실패 분기에서 사라진다.
+    -->
+    <EcoResultModal
+      :modal="store.home?.resultModal"
+      :open="store.showResultModal"
+      @close="onDismissResultModal"
+      @view="goToResult"
+    />
   </AppTabLayout>
 </template>

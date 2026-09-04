@@ -71,4 +71,28 @@ export default [
     component: () => import('@/views/eco/MissionAdjustView.vue'),
     meta: { tab: 'whatif', title: '실천 다시 고르기' },
   },
+  {
+    path: '/whatif/rounds/:roundId/result',
+    name: 'wf-round-result',
+    /*
+     * WF-10. ⚠️ **여기의 roundId 는 지난 회차다.** 위 세 화면과 반대로 경로에 회차를 둔다 —
+     * 확정된 회차만 결과가 있고 그건 현재 회차가 아니다. 뷰가 `store.roundId`(현재 회차)를
+     * 쓰면 아직 확정 전이라 409 가 난다.
+     *
+     * WF-09 결산 모달이 `home.resultModal.roundId` 로, 진단 없이도 링크로 들어올 수 있다.
+     */
+    component: () => import('@/views/eco/RoundResultView.vue'),
+    meta: { tab: 'whatif', title: '평가 결과' },
+  },
+  {
+    path: '/whatif/rounds/:roundId/settlement',
+    name: 'wf-settlement',
+    /*
+     * WF-11. 결과와 같은 지난 회차다.
+     * 「현금으로 바꾸기」는 `POST /pocket/conversions` 라 **포켓 도메인**이고,
+     * 이 화면은 `/pocket` 으로 보내기만 한다.
+     */
+    component: () => import('@/views/eco/SettlementView.vue'),
+    meta: { tab: 'whatif', title: '마일리지 적립' },
+  },
 ]
