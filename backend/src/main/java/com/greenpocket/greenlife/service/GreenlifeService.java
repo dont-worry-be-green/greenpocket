@@ -18,9 +18,14 @@ import org.springframework.transaction.annotation.Transactional;
 import com.greenpocket.global.exception.BusinessException;
 import com.greenpocket.global.exception.CommonErrorCode;
 import com.greenpocket.greenlife.dto.GreenlifeItemsResponse;
+import com.greenpocket.greenlife.dto.GreenlifeItemDetailResponse;
 import com.greenpocket.greenlife.dto.GreenlifeLinkResponse;
 import com.greenpocket.greenlife.dto.GreenlifeStatusResponse;
+import com.greenpocket.greenlife.exception.GreenlifeErrorCode;
 import com.greenpocket.greenlife.repository.GreenlifeRepository;
+import com.greenpocket.greenlife.repository.GreenlifeRepository.ActivityHistorySnapshot;
+import com.greenpocket.greenlife.repository.GreenlifeRepository.ItemActivitySummarySnapshot;
+import com.greenpocket.greenlife.repository.GreenlifeRepository.ItemDetailSnapshot;
 import com.greenpocket.greenlife.repository.GreenlifeRepository.ItemSnapshot;
 import com.greenpocket.greenlife.repository.GreenlifeRepository.MonthlyActivitySnapshot;
 import com.greenpocket.greenlife.repository.GreenlifeRepository.PaidMonthSnapshot;
@@ -147,6 +152,44 @@ public class GreenlifeService {
 		);
 	}
 
+	@Transactional(readOnly = true)
+	public GreenlifeItemDetailResponse getItemDetail(Long userId, Long itemId, String monthValue) {
+		UserSnapshot user = findUser(userId);
+		if (!user.participating()) {
+			throw new BusinessException(GreenlifeErrorCode.GREENLIFE_NOT_PARTICIPATING);
+		}
+		YearMonth month = parseMonth(monthValue);
+		ItemDetailSnapshot item = greenlifeRepository.findItem(itemId, STANDARD_YEAR)
+			.orElseThrow(() -> new BusinessException(GreenlifeErrorCode.GREENLIFE_ITEM_NOT_FOUND));
+		ItemActivitySummarySnapshot summary = greenlifeRepository.findItemActivitySummary(
+			userId,
+			itemId,
+			month.atDay(1)
+		);
+		long pendingAmount = applyMonthlyCap(summary.pendingAmount(), item.monthlyCapAmount());
+
+		return new GreenlifeItemDetailResponse(
+			item.id(),
+			item.itemCode(),
+			item.name(),
+			item.unitPrice(),
+			item.rewardUnit(),
+			item.standardYear(),
+			item.practiceSteps(),
+			month.toString(),
+			normalize(summary.validCount()),
+			pendingAmount,
+			item.monthlyCapAmount(),
+			item.monthlyCapAmount() != null && summary.pendingAmount() >= item.monthlyCapAmount(),
+			greenlifeRepository.findRecentItemHistory(userId, itemId).stream()
+				.map(this::toHistoryResponse)
+				.toList(),
+			item.externalUrl(),
+			toOffsetDateTime(summary.syncedAt()),
+			DELAY_NOTICE
+		);
+	}
+
 	private GreenlifeStatusResponse notParticipatingStatus(UserSnapshot user) {
 		List<GreenlifeStatusResponse.FeaturedItem> featuredItems = greenlifeRepository
 			.findFeaturedItems(STANDARD_YEAR)
@@ -200,6 +243,21 @@ public class GreenlifeService {
 			item.annualCapAmount(),
 			monthlyCapReached || annualCapReached
 		);
+	}
+
+	private GreenlifeItemDetailResponse.History toHistoryResponse(ActivityHistorySnapshot history) {
+		return new GreenlifeItemDetailResponse.History(
+			history.activityId(),
+			toOffsetDateTime(history.occurredAt()),
+			normalize(history.quantity()),
+			history.rewardAmount(),
+			history.rewardStatus(),
+			toOffsetDateTime(history.paidAt())
+		);
+	}
+
+	private long applyMonthlyCap(long amount, Long monthlyCapAmount) {
+		return monthlyCapAmount == null ? amount : Math.min(amount, monthlyCapAmount);
 	}
 
 	private UserSnapshot findUser(Long userId) {
