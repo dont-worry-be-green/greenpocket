@@ -216,8 +216,8 @@ greenpocket/
 
 | 구분 | 기술 |
 | --- | --- |
-| Backend | Spring Boot 4.1.1, Java 21, Spring Data JPA, Flyway, MySQL |
-| Frontend | Vue 3, Vite, JavaScript, Pinia, Vue Router, Tailwind CSS |
+| Backend | Spring Boot 4.1.1, Java 21, Spring Data JPA, Flyway, MySQL 8.4 |
+| Frontend | Vue 3, Vite, JavaScript, Pinia, Vue Router, Tailwind CSS v4 |
 | OCR | 외부 OCR API |
 | 빌드 | Gradle (backend), npm (frontend) |
 
@@ -240,7 +240,7 @@ greenpocket/
 | 포켓 | `pocket/` | 14 | PK-01 ~ PK-08 |
 | 마이페이지·보관함 | `mypage/` | 2 | MY-01 · MY-03 · MY-04 |
 
-- 위 영역은 담당자가 나뉘어 있다. **요청받은 범위 밖의 도메인 폴더를 수정하지 않는다.**
+- **요청받은 범위 밖의 도메인 폴더를 수정하지 않는다.**
 - `global/` (공통 응답·예외·설정)은 모두가 의존하는 공용 코드다. 수정이 필요하면 **먼저 사용자에게 알리고 승인을 받는다.**
 - 다음 파일은 전원이 공유하므로 임의 수정 시 머지 충돌이 발생한다. 변경 전 반드시 알린다.
   - `backend/build.gradle`
