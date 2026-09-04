@@ -70,7 +70,7 @@ public class UtilityMonthlyRecord {
 	@Column(name = "registered_at", insertable = false, updatable = false)
 	private LocalDateTime registeredAt;
 
-	@Column(name = "updated_at", insertable = false, updatable = false)
+	@Column(name = "updated_at", insertable = false)
 	private LocalDateTime updatedAt;
 
 	private UtilityMonthlyRecord(
@@ -122,5 +122,11 @@ public class UtilityMonthlyRecord {
 			confidence,
 			recordStatus
 		);
+	}
+
+	public void updateAmountAndUsage(Long amount, BigDecimal usageValue, LocalDateTime updatedAt) {
+		this.amount = amount;
+		this.usageValue = usageValue;
+		this.updatedAt = updatedAt;
 	}
 }

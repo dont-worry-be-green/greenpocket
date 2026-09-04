@@ -18,6 +18,12 @@ public interface BillRegistrationRepository extends JpaRepository<UtilityMonthly
 		RecordSource recordSource
 	);
 
+	Optional<UtilityMonthlyRecord> findByIdAndUserIdAndRecordSource(
+		Long id,
+		Long userId,
+		RecordSource recordSource
+	);
+
 	List<UtilityMonthlyRecord> findByUserIdAndRecordSourceAndBillingMonth(
 		Long userId,
 		RecordSource recordSource,
