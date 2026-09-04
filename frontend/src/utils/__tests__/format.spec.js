@@ -11,6 +11,10 @@ import {
   formatPercent,
   formatRoundPeriod,
   formatUtilityType,
+  formatPoint,
+  formatTier,
+  formatUnit,
+  usagePrecision,
 } from '../format'
 
 describe('formatWon', () => {
@@ -136,5 +140,46 @@ describe('formatRoundPeriod', () => {
   it('값이 없으면 - 로 표시한다', () => {
     expect(formatRoundPeriod(null, '2026-09')).toBe('-')
     expect(formatRoundPeriod('2026-04', undefined)).toBe('-')
+  })
+})
+
+describe('formatPoint', () => {
+  it('퍼센트포인트를 붙이고 꼬리 0 을 접는다', () => {
+    expect(formatPoint(1.678)).toBe('1.678%p')
+    expect(formatPoint(2.0)).toBe('2%p')
+  })
+
+  it('값이 없으면 - 로 표시한다', () => {
+    expect(formatPoint(null)).toBe('-')
+  })
+})
+
+describe('formatTier', () => {
+  it('구간 enum 을 라벨로 바꾼다', () => {
+    expect(formatTier('TIER_5')).toBe('5~10%')
+    expect(formatTier('TIER_10')).toBe('10~15%')
+    expect(formatTier('TIER_15')).toBe('15% 이상')
+  })
+
+  it('값이 없으면 - 로 표시한다', () => {
+    expect(formatTier(null)).toBe('-')
+  })
+})
+
+describe('formatUnit', () => {
+  it('m3 만 ㎥ 로 바꾸고 나머지는 원문을 둔다', () => {
+    expect(formatUnit('m3')).toBe('㎥')
+    expect(formatUnit('kWh')).toBe('kWh')
+  })
+
+  it('값이 없으면 빈 문자열이다 — 단위는 숫자 뒤에 붙어서 - 를 쓰면 안 된다', () => {
+    expect(formatUnit(null)).toBe('')
+  })
+})
+
+describe('usagePrecision', () => {
+  it('kWh 는 정수, ㎥ 는 소수 첫째 자리다 (preview 의 displayPrecision 규칙)', () => {
+    expect(usagePrecision('kWh')).toBe(0)
+    expect(usagePrecision('m3')).toBe(1)
   })
 })

@@ -18,7 +18,7 @@
  * 화면 진입만으로 네트워크 요청을 만들지 않는다.
  */
 import { computed, onUnmounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import EcoBaselinePanel from '@/components/eco/EcoBaselinePanel.vue'
 import EcoLinkingPanel from '@/components/eco/EcoLinkingPanel.vue'
@@ -32,10 +32,10 @@ const SCREENS = ['WF_01_UNLINKED', 'WF_02_LINKING', 'WF_03_NO_GOAL']
 const UTILITY_ORDER = ECO_LINK_UTILITIES.map((item) => item.utilityType)
 
 const route = useRoute()
+const router = useRouter()
 
 const screen = ref(previewFromQuery(route.query.preview))
 const linkable = ref(ECO_STATUS.linkable)
-const actionMessage = ref('')
 
 const initialUtilities = () => ECO_LINK_UTILITIES.map((item) => ({ ...item }))
 const linkingUtilities = ref(initialUtilities())
@@ -87,10 +87,9 @@ function startLinking() {
   timers.push(window.setTimeout(() => (screen.value = 'WF_03_NO_GOAL'), 900 * 4))
 }
 
-// WF-04 목표 정하기는 아직 없다. 라우트를 미리 만들지 않는다.
-function showGoalNotice() {
-  actionMessage.value = '목표 정하기는 준비 중이에요.'
-  window.setTimeout(() => (actionMessage.value = ''), 2200)
+// WF-04 목표 정하기. 회차 번호는 경로에 싣지 않는다 — 그 화면이 스토어에서 가져온다
+function goToGoalSetting() {
+  router.push('/whatif/goal')
 }
 
 // 헤더 문구가 화면마다 달라 meta 대신 뷰가 직접 넘긴다
@@ -112,13 +111,6 @@ const subtitle = computed(() => {
       @link="startLinking"
     />
     <EcoLinkingPanel v-else-if="screen === 'WF_02_LINKING'" :utilities="linkingUtilities" />
-    <EcoBaselinePanel v-else :round="ECO_CURRENT_ROUND" @set-goal="showGoalNotice" />
-
-    <div
-      v-if="actionMessage"
-      class="bg-ink text-on-primary shadow-float text-caption fixed bottom-24 left-1/2 z-70 w-max max-w-[calc(100%-32px)] -translate-x-1/2 rounded-full px-4 py-3"
-    >
-      {{ actionMessage }}
-    </div>
+    <EcoBaselinePanel v-else :round="ECO_CURRENT_ROUND" @set-goal="goToGoalSetting" />
   </AppTabLayout>
 </template>
