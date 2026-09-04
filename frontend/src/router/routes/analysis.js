@@ -5,6 +5,17 @@
  *   AN-03 OCR 분석 중             AN-07 생활비 분석 메인
  *   AN-04 OCR 결과 확인           AN-08 고지서 상세·수정
  *
+ * 탭바(COM-02)를 세우려면 탭 5개가 모두 갈 곳이 있어야 해서 진단 탭 루트만 미리 물려 둔다.
+ * **AN-01 을 붙일 때 아래 component 한 줄만 바꾸면 된다.** meta 형태는 routes/eco.js 주석 참고.
+ *
  * 추가 형태는 routes/onboarding.js 주석 참고.
  */
-export default []
+export default [
+  {
+    path: '/analysis',
+    name: 'an-home',
+    // TODO(진단 담당): AN-01 고지서 미등록 메인으로 교체
+    component: () => import('@/views/ComingSoonView.vue'),
+    meta: { tab: 'analysis', title: '진단' },
+  },
+]

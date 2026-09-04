@@ -114,9 +114,13 @@ export const useBillStore = defineStore('bill', () => {
 frontend/src/
 ├── api/           client.js(공통 axios) + 도메인별 API 함수
 ├── stores/        Pinia 스토어
-├── views/<도메인>/      라우트 단위 페이지
+├── views/
+│   ├── ComingSoonView.vue   화면이 아직 없는 탭의 자리표시자 (도메인 없음)
+│   └── <도메인>/            라우트 단위 페이지
 ├── components/
-│   ├── ui/              버튼·카드·모달 등 공통 UI
+│   ├── ui/              버튼·카드·아이콘 등 공통 UI. 라우터를 모른다
+│   │   └── icons/       아이콘 SVG 1개당 파일 1개 (아래 「아이콘」 참고)
+│   ├── layout/          화면 셸 + 탭 정의. 라우터를 안다
 │   └── <도메인>/        도메인 전용 컴포넌트
 ├── composables/   재사용 로직
 ├── utils/         format.js 등 포맷터
@@ -124,6 +128,9 @@ frontend/src/
     ├── index.js         라우터 생성. 화면을 추가할 때 여기를 고치지 않는다
     └── routes/<도메인>.js
 ```
+
+`ui/`와 `layout/`을 나눈 기준은 **라우터를 아느냐**다. `ui/`는 props·emit만 쓰는 순수 표시용이고,
+`layout/`은 `useRouter()`로 실제 이동을 시킨다. `GpTabBar`(표시)와 `AppTabLayout`(이동)이 그 예다.
 
 `<도메인>`은 6개로 고정한다. 화면 ID(`api-spec.md` 15.3)와 1:1로 대응한다.
 
@@ -135,6 +142,10 @@ frontend/src/
 | `eco` | WF | 에코마일리지·목표·평가 |
 | `pocket` | PK | 그린포켓·출금 |
 | `mypage` | MY | 마이페이지·보관함 |
+
+**탭 5개의 경로는 폴더명이 아니라 화면 이름을 따른다** — `/analysis` · `/benefit` · `/whatif` · `/pocket` · `/mypage`.
+`eco`→`/whatif`, `greenlife`→`/benefit` 두 곳만 폴더명과 다르다. 목록은 `components/layout/tabs.js` 하나뿐이니
+**탭 배열을 다른 곳에서 다시 만들지 않는다.** `/`는 `/whatif`로 리다이렉트된다(결정 C-1).
 
 - **라우트는 `router/routes/<도메인>.js`에만 추가한다.** 넷이 동시에 화면을 붙이는데 `router/index.js`를 같이 고치면 매번 충돌한다.
 - **다른 도메인 폴더를 수정하지 않는다.** 공용은 `components/ui/`·`utils/`·`api/client.js`뿐이고, 이 셋을 고칠 때는 먼저 알린다.
@@ -163,8 +174,42 @@ frontend/src/
 **서버는 숫자와 enum만 내려준다.** 포맷팅은 전부 FE 책임이다.
 **`utils/format.js`의 포맷터를 쓰고, 컴포넌트에서 `toLocaleString`·`toFixed`를 직접 부르지 않는다.** 없는 포맷이 필요하면 이 파일에 추가한다.
 
-공통 컴포넌트가 `components/ui/`에 7개 있다 — `GpButton` `GpCard` `GpTag` `GpDelta` `GpBandPicker` `GpMissionRow` `GpTabBar`.
+공통 컴포넌트가 `components/ui/`에 9개 있다 — `GpButton` `GpCard` `GpTag` `GpDelta` `GpBandPicker`
+`GpMissionRow` `GpTabBar` `GpPageHeader` `GpBackHeader`. 아이콘은 `components/ui/icons/`에 있다.
 비슷한 것을 새로 만들기 전에 먼저 확인한다. `GpDelta`·`GpTag`가 위 증감·상태 라벨 규칙을 이미 지키고 있다.
+
+**화면은 셸부터 고른다 (COM-02).** 헤더·탭바를 화면마다 다시 짜지 않는다.
+
+| 화면 | 쓸 것 | 헤더 |
+| --- | --- | --- |
+| 탭 최상위 (AN-01 · BN-01 · WF-06 · PK-01 · MY-01) | `AppTabLayout` | 제목 + 한 줄 설명, 하단 탭바 |
+| 그 아래 전부 (목표 정하기 · 고지서 상세 · 출금 등) | `AppSubLayout` | 뒤로가기, **탭바 없음** |
+
+```vue
+<AppTabLayout tab="whatif" title="Green What-if" subtitle="작년 사용량을 불러오면 목표를 정할 수 있어요">
+  ...본문...
+</AppTabLayout>
+```
+
+`AppTabLayout`이 좌우 여백(`--gp-gutter`)과 탭바에 가리지 않을 하단 여백(`--gp-safe-bottom`)을 이미 준다.
+**본문 슬롯에 `px-*`를 다시 붙이지 않는다.**
+
+### 아이콘 — 손으로 그리지 말고 뽑아 쓴다
+
+```bash
+npm run icon -- PhCaretLeft IconChevronLeft fill   # <PhosphorName> <IconName> [weight]
+```
+
+`components/ui/icons/`에 SFC가 생긴다. 이름은 https://phosphoricons.com 에서 확인하고,
+시안이 채워진 스타일이므로 weight는 `fill`이 기본이다.
+
+- **`@phosphor-icons/vue`를 화면 코드에서 직접 import 하지 않는다.** devDependency이고 추출 전용이다.
+  컴포넌트를 그대로 쓰면 아이콘 하나당 6가지 weight가 전부 번들에 실려 gzip 약 0.9kB가 붙는다.
+  스크립트는 필요한 weight의 `<path>`만 뽑으므로 런타임 의존성이 0이다.
+- **탭 아이콘 5개(`IconChart` `IconGift` `IconLeaf` `IconPocket` `IconUser`)는 직접 그린 것이고 바꾸지 않는다.**
+  Phosphor 후보와 8배 확대 대조에서 시안과 형태가 달랐다(자세한 근거는 `docs/design/design-system.md` 「아이콘」).
+- `viewBox`는 직접 그린 것이 `0 0 24 24`, 뽑은 것이 `0 0 256 256`이다. `size` prop으로 크기를 맞추므로
+  섞여 있어도 화면에서는 같다. **`viewBox`를 임의로 고쳐 맞추려 하지 않는다.**
 
 - **금액:** 천 단위 구분기호 + `원`. 마일리지는 `M` (1M = 1원).
 - **증감:** 부호 대신 **화살표 + 숫자 + 말** (`↓12% 줄었어요`, `↑2% 늘었어요`). 비교 차액만 `+4,300원`처럼 부호를 붙인다.
@@ -193,7 +238,11 @@ frontend/src/
 cd frontend
 npm run dev       # 개발 서버
 npm run build     # 빌드 확인
+npm run lint      # oxlint + eslint
+npm run test:unit # vitest
 ```
+
+`npm run icon -- <PhosphorName> <IconName> [weight]` 은 아이콘 추출 전용이다(6절 「아이콘」).
 
 ---
 

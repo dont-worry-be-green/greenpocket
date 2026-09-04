@@ -7,6 +7,33 @@
  *   WF-05 미등록 요금 목표 상태    WF-11 마일리지 적립·현금 전환
  *   WF-06 목표 설정 후 메인 (홈)
  *
+ * 경로는 폴더명(eco)이 아니라 탭 이름(/whatif)을 따른다. 탭 정의는 components/layout/tabs.js.
+ *
+ * meta 는 AppTabLayout 이 헤더를 그리는 데 쓴다.
+ *   tab      탭바에서 켜질 키 (tabs.js 의 key)
+ *   title    화면 제목
+ *   subtitle 제목 밑 한 줄 설명 (선택)
+ *
  * 추가 형태는 routes/onboarding.js 주석 참고.
  */
-export default []
+export default [
+  {
+    /*
+     * 홈. 온보딩을 마치면 항상 What-if 탭으로 진입한다 — 마지막 방문 탭 복원은 만들지 않는다(결정 C-1).
+     * 온보딩 미완료 시 ONB-01 로 보내는 가드(COM-02)는 ONB 라우트가 생긴 뒤에 붙인다.
+     */
+    path: '/',
+    redirect: '/whatif',
+  },
+  {
+    path: '/whatif',
+    name: 'wf-home',
+    // TODO: WF-01/WF-03/WF-06 을 붙이면서 실제 화면으로 교체한다
+    component: () => import('@/views/ComingSoonView.vue'),
+    meta: {
+      tab: 'whatif',
+      title: 'Green What-if',
+      subtitle: '작년 사용량을 불러오면 목표를 정할 수 있어요',
+    },
+  },
+]

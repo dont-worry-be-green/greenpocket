@@ -248,7 +248,48 @@ z-index는 8단계로 고정: `base 0 · sticky 10 · tabbar 20 · fab 30 · she
 | `GpDelta` | `value` · `size` · `digits` · `word` · `showWord` | **증감은 반드시 이걸로** |
 | `GpBandPicker` | `v-model` · `bands` | 슬라이더 대신 구간 칩 |
 | `GpMissionRow` | `mission` · `v-model` · `muted` · `recommended` | 출처·근거를 행 안에 |
-| `GpTabBar` | `active` · `tabs` | 가운데 What-if는 FAB |
+| `GpTabBar` | `active` · `tabs` | 떠 있는 pill. 가운데 What-if는 FAB |
+| `GpPageHeader` | `title` · `subtitle` · `#action` | 탭 최상위 화면 |
+| `GpBackHeader` | `title` · `#action` · `@back` | 하위 화면 (COM-02) |
+
+### 아이콘
+
+`components/ui/icons/`에 파일 1개당 1개씩 둔다. 공통 규약은 `currentColor` · `size` prop(기본 24) ·
+`aria-hidden="true"` · `focusable="false"` 네 가지다. **`viewBox`는 출처에 따라 다르다** —
+직접 그린 것은 `0 0 24 24`, Phosphor에서 뽑은 것은 `0 0 256 256`이다. `size`로 렌더 크기를 맞추므로
+섞여 있어도 화면에서는 같은 크기로 나온다.
+
+**새 아이콘은 Phosphor에서 뽑아 쓴다.**
+
+```bash
+cd frontend
+npm run icon -- PhCaretLeft IconChevronLeft fill   # <PhosphorName> <IconName> [weight]
+```
+
+`@phosphor-icons/vue`는 **devDependency다.** 컴포넌트를 그대로 `import`하면 아이콘 하나당 6가지
+weight(thin·light·regular·bold·fill·duotone)가 전부 번들에 실려 **gzip 기준 약 0.9kB**가 붙는다.
+스크립트(`scripts/add-icon.mjs`)는 지정한 weight의 `<path>`만 뽑아 일반 SFC로 저장하므로 런타임
+의존성이 0이고 아이콘당 수백 바이트로 끝난다. **`@phosphor-icons/vue`를 화면 코드에서 직접 import 하지 않는다.**
+시안이 채워진 스타일이므로 기본 weight는 `fill`이다.
+
+**탭 아이콘 5개(`IconChart` `IconGift` `IconLeaf` `IconPocket` `IconUser`)만 예외로 직접 그렸다.**
+Phosphor 후보(`PhChartBar` `PhGift` `PhLeaf` `PhWallet` `PhUser`)와 8배 확대 대조한 결과 시안과
+형태가 달랐다 — 포켓은 시안이 가운데 원인데 `PhWallet`은 오른쪽 카드 슬롯이고, 잎은 시안에 줄기가
+없는데 `PhLeaf`는 있으며, 혜택은 시안이 2×2 블록인데 `PhGift`는 리본 선물상자다. 탭바는 앱의 얼굴이라
+시안 일치를 우선했다. **이 5개를 라이브러리 아이콘으로 바꾸지 않는다.**
+
+잎맥·포켓 손잡이처럼 **뒤가 비쳐야 하는 부분은 선을 덧그리지 않고 `fill-rule="evenodd"`로 뚫는다.**
+흰 아이콘 위에 흰 선을 그을 수 없기 때문이다.
+
+### 화면 셸
+
+| 컴포넌트 | props | 비고 |
+|---|---|---|
+| `AppTabLayout` | `tab` · `title` · `subtitle` · `#headerAction` | 헤더 + 본문 + 탭바 |
+| `AppSubLayout` | `title` · `back` · `hasFooter` · `#headerAction` · `#footer` | 뒤로가기 헤더 + 본문 |
+
+`components/layout/`에 있다. `ui/`와 나눈 기준은 **라우터를 아느냐**다 — `GpTabBar`는 표시만 하고,
+`AppTabLayout`이 `tabs.js`를 보고 실제로 이동시킨다. **탭 목록은 `components/layout/tabs.js` 하나뿐이다.**
 
 ### 미션 데이터 형태
 
@@ -275,7 +316,8 @@ z-index는 8단계로 고정: `base 0 · sticky 10 · tabbar 20 · fab 30 · she
 ## 9. 남은 일
 
 - [ ] **Figma Variables 동기화** — `tokens.json`은 준비됨. Figma MCP 할당량이 10월 1일 리셋되면 업로드
-- [ ] 아이콘 SVG를 컴포넌트로 분리 (`GpIcon`) — 지금은 문자열로 인라인
+- [x] 아이콘 SVG를 컴포넌트로 분리 — `components/ui/icons/`. 단일 `GpIcon` 대신 파일 1개당 1개로 나눴다.
+      넷이 동시에 아이콘을 추가하면 한 파일에 몰아넣은 쪽이 매번 충돌하기 때문이다
 - [ ] 다크 모드 — 토큰 구조는 대응 가능하나 팔레트 미정. MVP 범위 밖
 - [ ] 죽은 클래스 정리 — `greenpocket.css` 204규칙 중 앱 화면이 실제로 쓰는 것은 89개.
       나머지는 폐기 화면·문서 아트보드용이라 개발 착수 후 실사용 기준으로 한 번 더 걷어낼 것
