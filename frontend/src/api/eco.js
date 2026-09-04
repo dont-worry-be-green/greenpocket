@@ -29,6 +29,7 @@ import {
 import {
   ECO_APPLICATION_APPLIED,
   ECO_HOME_IN_PROGRESS,
+  ECO_HOME_RESULT_READY,
   ECO_TODAY_MISSIONS,
 } from '@/fixtures/ecoHome'
 import { buildGoalPreview } from '@/fixtures/ecoPreview'
@@ -38,8 +39,9 @@ import {
   buildMonthlyReport,
   ECO_MONTHLY_REPORT_EMPTY,
 } from '@/fixtures/ecoReport'
+import { ECO_RESULT, ECO_SETTLEMENT } from '@/fixtures/ecoResult'
 
-import client from './client'
+import client, { ApiError } from './client'
 
 const USE_FIXTURES = true
 
@@ -57,6 +59,7 @@ const fake = async (value, ms = 220) => {
  *   savedGoal      저장한 목표. 다시 들어왔을 때 고른 구간·미션이 남아 있어야 한다(B-2 편집)
  *   applied        참여 신청 여부. 신청하면 배너가 사라져야 한다(B-4-05)
  *   completedMissionIds  오늘 체크한 실천. null 이면 픽스처 기본값을 쓴다
+ *   resultViewed   결산 모달을 봤는지. 서버의 `eco_round.result_viewed_at` 자리다
  * 새로고침하면 사라진다. 서버가 붙으면 통째로 사라질 코드다.
  */
 const demoState = {
@@ -66,6 +69,7 @@ const demoState = {
   savedGoal: null,
   applied: false,
   completedMissionIds: null,
+  resultViewed: false,
 }
 
 // ── 8절 · 연동 ──────────────────────────────────────────────────────────
@@ -259,10 +263,7 @@ export function updateMissions(roundId, payload) {
 export function getEcoHome() {
   if (USE_FIXTURES) {
     return fake(() => {
-      if (demoState.linking) return { ...ECO_HOME_IN_PROGRESS, screen: 'WF_02_LINKING' }
-      if (!demoState.linked) return { ...ECO_HOME_IN_PROGRESS, screen: 'WF_01_UNLINKED' }
-      if (!demoState.savedGoal) return { ...ECO_HOME_IN_PROGRESS, screen: 'WF_03_NO_GOAL' }
-      return {
+      const inProgress = {
         ...ECO_HOME_IN_PROGRESS,
         application: {
           ...ECO_HOME_IN_PROGRESS.application,
@@ -274,6 +275,29 @@ export function getEcoHome() {
           totalCount: ECO_TODAY_MISSIONS.totalCount,
         },
       }
+      /*
+       * WF-09 는 지난 회차가 확정돼야 나오는 상태라 데모 조작만으로는 만들 수 없다.
+       * `?preview=WF_09_RESULT_READY` 로 연다. **판정을 여기 두는 이유** — `resultModal` 은
+       * screen 이 아니라 **데이터**라, 뷰가 쿼리를 보고 만들어 내면 연동 후 지울 곳이 화면에 남는다.
+       * 뷰의 `?preview=` 는 끝까지 screen 만 덮는다.
+       */
+      if (previewParam() === 'WF_09_RESULT_READY' && !demoState.resultViewed) {
+        return {
+          ...inProgress,
+          screen: ECO_HOME_RESULT_READY.screen,
+          resultModal: ECO_HOME_RESULT_READY.resultModal,
+        }
+      }
+      if (demoState.linking) return { ...inProgress, screen: 'WF_02_LINKING' }
+      /*
+       * ⚠️ **목표를 먼저 본다.** 목표가 있는데 미연동인 상태는 서버에 없다 — 기준 사용량이
+       * 있어야 goal-form 이 나오기 때문이다. 그런데 `demoState` 는 모듈 메모리라
+       * `/whatif/goal` 을 주소창에 직접 치면 `linked` 만 false 로 되돌아간다.
+       * 연동을 먼저 보면 그때 저장한 목표가 WF-01 로 덮여, 방금 정한 목표가 사라진 것처럼 보인다.
+       */
+      if (demoState.savedGoal) return inProgress
+      if (!demoState.linked) return { ...inProgress, screen: 'WF_01_UNLINKED' }
+      return { ...inProgress, screen: 'WF_03_NO_GOAL' }
     })
   }
   return client.get('/eco/home')
@@ -300,9 +324,25 @@ export function getMonthlyReport(params = {}) {
 
 // ── 11절 · 평가 결과·마일리지 ───────────────────────────────────────────
 
-/** GET /eco/rounds/{roundId}/result — 회차 평가 결과 (B-5-02 · WF-10) */
+/**
+ * GET /eco/rounds/{roundId}/result — 회차 평가 결과 (B-5-02 · WF-10).
+ *
+ * ⚠️ **여기의 `roundId` 는 지난 회차다.** 진행 중인 회차(`store.roundId`)를 넣으면
+ * 아직 확정되지 않아 `ECO_RESULT_NOT_CONFIRMED`(409) 다. 뷰는 `route.params.roundId` 를 쓴다.
+ * 픽스처도 그 실수를 덮어 주지 않도록 **확정된 회차가 아니면 그 에러를 그대로 낸다.**
+ */
 export function getRoundResult(roundId) {
-  // 배치 4(WF-10)
+  if (USE_FIXTURES) {
+    return fake(() => {
+      if (Number(roundId) !== ECO_RESULT.roundId) {
+        throw new ApiError({
+          code: 'ECO_RESULT_NOT_CONFIRMED',
+          message: '아직 평가가 확정되지 않았어요',
+        })
+      }
+      return ECO_RESULT
+    })
+  }
   return client.get(`/eco/rounds/${roundId}/result`)
 }
 
@@ -310,15 +350,26 @@ export function getRoundResult(roundId) {
  * POST /eco/rounds/{roundId}/result/view — 결산 모달을 봤다고 표시 (B-5-01 · WF-09).
  *
  * ⚠️ **204 라 응답 본문이 `undefined` 다.** `if (data)` 로 판정하면 성공을 실패로 읽는다.
- * 호출부는 try/catch 로만 판정한다. (백엔드 구현 완료 — EcoController.viewResult)
+ * 호출부는 try/catch 로만 판정한다.
+ *
+ * 픽스처도 `undefined` 를 돌려준다 — 값을 주면 호출부의 204 처리가 한 번도 검증되지 않는다.
  */
 export function markResultViewed(roundId) {
+  if (USE_FIXTURES) {
+    return fake(() => {
+      demoState.resultViewed = true
+      return undefined
+    }, 120)
+  }
   return client.post(`/eco/rounds/${roundId}/result/view`)
 }
 
-/** GET /eco/rounds/{roundId}/settlement — 마일리지 적립 내역 (B-5-03 · WF-11) */
+/**
+ * GET /eco/rounds/{roundId}/settlement — 마일리지 적립 내역 (B-5-03 · WF-11).
+ * 결과와 같은 지난 회차다. `ECO_SETTLEMENT` 는 `ECO_RESULT` 와 같은 상수에서 뽑는다.
+ */
 export function getSettlement(roundId) {
-  // 배치 4(WF-11)
+  if (USE_FIXTURES) return fake(() => ({ ...ECO_SETTLEMENT, roundId: Number(roundId) }))
   return client.get(`/eco/rounds/${roundId}/settlement`)
 }
 
@@ -351,12 +402,15 @@ function todayMissionsFixture() {
   }
 }
 
+/** 데모용 `?preview=` 값. 서버 대신 상태를 고를 수 있게 하는 픽스처 전용 스위치다 */
+function previewParam() {
+  const search = typeof window === 'undefined' ? '' : window.location.search
+  return new URLSearchParams(search).get('preview')
+}
+
 /** WF-04(전부 등록) 이 기본이고 `?preview=WF-05` 일 때만 수도 미등록판을 준다 */
 function previewGoalForm() {
-  const search = typeof window === 'undefined' ? '' : window.location.search
-  return new URLSearchParams(search).get('preview') === 'WF-05'
-    ? ECO_GOAL_FORM_UNREGISTERED
-    : ECO_GOAL_FORM
+  return previewParam() === 'WF-05' ? ECO_GOAL_FORM_UNREGISTERED : ECO_GOAL_FORM
 }
 
 /**

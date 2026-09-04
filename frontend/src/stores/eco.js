@@ -27,6 +27,8 @@ import {
   getGoalForm,
   getMissionAdjust,
   getMonthlyReport,
+  getRoundResult,
+  getSettlement,
   getTodayMissions,
   linkEco,
   markResultViewed,
@@ -50,6 +52,8 @@ export const useEcoStore = defineStore('eco', () => {
   const todayMissions = ref(null)
   const monthlyReport = ref(null)
   const missionAdjust = ref(null)
+  const result = ref(null)
+  const settlement = ref(null)
   const resultModalDismissed = ref(false)
 
   const isLoading = ref(false)
@@ -314,6 +318,28 @@ export const useEcoStore = defineStore('eco', () => {
     }
   }
 
+  // ── 평가 결과 · 적립 (WF-10 · WF-11) ──────────────────────────────────
+
+  /**
+   * ⚠️ **`id` 는 지난 회차다.** `roundId`(현재 회차)를 넘기면 아직 확정 전이라 409 다.
+   * 뷰가 `route.params.roundId` 를 그대로 넘긴다.
+   *
+   * 회차가 바뀌면 이전 회차의 결과가 잠깐 보이므로 받기 전에 비운다.
+   */
+  async function fetchRoundResult(id) {
+    result.value = null
+    const data = await run(() => getRoundResult(id))
+    if (data) result.value = data
+    return data
+  }
+
+  async function fetchSettlement(id) {
+    settlement.value = null
+    const data = await run(() => getSettlement(id))
+    if (data) settlement.value = data
+    return data
+  }
+
   // ── 결산 모달 (WF-09) ─────────────────────────────────────────────────
 
   /**
@@ -344,6 +370,8 @@ export const useEcoStore = defineStore('eco', () => {
     todayMissions,
     monthlyReport,
     missionAdjust,
+    result,
+    settlement,
     resultModalDismissed,
     isLoading,
     error,
@@ -376,6 +404,8 @@ export const useEcoStore = defineStore('eco', () => {
     fetchMonthlyReport,
     fetchMissionAdjust,
     saveSelectedMissions,
+    fetchRoundResult,
+    fetchSettlement,
     dismissResultModal,
   }
 })

@@ -11,10 +11,15 @@
  * 시안의 「전기 10% · 도시가스 15% · 수도 5%」 3열은 여기서 나오지 않는다.
  * 그건 `GET /eco/rounds/{roundId}/goal`(`ECO_GOAL.utilities[]`) 쪽이라 WF-06 이 두 번 부른다.
  *
+ * `ECO_RESULT_MODAL` 은 `ecoResult.js` 에서 가져온다. 픽스처끼리의 상대 경로 import 라
+ * `api/eco.js` 하나만 `@/fixtures` 를 쓴다는 불변식을 깨지 않는다.
+ *
  * ── 시안과 다른 값 ──────────────────────────────────────────────────────
  * 시안의 합산 목표 `10.5%` 는 계산과 맞지 않는다(결정 C-13). `ECO_GOAL` 과 같은
  * **11.322%** 를 쓴다. 두 응답이 어긋나면 같은 화면 안에서 숫자가 갈린다.
  */
+
+import { ECO_RESULT_MODAL } from './ecoResult'
 
 /*
  * 평가 기간 진행 (B-4-01).
@@ -93,21 +98,19 @@ export const ECO_HOME_IN_PROGRESS = {
 }
 
 /*
- * GET /eco/home — WF-09 결산 알림. 배치 4 가 모달을 붙인다.
- * 최종 12.499% 는 기능명세서 고정 상수의 데모 값이다(시안의 12% 가 아니다 · 결정 C-13).
+ * GET /eco/home — WF-09 결산 알림.
+ *
+ * ⚠️ **모달의 회차는 진행 중인 회차가 아니다.** `WF_09_RESULT_READY` 는 *직전* 회차가
+ * CONFIRMED 인 상태라(api-spec.md 10.1), 홈은 7 을 진행 중으로 보여 주면서 모달만 6 을 알린다.
+ * 둘을 같은 번호로 두면 한 회차가 진행 중이면서 확정된 것이 된다.
+ *
+ * 숫자를 여기 다시 적지 않고 `ecoResult.js` 에서 끌어온다 — 따로 적으면 모달과 WF-10 이
+ * 다른 감축률을 보인다.
  */
 export const ECO_HOME_RESULT_READY = {
   ...ECO_HOME_IN_PROGRESS,
   screen: 'WF_09_RESULT_READY',
-  resultModal: {
-    roundId: 7,
-    periodStart: '2026-04',
-    periodEnd: '2026-09',
-    finalRate: 12.499,
-    tier: 'TIER_10',
-    mileage: 30000,
-    confirmedAt: '2026-12-15T09:00:00+09:00',
-  },
+  resultModal: ECO_RESULT_MODAL,
 }
 
 /*
