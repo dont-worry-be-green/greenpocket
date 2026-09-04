@@ -37,4 +37,22 @@ class WithdrawalAccountTest {
 		assertThat(account.isDefault()).isTrue();
 		assertThat(account.getDefaultSlot()).isEqualTo(42L);
 	}
+
+	@Test
+	void deactivatesAccountAndClearsDefaultSlot() {
+		WithdrawalAccount account = WithdrawalAccount.create(
+			42L,
+			"088",
+			"신한은행",
+			new byte[] {1, 2, 3},
+			"김수현",
+			true
+		);
+
+		account.deactivate();
+
+		assertThat(account.isActive()).isFalse();
+		assertThat(account.isDefault()).isFalse();
+		assertThat(account.getDefaultSlot()).isNull();
+	}
 }

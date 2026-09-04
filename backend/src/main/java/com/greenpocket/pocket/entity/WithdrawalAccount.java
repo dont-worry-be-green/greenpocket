@@ -108,6 +108,12 @@ public class WithdrawalAccount {
 		this.defaultSlot = userId;
 	}
 
+	public void deactivate() {
+		this.isActive = false;
+		this.isDefault = false;
+		this.defaultSlot = null;
+	}
+
 	public byte[] getEncryptedAccountNumber() {
 		return encryptedAccountNumber.clone();
 	}

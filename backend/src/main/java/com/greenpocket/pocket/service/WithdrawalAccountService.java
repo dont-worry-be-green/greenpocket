@@ -94,6 +94,12 @@ public class WithdrawalAccountService {
 		);
 	}
 
+	@Transactional
+	public void deleteAccount(Long userId, Long accountId) {
+		WithdrawalAccount account = findActiveAccount(userId, accountId);
+		account.deactivate();
+	}
+
 	private WithdrawalAccount findActiveAccount(Long userId, Long accountId) {
 		return withdrawalAccountRepository.findByIdAndUserIdAndIsActiveTrue(accountId, userId)
 			.orElseThrow(() -> new BusinessException(PocketErrorCode.POCKET_ACCOUNT_NOT_FOUND));

@@ -18,6 +18,8 @@ public interface WithdrawalAccountRepository extends JpaRepository<WithdrawalAcc
 
 	Optional<WithdrawalAccount> findFirstByUserIdAndIsDefaultTrueAndIsActiveTrue(Long userId);
 
+	boolean existsByUserIdAndIsActiveTrue(Long userId);
+
 	@Modifying(flushAutomatically = true, clearAutomatically = true)
 	@Query("""
 		UPDATE WithdrawalAccount account
