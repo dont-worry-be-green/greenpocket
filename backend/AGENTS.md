@@ -18,6 +18,10 @@ cd backend
 > `./gradlew bootRun`(앱 실행)에는 MySQL과 `.env`의 DB 접속 정보가 필요하다.
 > DB가 없어 실행이 실패하는 것은 정상이며, 코드 검증은 `compileJava`와 `test`로 한다.
 
+- API 작업은 성공 흐름뿐 아니라 인증 실패·입력 오류·도메인 오류 중 해당하는 흐름을 자동 테스트한다.
+- 자동 테스트가 필수 검증이다. Swagger UI는 실제 HTTP 요청·응답을 확인하는 수동 스모크 테스트로 추가 사용한다.
+- 팀 공용 Postman 컬렉션이나 자동화가 없다면 Swagger와 같은 요청을 Postman에서 의무적으로 반복하지 않는다.
+
 ---
 
 ## 2. Spring Boot 4.1.1 — 버전 주의 ⚠️ 가장 중요
@@ -114,6 +118,8 @@ com.greenpocket
 - 인증이 필요한 컨트롤러는 헤더를 직접 읽지 않고 `@CurrentUserId Long userId`로 현재 사용자 ID를 받는다.
 - `X-Demo-Key` 누락·빈 값·UUID v4 형식 오류·미등록 키는 모두 `401 UNAUTHENTICATED_DEMO_KEY`로 처리한다.
 - 인증 제외 경로는 `POST /api/v1/users`, `GET /api/v1/meta/**`, `POST /api/v1/demo/reset`이다. Swagger/OpenAPI 경로는 `/api/v1/**` 밖이라 인터셉터 대상이 아니다.
+- API를 구현하거나 응답 계약을 바꾸면 같은 작업에서 Swagger의 `@Tag`·`@Operation`·파라미터 설명·성공/오류 응답 코드를 함께 갱신한다.
+- Swagger 문서와 실제 DTO가 어긋나지 않도록 응답 스키마는 컨트롤러의 `ApiResponse<응답DTO>` 시그니처에서 생성되게 한다. 별도 수동 스키마를 중복 정의하지 않는다.
 
 > `global/` 아래 공통 클래스가 아직 없다면 **임의로 만들지 말고 사용자에게 확인한다.**
 > 여러 명이 각자 만들면 응답 포맷이 갈라져 프론트 연동이 깨진다.
