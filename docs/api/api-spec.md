@@ -59,7 +59,7 @@ X-Demo-Key: 9f2c1a7e-4b30-4c88-9a11-6d0e5b7c2f41
 |---|---|
 | 발급 | FE가 생성한 UUID v4. `POST /users` 로 서버에 등록되면 `app_user.demo_key`(UNIQUE)에 저장 |
 | 예외 | `POST /users`, `GET /meta/**`, `POST /demo/reset` 은 헤더 없이도 호출 가능 |
-| 미등록 키 | `401 UNAUTHENTICATED_DEMO_KEY` — FE는 온보딩(ONB-01)으로 보냄 |
+| 인증 실패 | 헤더 누락·빈 값·UUID v4 형식 오류·미등록 키를 모두 `401 UNAUTHENTICATED_DEMO_KEY` 로 처리 — FE는 온보딩(ONB-01)으로 보냄 |
 | 서버 동작 | 헤더 → `app_user.id` 해석. **요청 본문·경로에 `userId`를 받지 않습니다.** 데모에서 남의 데이터를 건드릴 경로 자체를 없앱니다 |
 | 로깅 | demo_key는 앞 8자만 로그. 계좌번호 원문은 어떤 로그에도 남기지 않습니다(COM-11 · 결정 A-6) |
 

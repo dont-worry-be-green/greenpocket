@@ -110,6 +110,10 @@ com.greenpocket
 - 모든 API 응답은 `global/response`의 공통 포맷으로 감싼다. **도메인마다 다른 응답 구조를 만들지 않는다.**
 - 예외는 `global/exception`의 전역 핸들러에서 처리한다. 컨트롤러에서 `try-catch`로 삼키지 않는다.
 - 요청 검증은 `jakarta.validation` 어노테이션 + `@Valid`로 처리한다.
+- 성공 응답은 `ApiResponse.success(data)`로 반환한다. 실패 응답을 컨트롤러에서 직접 조립하지 않는다.
+- 인증이 필요한 컨트롤러는 헤더를 직접 읽지 않고 `@CurrentUserId Long userId`로 현재 사용자 ID를 받는다.
+- `X-Demo-Key` 누락·빈 값·UUID v4 형식 오류·미등록 키는 모두 `401 UNAUTHENTICATED_DEMO_KEY`로 처리한다.
+- 인증 제외 경로는 `POST /api/v1/users`, `GET /api/v1/meta/**`, `POST /api/v1/demo/reset`이다. Swagger/OpenAPI 경로는 `/api/v1/**` 밖이라 인터셉터 대상이 아니다.
 
 > `global/` 아래 공통 클래스가 아직 없다면 **임의로 만들지 말고 사용자에게 확인한다.**
 > 여러 명이 각자 만들면 응답 포맷이 갈라져 프론트 연동이 깨진다.
