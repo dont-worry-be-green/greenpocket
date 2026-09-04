@@ -20,6 +20,7 @@ import com.greenpocket.diagnosis.entity.RegionLevel;
 import com.greenpocket.diagnosis.service.DiagnosisBaselineService;
 import com.greenpocket.global.auth.CurrentUserIdArgumentResolver;
 import com.greenpocket.global.auth.DemoKeyAuthenticationInterceptor;
+import com.greenpocket.global.exception.GlobalExceptionHandler;
 import com.greenpocket.global.type.UtilityType;
 
 class DiagnosisControllerTest {
@@ -34,6 +35,7 @@ class DiagnosisControllerTest {
 		diagnosisBaselineService = mock(DiagnosisBaselineService.class);
 		mockMvc = MockMvcBuilders.standaloneSetup(new DiagnosisController(diagnosisBaselineService))
 			.setCustomArgumentResolvers(new CurrentUserIdArgumentResolver())
+			.setControllerAdvice(new GlobalExceptionHandler())
 			.build();
 	}
 
@@ -71,5 +73,42 @@ class DiagnosisControllerTest {
 			.andExpect(jsonPath("$.data.baseMonth").value("2026-07"))
 			.andExpect(jsonPath("$.data.avgAmount").value(38_900))
 			.andExpect(jsonPath("$.error").doesNotExist());
+	}
+
+	@Test
+	void missingRequiredParameterReturnsInvalidRequest() throws Exception {
+		mockMvc.perform(get("/api/v1/diagnosis/baseline")
+				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID)
+				.param("month", "2026-08")
+				.param("utility", "ELECTRICITY"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.data").doesNotExist())
+			.andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"))
+			.andExpect(jsonPath("$.error.message").value("입력값을 다시 확인해 주세요."));
+	}
+
+	@Test
+	void invalidMonthFormatReturnsInvalidRequest() throws Exception {
+		mockMvc.perform(get("/api/v1/diagnosis/baseline")
+				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID)
+				.param("sigunguCode", "11620")
+				.param("month", "2026/08")
+				.param("utility", "ELECTRICITY"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+	}
+
+	@Test
+	void invalidUtilityReturnsInvalidRequest() throws Exception {
+		mockMvc.perform(get("/api/v1/diagnosis/baseline")
+				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID)
+				.param("sigunguCode", "11620")
+				.param("month", "2026-08")
+				.param("utility", "ELECTRIC"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
 	}
 }
