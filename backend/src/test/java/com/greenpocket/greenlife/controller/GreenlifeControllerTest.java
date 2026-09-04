@@ -19,8 +19,10 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import com.greenpocket.global.auth.CurrentUserIdArgumentResolver;
 import com.greenpocket.global.auth.DemoKeyAuthenticationInterceptor;
 import com.greenpocket.greenlife.dto.GreenlifeItemsResponse;
+import com.greenpocket.greenlife.dto.GreenlifeItemDetailResponse;
 import com.greenpocket.greenlife.dto.GreenlifeLinkResponse;
 import com.greenpocket.greenlife.dto.GreenlifeStatusResponse;
+import com.greenpocket.greenlife.entity.RewardStatus;
 import com.greenpocket.greenlife.service.GreenlifeService;
 
 class GreenlifeControllerTest {
@@ -100,5 +102,45 @@ class GreenlifeControllerTest {
 			.andExpect(jsonPath("$.data.items[0].itemCode").value("E_RECEIPT"))
 			.andExpect(jsonPath("$.data.totalCount").value(17))
 			.andExpect(jsonPath("$.data.collapsedAfter").value(6));
+	}
+
+	@Test
+	void returnsWrappedItemDetail() throws Exception {
+		when(greenlifeService.getItemDetail(USER_ID, 1L, "2026-08"))
+			.thenReturn(new GreenlifeItemDetailResponse(
+				1L,
+				"E_RECEIPT",
+				"전자영수증",
+				10L,
+				"건",
+				2026,
+				List.of("전자영수증을 설정해요", "전자영수증을 받아요", "실적을 확인해요"),
+				"2026-08",
+				new BigDecimal("24"),
+				240L,
+				null,
+				false,
+				List.of(new GreenlifeItemDetailResponse.History(
+					301L,
+					OffsetDateTime.parse("2026-08-28T13:20:00+09:00"),
+					BigDecimal.ONE,
+					10L,
+					RewardStatus.PENDING,
+					null
+				)),
+				"https://cpoint.or.kr/netzero/entGuide/nv_entGuideList.do",
+				OffsetDateTime.parse("2026-09-02T18:30:00+09:00"),
+				"실적 반영까지 최소 3일~익월 말이 걸릴 수 있어요"
+			));
+
+		mockMvc.perform(get("/api/v1/greenlife/items/1")
+				.param("month", "2026-08")
+				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.itemCode").value("E_RECEIPT"))
+			.andExpect(jsonPath("$.data.validCount").value(24))
+			.andExpect(jsonPath("$.data.pendingAmount").value(240))
+			.andExpect(jsonPath("$.data.practiceSteps.length()").value(3))
+			.andExpect(jsonPath("$.data.history[0].rewardStatus").value("PENDING"));
 	}
 }

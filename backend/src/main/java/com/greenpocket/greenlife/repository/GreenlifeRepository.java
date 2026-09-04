@@ -162,6 +162,79 @@ public class GreenlifeRepository {
 			.list();
 	}
 
+	public Optional<ItemDetailSnapshot> findItem(Long itemId, int standardYear) {
+		return jdbcClient.sql("""
+				SELECT id, item_code, name, unit_price, reward_unit, standard_year,
+				       JSON_UNQUOTE(JSON_EXTRACT(practice_steps, '$[0]')) AS practice_step_1,
+				       JSON_UNQUOTE(JSON_EXTRACT(practice_steps, '$[1]')) AS practice_step_2,
+				       JSON_UNQUOTE(JSON_EXTRACT(practice_steps, '$[2]')) AS practice_step_3,
+				       monthly_cap_amount, annual_cap_amount, external_url
+				FROM greenlife_item
+				WHERE id = :itemId AND standard_year = :standardYear AND is_active = 1
+				""")
+			.param("itemId", itemId)
+			.param("standardYear", standardYear)
+			.query((resultSet, rowNum) -> new ItemDetailSnapshot(
+				resultSet.getLong("id"),
+				resultSet.getString("item_code"),
+				resultSet.getString("name"),
+				resultSet.getLong("unit_price"),
+				resultSet.getString("reward_unit"),
+				resultSet.getInt("standard_year"),
+				List.of(
+					resultSet.getString("practice_step_1"),
+					resultSet.getString("practice_step_2"),
+					resultSet.getString("practice_step_3")
+				),
+				resultSet.getObject("monthly_cap_amount", Long.class),
+				resultSet.getObject("annual_cap_amount", Long.class),
+				resultSet.getString("external_url")
+			))
+			.optional();
+	}
+
+	public ItemActivitySummarySnapshot findItemActivitySummary(Long userId, Long itemId, LocalDate month) {
+		return jdbcClient.sql("""
+				SELECT COALESCE(SUM(CASE WHEN activity_month = :month THEN quantity ELSE 0 END), 0)
+				           AS valid_count,
+				       COALESCE(SUM(CASE WHEN activity_month = :month AND reward_status = 'PENDING'
+				                         THEN reward_amount ELSE 0 END), 0) AS pending_amount,
+				       MAX(synced_at) AS synced_at
+				FROM greenlife_activity
+				WHERE user_id = :userId AND item_id = :itemId
+				""")
+			.param("userId", userId)
+			.param("itemId", itemId)
+			.param("month", month)
+			.query((resultSet, rowNum) -> new ItemActivitySummarySnapshot(
+				resultSet.getBigDecimal("valid_count"),
+				resultSet.getLong("pending_amount"),
+				toLocalDateTime(resultSet.getTimestamp("synced_at"))
+			))
+			.single();
+	}
+
+	public List<ActivityHistorySnapshot> findRecentItemHistory(Long userId, Long itemId) {
+		return jdbcClient.sql("""
+				SELECT id, occurred_at, quantity, reward_amount, reward_status, paid_at
+				FROM greenlife_activity
+				WHERE user_id = :userId AND item_id = :itemId
+				ORDER BY occurred_at DESC, id DESC
+				LIMIT 10
+				""")
+			.param("userId", userId)
+			.param("itemId", itemId)
+			.query((resultSet, rowNum) -> new ActivityHistorySnapshot(
+				resultSet.getLong("id"),
+				toLocalDateTime(resultSet.getTimestamp("occurred_at")),
+				resultSet.getBigDecimal("quantity"),
+				resultSet.getLong("reward_amount"),
+				RewardStatus.valueOf(resultSet.getString("reward_status")),
+				toLocalDateTime(resultSet.getTimestamp("paid_at"))
+			))
+			.list();
+	}
+
 	public void markParticipating(Long userId, LocalDateTime linkedAt) {
 		jdbcClient.sql("""
 				UPDATE app_user
@@ -262,6 +335,37 @@ public class GreenlifeRepository {
 		Long monthlyCapAmount,
 		Long annualCapAmount,
 		long annualPaidAmount
+	) {
+	}
+
+	public record ItemDetailSnapshot(
+		Long id,
+		String itemCode,
+		String name,
+		long unitPrice,
+		String rewardUnit,
+		int standardYear,
+		List<String> practiceSteps,
+		Long monthlyCapAmount,
+		Long annualCapAmount,
+		String externalUrl
+	) {
+	}
+
+	public record ItemActivitySummarySnapshot(
+		BigDecimal validCount,
+		long pendingAmount,
+		LocalDateTime syncedAt
+	) {
+	}
+
+	public record ActivityHistorySnapshot(
+		Long activityId,
+		LocalDateTime occurredAt,
+		BigDecimal quantity,
+		long rewardAmount,
+		RewardStatus rewardStatus,
+		LocalDateTime paidAt
 	) {
 	}
 }

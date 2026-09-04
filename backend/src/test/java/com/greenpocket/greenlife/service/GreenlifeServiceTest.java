@@ -25,10 +25,16 @@ import org.junit.jupiter.api.Test;
 import com.greenpocket.global.exception.BusinessException;
 import com.greenpocket.global.exception.CommonErrorCode;
 import com.greenpocket.greenlife.dto.GreenlifeItemsResponse;
+import com.greenpocket.greenlife.dto.GreenlifeItemDetailResponse;
 import com.greenpocket.greenlife.dto.GreenlifeLinkResponse;
 import com.greenpocket.greenlife.dto.GreenlifeStatusResponse;
+import com.greenpocket.greenlife.entity.RewardStatus;
+import com.greenpocket.greenlife.exception.GreenlifeErrorCode;
 import com.greenpocket.greenlife.repository.GreenlifeRepository;
+import com.greenpocket.greenlife.repository.GreenlifeRepository.ActivityHistorySnapshot;
 import com.greenpocket.greenlife.repository.GreenlifeRepository.FeaturedItemSnapshot;
+import com.greenpocket.greenlife.repository.GreenlifeRepository.ItemActivitySummarySnapshot;
+import com.greenpocket.greenlife.repository.GreenlifeRepository.ItemDetailSnapshot;
 import com.greenpocket.greenlife.repository.GreenlifeRepository.ItemSnapshot;
 import com.greenpocket.greenlife.repository.GreenlifeRepository.MonthlyActivitySnapshot;
 import com.greenpocket.greenlife.repository.GreenlifeRepository.PaidMonthSnapshot;
@@ -172,6 +178,100 @@ class GreenlifeServiceTest {
 	}
 
 	@Test
+	void returnsItemDetailWithMonthlySummaryAndRecentHistory() {
+		when(greenlifeRepository.findUser(USER_ID)).thenReturn(Optional.of(new UserSnapshot(
+			true,
+			LocalDateTime.of(2026, 9, 2, 18, 30)
+		)));
+		when(greenlifeRepository.findItem(1L, 2026)).thenReturn(Optional.of(receiptItem(null)));
+		when(greenlifeRepository.findItemActivitySummary(USER_ID, 1L, LocalDate.of(2026, 8, 1)))
+			.thenReturn(new ItemActivitySummarySnapshot(
+				new BigDecimal("24.000"),
+				240L,
+				LocalDateTime.of(2026, 9, 2, 18, 30)
+			));
+		when(greenlifeRepository.findRecentItemHistory(USER_ID, 1L)).thenReturn(List.of(
+			new ActivityHistorySnapshot(
+				301L,
+				LocalDateTime.of(2026, 8, 28, 13, 20),
+				new BigDecimal("1.000"),
+				10L,
+				RewardStatus.PENDING,
+				null
+			),
+			new ActivityHistorySnapshot(
+				288L,
+				LocalDateTime.of(2026, 7, 30, 9, 5),
+				new BigDecimal("1.000"),
+				10L,
+				RewardStatus.PAID,
+				LocalDateTime.of(2026, 8, 10, 0, 0)
+			)
+		));
+
+		GreenlifeItemDetailResponse response = greenlifeService.getItemDetail(USER_ID, 1L, "2026-08");
+
+		assertThat(response.itemCode()).isEqualTo("E_RECEIPT");
+		assertThat(response.practiceSteps()).hasSize(3);
+		assertThat(response.month()).isEqualTo("2026-08");
+		assertThat(response.validCount()).isEqualByComparingTo("24");
+		assertThat(response.pendingAmount()).isEqualTo(240L);
+		assertThat(response.capReached()).isFalse();
+		assertThat(response.history()).hasSize(2);
+		assertThat(response.history().getFirst().rewardStatus()).isEqualTo(RewardStatus.PENDING);
+		assertThat(response.history().get(1).paidAt()).isEqualTo("2026-08-10T00:00+09:00");
+		assertThat(response.syncedAt()).isEqualTo("2026-09-02T18:30+09:00");
+	}
+
+	@Test
+	void appliesMonthlyCapToPendingAmount() {
+		when(greenlifeRepository.findUser(USER_ID)).thenReturn(Optional.of(new UserSnapshot(true, null)));
+		when(greenlifeRepository.findItem(1L, 2026)).thenReturn(Optional.of(receiptItem(200L)));
+		when(greenlifeRepository.findItemActivitySummary(USER_ID, 1L, LocalDate.of(2026, 8, 1)))
+			.thenReturn(new ItemActivitySummarySnapshot(new BigDecimal("24.000"), 240L, null));
+		when(greenlifeRepository.findRecentItemHistory(USER_ID, 1L)).thenReturn(List.of());
+
+		GreenlifeItemDetailResponse response = greenlifeService.getItemDetail(USER_ID, 1L, "2026-08");
+
+		assertThat(response.pendingAmount()).isEqualTo(200L);
+		assertThat(response.capReached()).isTrue();
+	}
+
+	@Test
+	void rejectsItemDetailWhenNotParticipating() {
+		when(greenlifeRepository.findUser(USER_ID)).thenReturn(Optional.of(new UserSnapshot(false, null)));
+
+		assertThatThrownBy(() -> greenlifeService.getItemDetail(USER_ID, 1L, "2026-08"))
+			.isInstanceOf(BusinessException.class)
+			.satisfies(error -> assertThat(((BusinessException)error).getErrorCode())
+				.isEqualTo(GreenlifeErrorCode.GREENLIFE_NOT_PARTICIPATING));
+	}
+
+	@Test
+	void rejectsUnknownItem() {
+		when(greenlifeRepository.findUser(USER_ID)).thenReturn(Optional.of(new UserSnapshot(true, null)));
+		when(greenlifeRepository.findItem(999L, 2026)).thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> greenlifeService.getItemDetail(USER_ID, 999L, "2026-08"))
+			.isInstanceOf(BusinessException.class)
+			.satisfies(error -> assertThat(((BusinessException)error).getErrorCode())
+				.isEqualTo(GreenlifeErrorCode.GREENLIFE_ITEM_NOT_FOUND));
+	}
+
+	@Test
+	void rejectsInvalidItemDetailMonth() {
+		when(greenlifeRepository.findUser(USER_ID)).thenReturn(Optional.of(new UserSnapshot(true, null)));
+
+		assertThatThrownBy(() -> greenlifeService.getItemDetail(USER_ID, 1L, "2026-8"))
+			.isInstanceOf(BusinessException.class)
+			.satisfies(error -> {
+				BusinessException businessException = (BusinessException)error;
+				assertThat(businessException.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_REQUEST);
+				assertThat(businessException.getField()).isEqualTo("month");
+			});
+	}
+
+	@Test
 	void rejectsMonthThatIsNotZeroPadded() {
 		when(greenlifeRepository.findUser(USER_ID)).thenReturn(Optional.of(new UserSnapshot(true, null)));
 
@@ -193,5 +293,20 @@ class GreenlifeServiceTest {
 			.isInstanceOf(BusinessException.class)
 			.satisfies(error -> assertThat(((BusinessException)error).getErrorCode())
 				.isEqualTo(CommonErrorCode.UNAUTHENTICATED_DEMO_KEY));
+	}
+
+	private ItemDetailSnapshot receiptItem(Long monthlyCapAmount) {
+		return new ItemDetailSnapshot(
+			1L,
+			"E_RECEIPT",
+			"전자영수증",
+			10L,
+			"건",
+			2026,
+			List.of("전자영수증을 설정해요", "전자영수증을 받아요", "실적을 확인해요"),
+			monthlyCapAmount,
+			null,
+			"https://cpoint.or.kr/netzero/entGuide/nv_entGuideList.do"
+		);
 	}
 }
