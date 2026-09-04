@@ -19,4 +19,12 @@ public class EcoCurrentRoundQueryService {
 	public Optional<Long> findCurrentRoundId(Long userId) {
 		return ecoRepository.findCurrentRound(userId).map(EcoRepository.EcoRoundSnapshot::id);
 	}
+
+	public Optional<CurrentRoundLink> findCurrentRoundLink(Long userId) {
+		return ecoRepository.findCurrentRound(userId)
+			.map(round -> new CurrentRoundLink(round.id(), round.goalSetAt() != null));
+	}
+
+	public record CurrentRoundLink(Long roundId, boolean goalSet) {
+	}
 }
