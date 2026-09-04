@@ -5,9 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.core.env.MapPropertySource;
 
 class AccountNumberCipherTest {
 
@@ -55,5 +58,22 @@ class AccountNumberCipherTest {
 		assertThatThrownBy(() -> accountNumberCipher.decrypt(encrypted))
 			.isInstanceOf(IllegalStateException.class)
 			.hasMessage("계좌번호 복호화에 실패했습니다.");
+	}
+
+	@Test
+	void springCreatesCipherBeanFromConfiguredKey() {
+		try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext()) {
+			context.getEnvironment().getPropertySources().addFirst(
+				new MapPropertySource(
+					"account-number-cipher-test",
+					Map.of("ACCOUNT_NUMBER_ENCRYPTION_KEY_BASE64", VALID_KEY)
+				)
+			);
+			context.register(AccountNumberCipher.class);
+			context.refresh();
+
+			AccountNumberCipher cipher = context.getBean(AccountNumberCipher.class);
+			assertThat(cipher.decrypt(cipher.encrypt(ACCOUNT_NUMBER))).isEqualTo(ACCOUNT_NUMBER);
+		}
 	}
 }
