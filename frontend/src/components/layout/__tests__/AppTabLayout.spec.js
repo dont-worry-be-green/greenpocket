@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
 
@@ -74,9 +74,13 @@ describe('AppTabLayout', () => {
 
   it('다른 탭을 누르면 그 탭의 경로로 이동한다', async () => {
     await wrapper.findAll('[role="tab"]')[3].trigger('click')
-    // router.push 는 비동기다. 지연 로딩된 컴포넌트까지 기다린다
-    await flushPromises()
-    expect(router.currentRoute.value.path).toBe('/pocket')
+    /*
+     * 탭 화면은 () => import(...) 로 지연 로딩된다. 클릭한 뒤에야 파일을 가지러 가므로
+     * 정해진 만큼만 기다리면 아직 이전 경로에 있다. flushPromises 로는 부족하다 —
+     * 파일을 가져오는 것은 밀려 있던 작업이 아니라 그때 새로 시작하는 일이라
+     * 여러 번 불러도 기다려지지 않는다. 도착할 때까지 다시 확인한다.
+     */
+    await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/pocket'))
   })
 
   it('현재 탭을 다시 눌러도 이동하지 않는다', async () => {

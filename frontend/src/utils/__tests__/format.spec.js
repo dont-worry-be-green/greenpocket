@@ -8,6 +8,9 @@ import {
   formatDifficulty,
   formatUsage,
   formatMonth,
+  formatPercent,
+  formatRoundPeriod,
+  formatUtilityType,
 } from '../format'
 
 describe('formatWon', () => {
@@ -85,6 +88,29 @@ describe('formatDifficulty', () => {
   })
 })
 
+describe('formatPercent', () => {
+  it('불필요한 0 은 떼고 유효 자릿수는 지킨다', () => {
+    expect(formatPercent(64.0)).toBe('64%')
+    expect(formatPercent(11.322)).toBe('11.322%')
+  })
+
+  it('값이 없으면 - 로 표시한다', () => {
+    expect(formatPercent(null)).toBe('-')
+  })
+})
+
+describe('formatUtilityType', () => {
+  it('요금 종류 enum 을 한국어로 바꾼다', () => {
+    expect(formatUtilityType('ELECTRICITY')).toBe('전기')
+    expect(formatUtilityType('GAS')).toBe('도시가스')
+    expect(formatUtilityType('WATER')).toBe('수도')
+  })
+
+  it('모르는 값은 - 로 떨어뜨린다', () => {
+    expect(formatUtilityType(undefined)).toBe('-')
+  })
+})
+
 describe('formatUsage', () => {
   it('displayPrecision 만큼만 소수를 보여준다', () => {
     expect(formatUsage(1340.0, 0, 'kWh')).toBe('1,340kWh')
@@ -95,5 +121,20 @@ describe('formatUsage', () => {
 describe('formatMonth', () => {
   it('YYYY-MM 을 한국어로 바꾼다', () => {
     expect(formatMonth('2026-08')).toBe('2026년 8월')
+  })
+})
+
+describe('formatRoundPeriod', () => {
+  it('같은 해면 뒤쪽 연도를 접는다 (B-1-07)', () => {
+    expect(formatRoundPeriod('2026-04', '2026-09')).toBe('2026-04 ~ 09')
+  })
+
+  it('해를 넘기면 연도를 그대로 둔다', () => {
+    expect(formatRoundPeriod('2025-10', '2026-03')).toBe('2025-10 ~ 2026-03')
+  })
+
+  it('값이 없으면 - 로 표시한다', () => {
+    expect(formatRoundPeriod(null, '2026-09')).toBe('-')
+    expect(formatRoundPeriod('2026-04', undefined)).toBe('-')
   })
 })
