@@ -25,12 +25,15 @@ import {
   getEcoStatus,
   getGoal,
   getGoalForm,
+  getMissionAdjust,
+  getMonthlyReport,
   getTodayMissions,
   linkEco,
   markResultViewed,
   previewGoal,
   saveMissionLog,
   updateGoal,
+  updateMissions,
 } from '@/api/eco'
 
 export const useEcoStore = defineStore('eco', () => {
@@ -45,6 +48,8 @@ export const useEcoStore = defineStore('eco', () => {
   const goal = ref(null)
   const goalSaveResult = ref(null)
   const todayMissions = ref(null)
+  const monthlyReport = ref(null)
+  const missionAdjust = ref(null)
   const resultModalDismissed = ref(false)
 
   const isLoading = ref(false)
@@ -58,6 +63,8 @@ export const useEcoStore = defineStore('eco', () => {
   const todayMissionsLoading = ref(false)
   const missionSaveLoading = ref(false)
   const applicationLoading = ref(false)
+  const missionAdjustSaveLoading = ref(false)
+  const missionAdjustSaveError = ref(null)
 
   /** 늦게 도착한 preview 응답을 버린다. 칩을 빨리 누르면 순서가 뒤집힌다 */
   let previewSequence = 0
@@ -263,6 +270,50 @@ export const useEcoStore = defineStore('eco', () => {
     }
   }
 
+  // ── 전달 리포트 · 실천 조정 (WF-07 · WF-08) ───────────────────────────
+
+  /**
+   * 그 달 고지서가 없으면 `result` 가 null 이고 `emptyReason` 만 온다. **에러가 아니다**(핵심 규칙 8).
+   * 그래서 여기서 실패로 돌리지 않고 응답을 그대로 담는다 — 판정은 화면이 `result` 로 한다.
+   */
+  async function fetchMonthlyReport(params = {}) {
+    const data = await run(() => getMonthlyReport(params))
+    if (data) monthlyReport.value = data
+    return data
+  }
+
+  /** ⚠️ 쿼리 키는 `utility` 다. 응답 필드 `utilityType` 과 이름이 다르다 */
+  async function fetchMissionAdjust(id, params = {}) {
+    const data = await run(() => getMissionAdjust(id, params))
+    if (data) missionAdjust.value = data
+    return data
+  }
+
+  /**
+   * 고른 미션을 갈아끼운다. **목표 구간은 그대로 둔다** — 미션만 바꾸는 API 다.
+   *
+   * `selectedMissionIds` 는 회차 **전량**이라, 화면에 보이는 요금 것만 보내면 다른 요금 선택이
+   * 사라진다. 합치는 것은 부르는 쪽 몫이다(WF-08 이 `goal.missions` 로 채운다).
+   *
+   * 저장하면 오늘의 실천 목록과 홈 요약이 함께 바뀌므로 둘 다 비워 다음 진입에서 다시 받게 한다.
+   */
+  async function saveSelectedMissions(id, selectedMissionIds) {
+    missionAdjustSaveLoading.value = true
+    missionAdjustSaveError.value = null
+    try {
+      const data = await updateMissions(id, { selectedMissionIds })
+      if (data?.todayMissionsUpdated) todayMissions.value = null
+      home.value = null
+      goal.value = null
+      return data
+    } catch (nextError) {
+      missionAdjustSaveError.value = nextError
+      return null
+    } finally {
+      missionAdjustSaveLoading.value = false
+    }
+  }
+
   // ── 결산 모달 (WF-09) ─────────────────────────────────────────────────
 
   /**
@@ -291,6 +342,8 @@ export const useEcoStore = defineStore('eco', () => {
     goal,
     goalSaveResult,
     todayMissions,
+    monthlyReport,
+    missionAdjust,
     resultModalDismissed,
     isLoading,
     error,
@@ -301,6 +354,8 @@ export const useEcoStore = defineStore('eco', () => {
     todayMissionsLoading,
     missionSaveLoading,
     applicationLoading,
+    missionAdjustSaveLoading,
+    missionAdjustSaveError,
     screen,
     roundId,
     goalSet,
@@ -318,6 +373,9 @@ export const useEcoStore = defineStore('eco', () => {
     fetchTodayMissions,
     saveTodayMissionLog,
     applyForRound,
+    fetchMonthlyReport,
+    fetchMissionAdjust,
+    saveSelectedMissions,
     dismissResultModal,
   }
 })

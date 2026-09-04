@@ -32,6 +32,12 @@ import {
   ECO_TODAY_MISSIONS,
 } from '@/fixtures/ecoHome'
 import { buildGoalPreview } from '@/fixtures/ecoPreview'
+import {
+  buildMissionAdjust,
+  buildMissionUpdate,
+  buildMonthlyReport,
+  ECO_MONTHLY_REPORT_EMPTY,
+} from '@/fixtures/ecoReport'
 
 import client from './client'
 
@@ -152,9 +158,7 @@ export function getCurrentRound() {
  * 화면이 쿼리로 데이터를 갈아끼우기 시작하면 연동 후 지울 곳이 뷰에 흩어진다.
  */
 export function getGoalForm(roundId) {
-  if (USE_FIXTURES) {
-    return fake(() => applySavedGoal(previewGoalForm(), demoState.savedGoal))
-  }
+  if (USE_FIXTURES) return fake(currentGoalForm)
   return client.get(`/eco/rounds/${roundId}/goal-form`)
 }
 
@@ -178,9 +182,14 @@ export function updateGoal(roundId, payload) {
   return client.put(`/eco/rounds/${roundId}/goal`, payload)
 }
 
-/** GET /eco/rounds/{roundId}/goal — 저장된 목표 (B-4-06) */
+/**
+ * GET /eco/rounds/{roundId}/goal — 저장된 목표 (B-4-06).
+ *
+ * WF-08 이 **다른 요금에서 고른 미션**을 여기서 읽는다. 실천 조정은 요금 한 종만 보여주는데
+ * `PUT /missions` 는 회차 전량을 받으므로, 화면에 없는 선택을 잃지 않으려면 근거가 필요하다.
+ */
 export function getGoal(roundId) {
-  if (USE_FIXTURES) return fake(ECO_GOAL)
+  if (USE_FIXTURES) return fake(() => savedGoalFixture(roundId))
   return client.get(`/eco/rounds/${roundId}/goal`)
 }
 
@@ -213,13 +222,29 @@ export function saveMissionLog(roundId, date, payload) {
  * ⚠️ **쿼리는 `utility`, 응답 필드는 `utilityType` 이다.** 같은 요청/응답에서 이름이 다르다.
  */
 export function getMissionAdjust(roundId, params = {}) {
-  // 배치 3(WF-08)
+  if (USE_FIXTURES) {
+    return fake(() => buildMissionAdjust(params.utility ?? 'ELECTRICITY', currentGoalForm()))
+  }
   return client.get(`/eco/rounds/${roundId}/mission-adjust`, { params })
 }
 
-/** PUT /eco/rounds/{roundId}/missions — 실천 미션 갱신 (B-4-09) */
+/**
+ * PUT /eco/rounds/{roundId}/missions — 실천 미션 갱신 (B-4-09).
+ *
+ * **목표 구간은 건드리지 않는다.** 미션만 교체한다 — 저장한 `targets` 를 그대로 두는 이유다.
+ *
+ * ⚠️ `selectedMissionIds` 는 **회차 전체의 선택 전량**이다(api-spec.md 10.5 예시에 전기·가스가
+ * 섞여 있다). WF-08 은 요금 한 종만 보여주므로, 부르는 쪽이 **다른 요금에서 고른 것을 합쳐서**
+ * 보내야 한다. 화면에 보이는 것만 보내면 수도·도시가스 선택이 조용히 사라진다.
+ */
 export function updateMissions(roundId, payload) {
-  // 배치 3(WF-08)
+  if (USE_FIXTURES) {
+    return fake(() => {
+      const ids = [...(payload?.selectedMissionIds ?? [])]
+      if (demoState.savedGoal) demoState.savedGoal.selectedMissionIds = ids
+      return { ...buildMissionUpdate(ids, previewGoalForm()), roundId }
+    }, 400)
+  }
   return client.put(`/eco/rounds/${roundId}/missions`, payload)
 }
 
@@ -254,9 +279,22 @@ export function getEcoHome() {
   return client.get('/eco/home')
 }
 
-/** GET /eco/monthly-report — 전달 리포트 (B-4-02 · B-4-07 · WF-07) */
+/**
+ * GET /eco/monthly-report — 전달 리포트 (B-4-02 · B-4-07 · WF-07).
+ *
+ * 고지서가 없는 달은 **404 가 아니라 200 + `result: null` + `emptyReason`** 이다(핵심 규칙 8).
+ * `?month=2026-08` 처럼 리포트가 있는 달(2026-07) 말고를 요청하면 그 상태를 볼 수 있다.
+ */
 export function getMonthlyReport(params = {}) {
-  // 배치 3(WF-07)
+  if (USE_FIXTURES) {
+    return fake(() => {
+      const report = buildMonthlyReport(currentGoalForm())
+      if (params.month && params.month !== report.reportMonth) {
+        return { ...ECO_MONTHLY_REPORT_EMPTY, reportMonth: params.month }
+      }
+      return report
+    })
+  }
   return client.get('/eco/monthly-report', { params })
 }
 
@@ -321,6 +359,12 @@ function previewGoalForm() {
     : ECO_GOAL_FORM
 }
 
+/**
+ * 저장한 목표까지 반영한 goal-form. 리포트·실천 조정이 **「지금 고른 것」**을 보려면 이쪽이다.
+ * `previewGoalForm()` 은 아직 아무것도 안 고른 원판이라 저장 결과가 빠진다.
+ */
+const currentGoalForm = () => applySavedGoal(previewGoalForm(), demoState.savedGoal)
+
 /** 저장한 목표를 goal-form 에 되돌려 넣는다 */
 function applySavedGoal(goalForm, savedGoal) {
   if (!savedGoal) return goalForm
@@ -337,6 +381,56 @@ function applySavedGoal(goalForm, savedGoal) {
         ...mission,
         selected: selectedIds.has(mission.missionId),
       })),
+    })),
+  }
+}
+
+/**
+ * GET /goal 응답을 지금 저장된 상태에서 만든다. 상수를 그대로 주면 WF-08 에서 미션을 바꿔도
+ * 옛 목록이 나와, 저장할 때 **바꾸기 전 선택**을 도로 보내게 된다.
+ */
+function savedGoalFixture(roundId) {
+  const goalForm = currentGoalForm()
+  const targets = goalForm.segments
+    .filter((segment) => segment.registered && segment.selectedTier)
+    .map((segment) => ({ utilityType: segment.utilityType, tier: segment.selectedTier }))
+  const catalog = new Map(
+    goalForm.segments.flatMap((segment) =>
+      (segment.missions ?? []).map((mission) => [mission.missionId, { mission, segment }]),
+    ),
+  )
+  const selectedMissionIds = [...catalog.values()]
+    .filter((entry) => entry.mission.selected)
+    .map((entry) => entry.mission.missionId)
+  const preview = buildGoalPreview({ targets, selectedMissionIds }, goalForm)
+  const tierByUtility = Object.fromEntries(
+    targets.map((target) => [target.utilityType, target.tier]),
+  )
+
+  return {
+    ...ECO_GOAL,
+    roundId,
+    goalSet: demoState.savedGoal !== null,
+    combinedTargetRate: preview.combined.combinedRate,
+    tier: preview.combined.tier,
+    expectedMileage: preview.combined.expectedMileage,
+    expectedSavingAmount: preview.combined.totalExpectedSaving,
+    utilities: preview.utilities.map((utility) => ({
+      utilityType: utility.utilityType,
+      targetTier: tierByUtility[utility.utilityType],
+      targetRate: utility.targetRate,
+      baselineUsage: utility.baselineUsage,
+      targetUsage: utility.targetUsage,
+      usageUnit: utility.usageUnit,
+      expectedSaving: utility.expectedSaving,
+    })),
+    missions: preview.missions.items.map((item) => ({
+      missionId: item.missionId,
+      title: catalog.get(item.missionId).mission.title,
+      utilityType: catalog.get(item.missionId).segment.utilityType,
+      computedRate: item.computedRate,
+      counted: item.counted,
+      exclusionReason: item.exclusionReason,
     })),
   }
 }
