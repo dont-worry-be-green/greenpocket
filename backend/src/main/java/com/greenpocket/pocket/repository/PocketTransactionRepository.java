@@ -20,6 +20,20 @@ public interface PocketTransactionRepository extends JpaRepository<PocketTransac
 
 	Optional<PocketTransaction> findByUserIdAndIdempotencyKey(Long userId, String idempotencyKey);
 
+	Optional<PocketTransaction> findByUserIdAndIdempotencyKeyAndTransactionType(
+		Long userId,
+		String idempotencyKey,
+		TransactionType transactionType
+	);
+
+	Optional<PocketTransaction> findByIdAndUserId(Long id, Long userId);
+
+	Optional<PocketTransaction> findByUserIdAndSourceTypeAndSourceKey(
+		Long userId,
+		TransactionSourceType sourceType,
+		String sourceKey
+	);
+
 	boolean existsByTransactionCode(String transactionCode);
 
 	boolean existsByUserId(Long userId);
