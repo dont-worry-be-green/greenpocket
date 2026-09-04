@@ -28,6 +28,8 @@ import com.greenpocket.eco.dto.EcoLinkProgressResponse;
 import com.greenpocket.eco.dto.EcoLinkStartResponse;
 import com.greenpocket.eco.dto.EcoMissionLogRequest;
 import com.greenpocket.eco.dto.EcoMissionLogResponse;
+import com.greenpocket.eco.dto.EcoMissionUpdateRequest;
+import com.greenpocket.eco.dto.EcoMissionUpdateResponse;
 import com.greenpocket.eco.dto.EcoHomeResponse;
 import com.greenpocket.eco.dto.EcoMonthlyReportResponse;
 import com.greenpocket.eco.dto.EcoResultResponse;
@@ -280,5 +282,21 @@ public class EcoController {
 		@RequestBody EcoMissionLogRequest request
 	) {
 		return ApiResponse.success(ecoMissionService.saveMissionLog(userId, roundId, date, request));
+	}
+
+	@Operation(summary = "선택 미션 갱신", description = "목표 구간은 유지하고 선택한 실천 미션만 다시 계산해 저장합니다.")
+	@ApiResponses({
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "선택 미션 갱신 성공"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "미션 ID 오류"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Demo Key 인증 실패"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "평가 회차 없음")
+	})
+	@PutMapping("/rounds/{roundId}/missions")
+	public ApiResponse<EcoMissionUpdateResponse> updateMissions(
+		@Parameter(hidden = true) @CurrentUserId Long userId,
+		@Parameter(description = "평가 회차 ID", example = "1") @PathVariable Long roundId,
+		@RequestBody EcoMissionUpdateRequest request
+	) {
+		return ApiResponse.success(ecoGoalService.updateMissions(userId, roundId, request));
 	}
 }
