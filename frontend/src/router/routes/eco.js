@@ -53,11 +53,22 @@ export default [
     path: '/whatif/report',
     name: 'wf-report',
     /*
-     * WF-07. 화면은 아직 없다 — WF-06 의 「자세히」가 갈 곳을 먼저 만들어 둔다.
-     * 라우트가 없으면 router.push 가 빈 화면으로 떨어져 무반응이 된다(COM-08).
-     * **실제 화면이 붙으면 component 한 줄만 바꾼다.**
+     * WF-07. `?month=` 는 선택이다 — 없으면 서버가 가장 최근에 채점 가능한 달을 고른다.
+     * 쿼리는 라우트에 선언하지 않는다(뷰가 route.query 로 읽는다).
      */
-    component: () => import('@/views/ComingSoonView.vue'),
+    component: () => import('@/views/eco/MonthlyReportView.vue'),
     meta: { tab: 'whatif', title: '전달 리포트' },
+  },
+  {
+    path: '/whatif/missions',
+    name: 'wf-mission-adjust',
+    /*
+     * WF-08. `?utility=ELECTRICITY&month=2026-07` 로 들어온다.
+     * ⚠️ **쿼리 키는 `utility`, 응답 필드는 `utilityType` 이다.** 이름이 다르다.
+     *
+     * roundId 를 경로에 두지 않는다 — 미션 교체는 **현재 회차**에만 가능하다.
+     */
+    component: () => import('@/views/eco/MissionAdjustView.vue'),
+    meta: { tab: 'whatif', title: '실천 다시 고르기' },
   },
 ]
