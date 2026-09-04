@@ -271,7 +271,7 @@ CREATE TABLE `withdrawal_account` (
 	`is_default`	TINYINT(1)	NOT NULL	DEFAULT 0	COMMENT '기본 계좌 여부 | 사용자당 1건만 허용',
 	`is_active`	TINYINT(1)	NOT NULL	DEFAULT 1	COMMENT '사용 여부 | 0 비활성, 1 사용 가능',
 	`verified_at`	DATETIME	NULL	COMMENT '본인확인 일시 | 계좌 본인확인 완료 시각, MVP에서는 NULL',
-	`default_slot`	BIGINT	GENERATED ALWAYS AS (IF(`is_default` = 1, `user_id`, NULL)) STORED	COMMENT '기본 계좌 슬롯 | 사용자당 기본 계좌 1건을 DB가 강제하기 위한 생성 컬럼',
+	`default_slot`	BIGINT	NULL	COMMENT '기본 계좌 슬롯 | 기본 계좌면 user_id, 아니면 NULL. 애플리케이션이 동기화하고 UNIQUE로 사용자당 1건을 강제',
 	`created_at`	TIMESTAMP	NOT NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '생성 일시 | 출금 계좌 등록 시각',
 	`updated_at`	TIMESTAMP	NOT NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '수정 일시 | 출금 계좌 최종 수정 시각',
 	PRIMARY KEY (`id`),
@@ -297,9 +297,10 @@ ALTER TABLE `pocket_transaction` ADD CONSTRAINT `fk_pt_round` FOREIGN KEY (`eco_
 ALTER TABLE `pocket_transaction` ADD CONSTRAINT `fk_pt_account` FOREIGN KEY (`withdrawal_account_id`) REFERENCES `withdrawal_account` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT;
 
 -- ── 참고 ─────────────────────────────────────────────────────
---  ON UPDATE 는 전부 RESTRICT 입니다. id 는 변하지 않으므로 무해하고,
---  withdrawal_account 는 STORED 생성 컬럼(default_slot)이 user_id 를 참조해
---  ON UPDATE CASCADE 를 쓰면 MySQL ERROR 1901 이 납니다.
+--  ON UPDATE 는 전부 RESTRICT 입니다. id 는 변하지 않으므로 무해합니다.
+--  withdrawal_account.default_slot 은 MySQL 8.4의 생성 컬럼 기반 FK CASCADE 제한을
+--  피하기 위한 일반 NULL 허용 컬럼입니다. 기본 계좌면 user_id, 아니면 NULL로
+--  애플리케이션이 동기화하고 UNIQUE가 사용자당 기본 계좌 1건을 강제합니다.
 --
 --  데모 초기화(COM-10) — 아래 한 줄이면 CASCADE 로 사용자 데이터가 전부 정리되고
 --  마스터(mission_catalog · greenlife_item · region_utility_snapshot)만 남습니다.

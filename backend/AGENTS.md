@@ -161,7 +161,7 @@ DB가 1차 방어선이고 애플리케이션은 **DB가 막았을 때 어떤 �
 | 마일리지 전환 | `UNIQUE(source_type, source_key)` — 회차당 1회 | `409 CONVERSION_ALREADY_DONE` |
 | 출금 | `UNIQUE(idempotency_key)` | **`200` + 기존 거래** (409 아님) |
 | 녹색생활 월 정산 | `yearMonth`가 키 | **`200` + `created: false`** |
-| 기본 출금 계좌 | `default_slot` 생성 컬럼 + UNIQUE | 이전 기본 계좌 해제 후 1건 유지 |
+| 기본 출금 계좌 | 앱이 `default_slot`을 기본 계좌면 `user_id`, 아니면 `NULL`로 동기화 + UNIQUE | 이전 기본 계좌 해제 후 1건 유지 |
 
 - **`Idempotency-Key` 재요청에 409를 주지 않는다.** 기존 거래를 `200`으로 돌려주는 것이 명세다(`api-spec.md` 1.6절).
 - **실패한 거래는 잔액을 바꾸지 않는다.** `FAILED`로 남기고 재시도해도 거래가 중복 생성되지 않아야 한다.
