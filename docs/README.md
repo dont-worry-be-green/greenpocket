@@ -34,8 +34,9 @@ AI 에이전트는 엑셀을 읽지 못하므로 `feature-spec/기능명세서.m
 
 > **`schema.sql` 이 스키마의 유일한 기준입니다.** ERD Cloud export는 PK 외 제약이 담기지 않아 고지서 중복·출금 중복·마일리지 전환 중복이 전부 통과합니다. 저장소에 두지 않으며, 다이어그램을 고칠 때만 ERD Cloud 쪽에서 씁니다.
 >
-> **DB에 실제로 적용되는 것은 Flyway 마이그레이션입니다** — `backend/src/main/resources/db/migration/`.
-> V1(`V1__init_schema.sql`)이 이 파일을 그대로 옮긴 것이며, **이미 적용된 마이그레이션은 수정하지 않습니다.**
+> **이 파일을 DB에 직접 실행하지 마세요.** 맨 앞에 `DROP TABLE` 13개가 있어 기존 데이터가 전부 사라집니다.
+> DB에 적용되는 것은 `backend/src/main/resources/db/migration/` 의 **Flyway 마이그레이션**이고, **이미 적용된 마이그레이션은 수정하지 않습니다.**
+> 컬럼을 바꿀 때는 이 파일과 새 마이그레이션을 함께 고칩니다.
 
 ---
 
