@@ -41,7 +41,7 @@ public class EcoApplicationService {
 			return toResponse(application);
 		}
 
-		LocalDateTime appliedAt = LocalDateTime.ofInstant(clock.instant(), KOREA_ZONE_ID);
+		LocalDateTime appliedAt = LocalDateTime.ofInstant(clock.instant(), KOREA_ZONE_ID).withNano(0);
 		if (ecoApplicationRepository.markApplied(userId, roundId, appliedAt)) {
 			return toResponse(new ApplicationSnapshot(roundId, ApplicationStatus.APPLIED, appliedAt));
 		}
