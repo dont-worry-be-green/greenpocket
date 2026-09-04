@@ -15,12 +15,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.greenpocket.eco.dto.EcoCurrentRoundResponse;
+import com.greenpocket.eco.dto.EcoRoundListResponse;
 import com.greenpocket.eco.entity.ApplicationStatus;
 import com.greenpocket.eco.entity.EcoLinkStatus;
 import com.greenpocket.eco.entity.RoundStatus;
 import com.greenpocket.eco.exception.EcoErrorCode;
 import com.greenpocket.eco.repository.EcoRepository;
 import com.greenpocket.eco.repository.EcoRepository.EcoRoundSnapshot;
+import com.greenpocket.eco.repository.EcoRepository.EcoRoundListSnapshot;
 import com.greenpocket.eco.repository.EcoRepository.EcoUserSnapshot;
 import com.greenpocket.eco.repository.EcoRepository.EcoUtilitySnapshot;
 import com.greenpocket.global.exception.BusinessException;
@@ -110,6 +112,48 @@ class EcoRoundServiceTest {
 			.containsOnlyNulls();
 		assertThat(response.baseline().items().get(1).registered()).isFalse();
 		assertThat(response.baseline().largestShareUtility()).isNull();
+	}
+
+	@Test
+	void returnsRoundHistoryInRepositoryOrder() {
+		when(ecoRepository.findRounds(USER_ID)).thenReturn(List.of(
+			new EcoRoundListSnapshot(
+				7L,
+				LocalDate.of(2026, 4, 1),
+				LocalDate.of(2026, 9, 1),
+				RoundStatus.IN_PROGRESS,
+				null,
+				0L
+			),
+			new EcoRoundListSnapshot(
+				6L,
+				LocalDate.of(2025, 10, 1),
+				LocalDate.of(2026, 3, 1),
+				RoundStatus.CONFIRMED,
+				new BigDecimal("12.499"),
+				30_000L
+			)
+		));
+
+		EcoRoundListResponse response = ecoRoundService.getRounds(USER_ID);
+
+		assertThat(response.content()).hasSize(2);
+		assertThat(response.content()).extracting(EcoRoundListResponse.Item::roundId)
+			.containsExactly(7L, 6L);
+		assertThat(response.content().getFirst().periodStart()).isEqualTo("2026-04");
+		assertThat(response.content().getFirst().finalRate()).isNull();
+		assertThat(response.content().get(1).periodEnd()).isEqualTo("2026-03");
+		assertThat(response.content().get(1).finalRate()).isEqualByComparingTo("12.499");
+		assertThat(response.content().get(1).confirmedMileage()).isEqualTo(30_000L);
+	}
+
+	@Test
+	void returnsEmptyRoundHistoryWithoutError() {
+		when(ecoRepository.findRounds(USER_ID)).thenReturn(List.of());
+
+		EcoRoundListResponse response = ecoRoundService.getRounds(USER_ID);
+
+		assertThat(response.content()).isEmpty();
 	}
 
 	private EcoUserSnapshot user(EcoLinkStatus status) {
