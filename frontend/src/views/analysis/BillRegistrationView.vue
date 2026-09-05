@@ -100,7 +100,9 @@ function completeManualEntry() {
         class="bg-primary-bg text-primary mb-6 flex size-20 items-center justify-center rounded-lg"
         aria-hidden="true"
       >
-        <IconScan :size="28" />
+        <span class="scan-icon">
+          <IconScan :size="28" />
+        </span>
       </span>
       <h2 class="text-section text-ink mt-0 mb-2">고지서 전체가 보이게 찍어주세요</h2>
     </section>
@@ -144,3 +146,29 @@ function completeManualEntry() {
     />
   </AppSubLayout>
 </template>
+
+<style scoped>
+.scan-icon {
+  display: inline-flex;
+  animation: scan-icon-zoom 1.4s ease-in-out infinite;
+}
+
+@keyframes scan-icon-zoom {
+  0%,
+  100% {
+    transform: scale(0.88);
+    opacity: 0.72;
+  }
+
+  50% {
+    transform: scale(1.14);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-icon {
+    animation: none;
+  }
+}
+</style>
