@@ -19,6 +19,17 @@ spring:
   flyway:
     enabled: true
 
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 11MB
+
+clova:
+  ocr:
+    invoke-url: ${CLOVA_OCR_INVOKE_URL:}
+    secret: ${CLOVA_OCR_SECRET:}
+    template-id: ${CLOVA_OCR_TEMPLATE_ID:}
+
 server:
   port: ${SERVER_PORT:8080}
 
