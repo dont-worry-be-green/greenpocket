@@ -58,8 +58,14 @@ function onFileSelected(event) {
   router.push({ path: '/analysis/bills/analyzing', query: { month: targetYearMonth.value } })
 }
 
-function completeManualEntry() {
-  router.push('/analysis/bills/confirm')
+async function completeManualEntry(draft) {
+  const savedBill = await store.submitBillDraft(draft)
+  if (!savedBill) return
+
+  router.push({
+    path: '/analysis',
+    query: { month: savedBill.recalculated.diagnosisMonth, preview: 'confirmed' },
+  })
 }
 </script>
 
@@ -147,6 +153,13 @@ function completeManualEntry() {
       :initial-draft="initialManualDraft"
       @complete="completeManualEntry"
     />
+    <p
+      v-if="inputMode === 'manual' && store.saveError"
+      class="text-caption text-negative mt-3 mb-0"
+      role="alert"
+    >
+      {{ store.saveError.message }}
+    </p>
   </AppSubLayout>
 </template>
 

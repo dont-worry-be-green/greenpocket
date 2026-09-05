@@ -176,7 +176,9 @@ function submit() {
     </p>
 
     <div class="bg-canvas fixed inset-x-0 bottom-0 z-10 mx-auto max-w-(--gp-viewport-w) px-(--gp-gutter) py-4">
-      <GpButton @click="submit">등록하기</GpButton>
+      <GpButton :disabled="store.isSaving" @click="submit">
+        {{ store.isSaving ? '저장 중...' : '등록하기' }}
+      </GpButton>
     </div>
   </div>
 </template>
