@@ -116,7 +116,9 @@ function goToRegistration() {
           {{ targetMonthOnlyLabel }} 생활요금 합계
         </p>
         <div class="relative flex items-center justify-between gap-3">
-          <strong class="text-amount block tabular-nums">{{ formatWon(diagnosis.summary.currentTotal) }}</strong>
+          <strong class="block text-[42px] leading-none font-bold tracking-tight tabular-nums">
+            {{ formatWon(diagnosis.summary.currentTotal) }}
+          </strong>
           <span
             v-if="diagnosis.summary.hasPreviousYear"
             class="rounded-full bg-white/12 px-3 py-2 text-label font-semibold whitespace-nowrap"
