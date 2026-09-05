@@ -42,7 +42,7 @@ const validationMessage = computed(() => {
 const canSubmit = computed(() => !validationMessage.value && !store.accountCreateLoading)
 
 function normalizeAccountNumber(event) {
-  accountNo.value = event.target.value.replace(/[^0-9-]/g, '')
+  accountNo.value = event.target.value.replace(/\D/g, '')
 }
 
 function selectBank(code) {
@@ -126,6 +126,7 @@ async function submit() {
           :value="accountNo"
           type="text"
           inputmode="numeric"
+          pattern="[0-9]*"
           autocomplete="off"
           placeholder="계좌번호를 입력해주세요"
           class="bg-surface text-body placeholder:text-disabled-text min-h-14 w-full rounded-lg border-0 px-4 outline-hidden"
