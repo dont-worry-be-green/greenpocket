@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 
 import {
   completeMileageConversion,
+  createWithdrawalAccount,
   getConvertibleMileage,
   getPocketBalance,
   getPocketHome,
@@ -29,6 +30,8 @@ export const usePocketStore = defineStore('pocket', () => {
   const accountsLoading = ref(false)
   const accountsLoaded = ref(false)
   const accountsError = ref(null)
+  const accountCreateLoading = ref(false)
+  const accountCreateError = ref(null)
   const withdrawalsLoading = ref(false)
   const withdrawalsError = ref(null)
   const withdrawalError = ref(null)
@@ -141,6 +144,25 @@ export const usePocketStore = defineStore('pocket', () => {
     }
   }
 
+  async function createAccount(payload) {
+    accountCreateLoading.value = true
+    accountCreateError.value = null
+    try {
+      const created = await createWithdrawalAccount(payload)
+      if (created.isDefault) {
+        accounts.value = accounts.value.map((account) => ({ ...account, isDefault: false }))
+      }
+      accounts.value = [...accounts.value, created]
+      accountsLoaded.value = true
+      return created
+    } catch (nextError) {
+      accountCreateError.value = nextError
+      return null
+    } finally {
+      accountCreateLoading.value = false
+    }
+  }
+
   async function fetchWithdrawals(page = 0, size = 20) {
     withdrawalsLoading.value = true
     withdrawalsError.value = null
@@ -191,6 +213,8 @@ export const usePocketStore = defineStore('pocket', () => {
     accountsLoading,
     accountsLoaded,
     accountsError,
+    accountCreateLoading,
+    accountCreateError,
     withdrawalsLoading,
     withdrawalsError,
     withdrawalError,
@@ -203,6 +227,7 @@ export const usePocketStore = defineStore('pocket', () => {
     fetchTransactions,
     fetchManagement,
     fetchWithdrawalAccounts,
+    createAccount,
     fetchWithdrawals,
     withdraw,
     startConversion,

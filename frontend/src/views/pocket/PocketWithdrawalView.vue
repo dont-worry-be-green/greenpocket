@@ -126,6 +126,7 @@ async function submit() {
         <button
           type="button"
           class="border-control-border text-body-strong mt-3 min-h-12 w-full rounded-full border bg-transparent"
+          @click="router.push({ path: '/pocket/accounts/new', query: { from: 'withdraw' } })"
         >
           출금 계좌 추가
         </button>

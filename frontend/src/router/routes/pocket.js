@@ -28,6 +28,11 @@ export default [
     component: () => import('@/views/pocket/PocketManagementView.vue'),
   },
   {
+    path: '/pocket/accounts/new',
+    name: 'pk-account-create',
+    component: () => import('@/views/pocket/PocketAccountCreateView.vue'),
+  },
+  {
     path: '/pocket/withdraw',
     name: 'pk-withdraw',
     component: () => import('@/views/pocket/PocketWithdrawalView.vue'),

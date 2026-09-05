@@ -24,6 +24,10 @@ export function getWithdrawalAccounts() {
   return client.get('/pocket/accounts')
 }
 
+export function createWithdrawalAccount(payload) {
+  return client.post('/pocket/accounts', payload)
+}
+
 export function getWithdrawals(params = {}) {
   return client.get('/pocket/withdrawals', { params })
 }

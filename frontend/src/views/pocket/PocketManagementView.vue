@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 import AppSubLayout from '@/components/layout/AppSubLayout.vue'
 import PocketState from '@/components/pocket/PocketState.vue'
@@ -9,6 +10,7 @@ import { usePocketStore } from '@/stores/pocket'
 import { formatWon } from '@/utils/format'
 
 const store = usePocketStore()
+const router = useRouter()
 const copyMessage = ref('')
 
 const management = computed(
@@ -83,6 +85,7 @@ async function copyAccount() {
             <button
               type="button"
               class="border-control-border text-body-strong min-h-12 w-full rounded-full border bg-transparent"
+              @click="router.push({ path: '/pocket/accounts/new', query: { from: 'management' } })"
             >
               + 출금 계좌 추가
             </button>
