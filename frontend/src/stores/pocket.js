@@ -12,6 +12,7 @@ import {
   getWithdrawalAccounts,
   getWithdrawals,
   requestWithdrawal,
+  setDefaultWithdrawalAccount,
   startMileageConversion,
 } from '@/api/pocket'
 import { newIdempotencyKey } from '@/api/client'
@@ -32,6 +33,8 @@ export const usePocketStore = defineStore('pocket', () => {
   const accountsError = ref(null)
   const accountCreateLoading = ref(false)
   const accountCreateError = ref(null)
+  const accountDefaultLoading = ref(false)
+  const accountDefaultError = ref(null)
   const withdrawalsLoading = ref(false)
   const withdrawalsError = ref(null)
   const withdrawalError = ref(null)
@@ -163,6 +166,25 @@ export const usePocketStore = defineStore('pocket', () => {
     }
   }
 
+  async function setDefaultAccount(accountId) {
+    accountDefaultLoading.value = true
+    accountDefaultError.value = null
+    try {
+      const result = await setDefaultWithdrawalAccount(accountId)
+      accounts.value = accounts.value.map((account) => ({
+        ...account,
+        isDefault: account.accountId === result.accountId,
+      }))
+      if (management.value) management.value = { ...management.value, accounts: accounts.value }
+      return result
+    } catch (nextError) {
+      accountDefaultError.value = nextError
+      return null
+    } finally {
+      accountDefaultLoading.value = false
+    }
+  }
+
   async function fetchWithdrawals(page = 0, size = 20) {
     withdrawalsLoading.value = true
     withdrawalsError.value = null
@@ -215,6 +237,8 @@ export const usePocketStore = defineStore('pocket', () => {
     accountsError,
     accountCreateLoading,
     accountCreateError,
+    accountDefaultLoading,
+    accountDefaultError,
     withdrawalsLoading,
     withdrawalsError,
     withdrawalError,
@@ -228,6 +252,7 @@ export const usePocketStore = defineStore('pocket', () => {
     fetchManagement,
     fetchWithdrawalAccounts,
     createAccount,
+    setDefaultAccount,
     fetchWithdrawals,
     withdraw,
     startConversion,

@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AppSubLayout from '@/components/layout/AppSubLayout.vue'
+import PocketAccountSelectModal from '@/components/pocket/PocketAccountSelectModal.vue'
 import PocketState from '@/components/pocket/PocketState.vue'
 import GpTag from '@/components/ui/GpTag.vue'
 import IconPocket from '@/components/ui/icons/IconPocket.vue'
@@ -12,6 +13,7 @@ import { formatWon } from '@/utils/format'
 const store = usePocketStore()
 const router = useRouter()
 const copyMessage = ref('')
+const isDefaultModalOpen = ref(false)
 
 const management = computed(
   () => store.management ?? { pocket: { accountNo: '', holder: '', balance: 0 }, accounts: [] },
@@ -27,6 +29,11 @@ async function copyAccount() {
     copyMessage.value = '복사하지 못했어요. 다시 시도해 주세요.'
   }
   window.setTimeout(() => (copyMessage.value = ''), 2000)
+}
+
+async function saveDefaultAccount(accountId) {
+  const result = await store.setDefaultAccount(accountId)
+  if (result) isDefaultModalOpen.value = false
 }
 </script>
 
@@ -60,7 +67,17 @@ async function copyAccount() {
         </section>
 
         <section>
-          <h2 class="text-body-strong text-muted mb-3">출금 계좌 관리</h2>
+          <div class="mb-3 flex min-h-11 items-center justify-between gap-3">
+            <h2 class="text-body-strong text-muted m-0">출금 계좌 관리</h2>
+            <button
+              type="button"
+              class="text-label text-primary min-h-11 border-0 bg-transparent px-1 disabled:text-disabled-text"
+              :disabled="!store.accounts.length"
+              @click="isDefaultModalOpen = true"
+            >
+              기본 계좌 변경
+            </button>
+          </div>
           <div class="space-y-3">
             <div
               v-for="account in store.accounts"
@@ -111,5 +128,16 @@ async function copyAccount() {
     >
       {{ copyMessage }}
     </div>
+
+    <PocketAccountSelectModal
+      :open="isDefaultModalOpen"
+      title="기본 계좌 변경"
+      :accounts="store.accounts"
+      :selected-id="store.defaultAccount?.accountId"
+      :saving="store.accountDefaultLoading"
+      :error="store.accountDefaultError"
+      @close="isDefaultModalOpen = false"
+      @save="saveDefaultAccount"
+    />
   </AppSubLayout>
 </template>
