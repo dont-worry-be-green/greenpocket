@@ -3,16 +3,18 @@ import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AppTabLayout from '@/components/layout/AppTabLayout.vue'
+import UtilityIcon from '@/components/eco/UtilityIcon.vue'
 import GpButton from '@/components/ui/GpButton.vue'
 import billIcon from '@/assets/icons/bill.svg'
 import { useAnalysisStore } from '@/stores/analysis'
-import { formatMonth, formatMonthOnly } from '@/utils/format'
+import { formatMonth, formatMonthOnly, formatUsage, formatUtilityType, formatWon, usagePrecision } from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
 const store = useAnalysisStore()
 
 const isEmptyPreview = computed(() => route.query.preview === 'empty')
+const isConfirmedPreview = computed(() => route.query.preview === 'confirmed')
 const diagnosis = computed(() =>
   isEmptyPreview.value
     ? { empty: true, targetYearMonth: '2026-08', screen: 'AN-01' }
@@ -26,7 +28,7 @@ const targetMonthLabel = computed(() => formatMonth(targetYearMonth.value))
 const targetMonthOnlyLabel = computed(() => formatMonthOnly(targetYearMonth.value))
 
 onMounted(() => {
-  if (!isEmptyPreview.value) store.fetchHome()
+  if (!isEmptyPreview.value && !isConfirmedPreview.value) store.fetchHome()
 })
 
 function goToRegistration() {
@@ -65,9 +67,26 @@ function goToRegistration() {
       <GpButton @click="goToRegistration">{{ targetMonthOnlyLabel }} 고지서 등록하기</GpButton>
     </section>
 
+    <section v-else-if="diagnosis?.summary" class="bg-primary rounded-xl p-5 text-white">
+      <p class="text-caption mt-0 mb-1 text-white/75">{{ targetMonthOnlyLabel }} 생활비 합계</p>
+      <strong class="text-amount block tabular-nums">{{ formatWon(diagnosis.summary.currentTotal) }}</strong>
+
+      <ul class="mt-5 mb-0 grid list-none grid-cols-3 gap-2 border-t border-white/25 pt-4 p-0">
+        <li v-for="item in diagnosis.summary.items" :key="item.utilityType" class="min-w-0">
+          <div class="mb-2 flex items-center gap-1.5">
+            <UtilityIcon :utility-type="item.utilityType" small />
+            <span class="text-caption text-white/80">{{ formatUtilityType(item.utilityType) }}</span>
+          </div>
+          <strong class="text-body-strong block tabular-nums">{{ formatWon(item.amount) }}</strong>
+          <span class="text-caption text-white/70 tabular-nums">
+            {{ formatUsage(item.usage, usagePrecision(item.usageUnit), item.usageUnit === 'm3' ? '㎥' : item.usageUnit) }}
+          </span>
+        </li>
+      </ul>
+    </section>
+
     <section v-else class="bg-surface rounded-lg px-5 py-8 text-center">
-      <p class="text-body-strong text-ink mt-0 mb-1">등록된 고지서를 확인했어요</p>
-      <p class="text-caption text-muted mt-0 mb-5">생활비 분석 결과를 불러오는 중이에요.</p>
+      <p class="text-body-strong text-ink mt-0 mb-1">생활비 분석 결과를 준비하고 있어요</p>
     </section>
   </AppTabLayout>
 </template>
