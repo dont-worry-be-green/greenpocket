@@ -10,6 +10,7 @@ import { useAnalysisStore } from '@/stores/analysis'
 const props = defineProps({
   billingMonth: { type: String, required: true },
   initialBillType: { type: String, default: 'MANAGEMENT' },
+  initialDraft: { type: Object, default: null },
 })
 const emit = defineEmits(['complete'])
 
@@ -26,12 +27,24 @@ const UTILITIES = [
 ]
 
 const store = useAnalysisStore()
-const selectedBillType = ref(props.initialBillType)
-const selectedMonth = ref(props.billingMonth)
+const initialItems = new Map(
+  (props.initialDraft?.items ?? []).map((item) => [item.utilityType, item]),
+)
+const selectedBillType = ref(props.initialDraft?.billType ?? props.initialBillType)
+const selectedMonth = ref(props.initialDraft?.billingMonth ?? props.billingMonth)
 const values = reactive({
-  ELECTRICITY: { amount: '', usage: '' },
-  WATER: { amount: '', usage: '' },
-  GAS: { amount: '', usage: '' },
+  ELECTRICITY: {
+    amount: String(initialItems.get('ELECTRICITY')?.amount ?? ''),
+    usage: String(initialItems.get('ELECTRICITY')?.usage ?? ''),
+  },
+  WATER: {
+    amount: String(initialItems.get('WATER')?.amount ?? ''),
+    usage: String(initialItems.get('WATER')?.usage ?? ''),
+  },
+  GAS: {
+    amount: String(initialItems.get('GAS')?.amount ?? ''),
+    usage: String(initialItems.get('GAS')?.usage ?? ''),
+  },
 })
 const submitted = ref(false)
 

@@ -52,8 +52,21 @@ const recognizedItems = [
 ]
 
 function editResult() {
-  store.saveBillDraft({ billingMonth: targetYearMonth.value, items: recognizedItems })
-  router.push({ path: '/analysis/bills/new', query: { month: targetYearMonth.value, mode: 'manual' } })
+  store.saveBillDraft({
+    billingMonth: targetYearMonth.value,
+    billType: 'MANAGEMENT',
+    inputSource: 'OCR',
+    items: recognizedItems.map((item) => ({
+      utilityType: item.type.toUpperCase(),
+      amount: item.amount,
+      usage: item.usage,
+      usageUnit: item.unit === '㎥' ? 'm3' : item.unit,
+    })),
+  })
+  router.push({
+    path: '/analysis/bills/new',
+    query: { month: targetYearMonth.value, mode: 'manual', prefill: 'recognition' },
+  })
 }
 </script>
 

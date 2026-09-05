@@ -26,6 +26,9 @@ const targetYearMonth = computed(
   () => route.query.month ?? store.targetMonth?.targetYearMonth ?? '2026-08',
 )
 const monthLabel = computed(() => formatMonthOnly(targetYearMonth.value))
+const initialManualDraft = computed(() =>
+  route.query.prefill === 'recognition' ? store.billDraft : null,
+)
 
 function openCamera() {
   cameraInput.value?.click()
@@ -141,6 +144,7 @@ function completeManualEntry() {
     <BillManualForm
       v-else
       :billing-month="targetYearMonth"
+      :initial-draft="initialManualDraft"
       @complete="completeManualEntry"
     />
   </AppSubLayout>
