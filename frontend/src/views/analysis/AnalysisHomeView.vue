@@ -1,17 +1,17 @@
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AppTabLayout from '@/components/layout/AppTabLayout.vue'
-import UtilityIcon from '@/components/eco/UtilityIcon.vue'
 import GpButton from '@/components/ui/GpButton.vue'
 import billIcon from '@/assets/icons/bill.svg'
 import { useAnalysisStore } from '@/stores/analysis'
-import { formatMonth, formatMonthOnly, formatUsage, formatUtilityType, formatWon, usagePrecision } from '@/utils/format'
+import { formatMonth, formatMonthOnly, formatSignedWon, formatUtilityType, formatWon } from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
 const store = useAnalysisStore()
+const selectedUtilityType = ref('ELECTRICITY')
 
 const isEmptyPreview = computed(() => route.query.preview === 'empty')
 const isConfirmedPreview = computed(() => route.query.preview === 'confirmed')
@@ -22,10 +22,45 @@ const diagnosis = computed(() =>
 )
 
 const targetYearMonth = computed(
-  () => store.targetMonth?.targetYearMonth ?? diagnosis.value?.targetYearMonth,
+  () => diagnosis.value?.yearMonth ?? store.targetMonth?.targetYearMonth ?? diagnosis.value?.targetYearMonth,
 )
 const targetMonthLabel = computed(() => formatMonth(targetYearMonth.value))
 const targetMonthOnlyLabel = computed(() => formatMonthOnly(targetYearMonth.value))
+const selectedRegionTab = computed(() =>
+  diagnosis.value?.regionComparison?.tabs?.find(
+    (tab) => tab.utilityType === selectedUtilityType.value,
+  ),
+)
+const lastYearChartMax = computed(() => {
+  const amounts = diagnosis.value?.lastYearComparison?.items?.flatMap((item) => [
+    item.lastYearAmount,
+    item.thisYearAmount,
+  ]) ?? [1]
+  return Math.max(...amounts, 1)
+})
+
+function barHeight(amount) {
+  return `${Math.max((amount / lastYearChartMax.value) * 100, 4)}%`
+}
+
+function linePoints(series, key) {
+  if (!series?.length) return ''
+  const values = series.flatMap((point) => [point.mine, point.regionAvg])
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const range = max - min || 1
+  return series
+    .map((point, index) => {
+      const x = 8 + (index * 84) / Math.max(series.length - 1, 1)
+      const y = 82 - ((point[key] - min) / range) * 62
+      return `${x},${y}`
+    })
+    .join(' ')
+}
+
+function utilityCostLabel(utilityType) {
+  return utilityType === 'GAS' ? '도시가스' : `${formatUtilityType(utilityType)}세`
+}
 
 onMounted(() => {
   if (!isEmptyPreview.value && !isConfirmedPreview.value) store.fetchHome()
@@ -38,7 +73,20 @@ function goToRegistration() {
 
 <template>
   <AppTabLayout tab="analysis" title="진단">
-    <p class="text-section text-ink mt-8 mb-2">{{ targetMonthLabel }}</p>
+    <div v-if="diagnosis?.summary" class="mt-7 mb-4 flex items-end justify-between gap-3">
+      <div>
+        <p class="text-caption text-muted mt-0 mb-2">{{ diagnosis.profileSummary }}</p>
+        <h1 class="text-title text-ink m-0">생활비 분석</h1>
+      </div>
+      <select
+        class="border-control-border bg-surface text-ink min-h-11 rounded-md border px-3 text-label font-semibold"
+        :value="targetYearMonth"
+        aria-label="분석 월"
+      >
+        <option :value="targetYearMonth">{{ targetMonthOnlyLabel }}</option>
+      </select>
+    </div>
+    <p v-else class="text-section text-ink mt-8 mb-2">{{ targetMonthLabel }}</p>
 
     <div v-if="store.isLoading && !isEmptyPreview" class="bg-surface h-72 animate-pulse rounded-lg" />
 
@@ -67,23 +115,129 @@ function goToRegistration() {
       <GpButton @click="goToRegistration">{{ targetMonthOnlyLabel }} 고지서 등록하기</GpButton>
     </section>
 
-    <section v-else-if="diagnosis?.summary" class="bg-primary rounded-xl p-5 text-white">
-      <p class="text-caption mt-0 mb-1 text-white/75">{{ targetMonthOnlyLabel }} 생활비 합계</p>
-      <strong class="text-amount block tabular-nums">{{ formatWon(diagnosis.summary.currentTotal) }}</strong>
-
-      <ul class="mt-5 mb-0 grid list-none grid-cols-3 gap-2 border-t border-white/25 pt-4 p-0">
-        <li v-for="item in diagnosis.summary.items" :key="item.utilityType" class="min-w-0">
-          <div class="mb-2 flex items-center gap-1.5">
-            <UtilityIcon :utility-type="item.utilityType" small />
-            <span class="text-caption text-white/80">{{ formatUtilityType(item.utilityType) }}</span>
-          </div>
-          <strong class="text-body-strong block tabular-nums">{{ formatWon(item.amount) }}</strong>
-          <span class="text-caption text-white/70 tabular-nums">
-            {{ formatUsage(item.usage, usagePrecision(item.usageUnit), item.usageUnit === 'm3' ? '㎥' : item.usageUnit) }}
+    <template v-else-if="diagnosis?.summary">
+      <section class="analysis-summary bg-primary relative overflow-hidden rounded-xl p-5 text-white">
+        <span class="absolute -top-14 -right-10 size-40 rounded-full bg-white/5" aria-hidden="true" />
+        <p class="text-body-strong relative mt-0 mb-3 text-white/85">
+          {{ targetMonthOnlyLabel }} 생활요금 합계
+        </p>
+        <div class="relative flex items-center justify-between gap-3">
+          <strong class="text-amount block tabular-nums">{{ formatWon(diagnosis.summary.currentTotal) }}</strong>
+          <span
+            v-if="diagnosis.summary.hasPreviousYear"
+            class="rounded-full bg-white/12 px-3 py-2 text-label font-semibold"
+          >
+            작년보다 {{ formatSignedWon(diagnosis.summary.diffLastYearTotal) }}
           </span>
-        </li>
-      </ul>
-    </section>
+        </div>
+
+        <ul class="relative mt-5 mb-0 grid list-none grid-cols-3 gap-2 p-0">
+          <li
+            v-for="item in diagnosis.summary.items"
+            :key="item.utilityType"
+            class="min-w-0 rounded-md bg-white/8 px-3 py-4"
+          >
+            <span class="text-caption block text-white/70">{{ utilityCostLabel(item.utilityType) }}</span>
+            <strong class="text-body-strong mt-2 block tabular-nums">{{ formatWon(item.amount) }}</strong>
+          </li>
+        </ul>
+      </section>
+
+      <section v-if="diagnosis.lastYearComparison?.available" class="bg-surface mt-4 rounded-xl p-5">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h2 class="text-section text-ink mt-0 mb-1">작년 동월과 비교</h2>
+            <p class="text-caption text-muted m-0">작년과 올해 청구 금액</p>
+          </div>
+          <span class="bg-primary-bg text-primary rounded-full px-3 py-2 text-label font-semibold">
+            총 {{ formatSignedWon(diagnosis.lastYearComparison.totalDiff) }}
+          </span>
+        </div>
+
+        <div class="text-caption text-muted mt-6 flex justify-end gap-4">
+          <span class="flex items-center gap-1"><i class="bg-control-off size-2 rounded-xs" />작년</span>
+          <span class="flex items-center gap-1"><i class="bg-primary size-2 rounded-xs" />올해</span>
+        </div>
+        <div class="mt-3 grid h-40 grid-cols-3 gap-4 border-b border-divider px-2">
+          <div
+            v-for="item in diagnosis.lastYearComparison.items"
+            :key="item.utilityType"
+            class="flex min-w-0 flex-col justify-end"
+          >
+            <div class="flex h-28 items-end justify-center gap-1.5">
+              <div class="bg-control-off relative w-7 rounded-t-sm" :style="{ height: barHeight(item.lastYearAmount) }">
+                <span class="text-caption-sm text-muted absolute -top-5 left-1/2 -translate-x-1/2 tabular-nums">
+                  {{ item.lastYearAmount.toLocaleString('ko-KR') }}
+                </span>
+              </div>
+              <div class="bg-primary relative w-7 rounded-t-sm" :style="{ height: barHeight(item.thisYearAmount) }">
+                <span class="text-caption-sm text-muted absolute -top-5 left-1/2 -translate-x-1/2 tabular-nums">
+                  {{ item.thisYearAmount.toLocaleString('ko-KR') }}
+                </span>
+              </div>
+            </div>
+            <span class="text-caption text-muted py-2 text-center">{{ utilityCostLabel(item.utilityType) }}</span>
+          </div>
+        </div>
+      </section>
+
+      <section v-if="diagnosis.regionComparison" class="bg-surface mt-4 rounded-xl p-5">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h2 class="text-section text-ink mt-0 mb-1">같은 지역 가구 평균</h2>
+            <p class="text-caption text-muted m-0">최근 6개월 우리 집과 지역 평균 추이</p>
+          </div>
+          <span class="bg-primary-bg text-primary rounded-full px-3 py-2 text-label font-semibold">
+            {{ diagnosis.regionComparison.regionLabel }}
+          </span>
+        </div>
+
+        <div class="bg-canvas mt-5 grid grid-cols-3 rounded-md p-1">
+          <button
+            v-for="tab in diagnosis.regionComparison.tabs"
+            :key="tab.utilityType"
+            type="button"
+            class="min-h-10 rounded-sm border-0 text-label"
+            :class="selectedUtilityType === tab.utilityType ? 'bg-primary text-white' : 'text-muted bg-transparent'"
+            @click="selectedUtilityType = tab.utilityType"
+          >
+            {{ utilityCostLabel(tab.utilityType) }}
+          </button>
+        </div>
+
+        <template v-if="selectedRegionTab?.available">
+          <div class="mt-4 flex items-end justify-between gap-3">
+            <strong class="text-title text-ink tabular-nums">{{ formatWon(selectedRegionTab.myAmount) }}</strong>
+            <strong class="text-body-strong text-negative">
+              지역 평균보다 {{ formatSignedWon(selectedRegionTab.diffRegion) }}
+            </strong>
+          </div>
+          <div class="text-caption text-muted mt-5 flex justify-end gap-4">
+            <span class="flex items-center gap-1"><i class="bg-primary size-2 rounded-full" />우리 집</span>
+            <span class="flex items-center gap-1"><i class="bg-control-off size-2 rounded-full" />지역 평균</span>
+          </div>
+          <svg class="mt-2 h-40 w-full" viewBox="0 0 100 100" role="img" aria-label="최근 6개월 지역 평균 비교 그래프">
+            <line v-for="y in [20, 50, 80]" :key="y" x1="6" :y1="y" x2="94" :y2="y" class="stroke-divider" stroke-width="0.5" />
+            <polyline :points="linePoints(selectedRegionTab.series, 'regionAvg')" fill="none" class="stroke-control-off" stroke-width="2" />
+            <polyline :points="linePoints(selectedRegionTab.series, 'mine')" fill="none" class="stroke-primary" stroke-width="2" />
+            <circle
+              v-for="(point, index) in selectedRegionTab.series"
+              :key="point.yearMonth"
+              :cx="8 + (index * 84) / Math.max(selectedRegionTab.series.length - 1, 1)"
+              :cy="linePoints(selectedRegionTab.series, 'mine').split(' ')[index].split(',')[1]"
+              r="2"
+              class="fill-primary"
+            />
+          </svg>
+          <div class="text-caption-sm text-muted -mt-2 flex justify-between px-2">
+            <span v-for="point in selectedRegionTab.series" :key="point.yearMonth">
+              {{ Number(point.yearMonth.split('-')[1]) }}월
+            </span>
+          </div>
+        </template>
+        <p v-else class="text-body-sm text-muted my-10 text-center">지역 비교 데이터를 준비하고 있어요.</p>
+      </section>
+    </template>
 
     <section v-else class="bg-surface rounded-lg px-5 py-8 text-center">
       <p class="text-body-strong text-ink mt-0 mb-1">생활비 분석 결과를 준비하고 있어요</p>
