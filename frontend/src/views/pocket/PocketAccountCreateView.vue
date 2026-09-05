@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AppSubLayout from '@/components/layout/AppSubLayout.vue'
@@ -22,6 +22,8 @@ const router = useRouter()
 const store = usePocketStore()
 
 const bankCode = ref(BANKS[0].code)
+const bankPicker = ref(null)
+const isBankPickerOpen = ref(false)
 const accountNo = ref('')
 const holder = ref('')
 const isDefault = ref(false)
@@ -42,6 +44,29 @@ function normalizeAccountNumber(event) {
   accountNo.value = event.target.value.replace(/[^0-9-]/g, '')
 }
 
+function selectBank(code) {
+  bankCode.value = code
+  isBankPickerOpen.value = false
+}
+
+function closeBankPicker(event) {
+  if (!bankPicker.value?.contains(event.target)) isBankPickerOpen.value = false
+}
+
+function closeBankPickerWithEscape(event) {
+  if (event.key === 'Escape') isBankPickerOpen.value = false
+}
+
+onMounted(() => {
+  document.addEventListener('click', closeBankPicker)
+  document.addEventListener('keydown', closeBankPickerWithEscape)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closeBankPicker)
+  document.removeEventListener('keydown', closeBankPickerWithEscape)
+})
+
 async function submit() {
   touched.value = true
   if (!canSubmit.value) return
@@ -61,23 +86,37 @@ async function submit() {
 <template>
   <AppSubLayout title="출금 계좌 등록" :back="returnPath" has-footer>
     <form class="space-y-5 pt-5" @submit.prevent="submit">
-      <label class="block">
+      <div ref="bankPicker" class="relative block">
         <span class="text-body-strong text-muted mb-3 block">은행</span>
-        <span class="bg-surface relative flex min-h-14 items-center rounded-lg px-4">
-          <select
-            v-model="bankCode"
-            class="text-body w-full appearance-none border-0 bg-transparent pr-8 outline-hidden"
-            aria-label="은행 선택"
+        <button
+          type="button"
+          class="bg-surface text-body flex min-h-14 w-full items-center rounded-lg border-0 px-4 text-left"
+          aria-haspopup="listbox"
+          :aria-expanded="isBankPickerOpen"
+          @click="isBankPickerOpen = !isBankPickerOpen"
+        >
+          {{ selectedBank.name }}
+        </button>
+        <div
+          v-if="isBankPickerOpen"
+          class="bg-surface shadow-card absolute inset-x-0 top-full z-20 mt-2 max-h-64 overflow-y-auto rounded-lg p-1"
+          role="listbox"
+          aria-label="은행 선택"
+        >
+          <button
+            v-for="bank in BANKS"
+            :key="bank.code"
+            type="button"
+            role="option"
+            :aria-selected="bank.code === bankCode"
+            class="text-body hover:bg-primary-bg flex min-h-12 w-full items-center rounded-md border-0 bg-transparent px-3 text-left"
+            :class="bank.code === bankCode ? 'text-primary font-semibold' : 'text-ink'"
+            @click="selectBank(bank.code)"
           >
-            <option v-for="bank in BANKS" :key="bank.code" :value="bank.code">
-              {{ bank.name }}
-            </option>
-          </select>
-          <span class="text-icon-off pointer-events-none absolute right-4" aria-hidden="true"
-            >›</span
-          >
-        </span>
-      </label>
+            {{ bank.name }}
+          </button>
+        </div>
+      </div>
 
       <label class="block">
         <span class="text-body-strong text-muted mb-3 block">계좌번호</span>
