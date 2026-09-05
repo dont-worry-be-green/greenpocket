@@ -97,11 +97,7 @@ async function submit() {
           @click="isBankPickerOpen = !isBankPickerOpen"
         >
           <span class="flex-1">{{ selectedBank.name }}</span>
-          <IconChevronRight
-            :size="18"
-            class="text-icon-off transition-transform"
-            :class="isBankPickerOpen ? '-rotate-90' : 'rotate-90'"
-          />
+          <IconChevronRight :size="18" class="text-icon-off rotate-90" />
         </button>
         <div
           v-if="isBankPickerOpen"
