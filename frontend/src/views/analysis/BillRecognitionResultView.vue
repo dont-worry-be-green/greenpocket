@@ -21,8 +21,8 @@ const targetYearMonth = computed(
 
 const recognizedItems = [
   { type: 'electricity', label: '전기', amount: 43200, icon: IconLightning, color: 'text-primary' },
-  { type: 'water', label: '수도', amount: 8900, icon: IconDrop, color: 'text-[#448bc9]' },
-  { type: 'gas', label: '도시가스', amount: 12400, icon: IconFlame, color: 'text-[#ee8a20]' },
+  { type: 'water', label: '수도', amount: 8900, icon: IconDrop, color: 'text-water' },
+  { type: 'gas', label: '도시가스', amount: 12400, icon: IconFlame, color: 'text-gas' },
 ]
 
 function editResult() {
