@@ -2,17 +2,23 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import {
+  completeMileageConversion,
+  getConvertibleMileage,
+  getPocketBalance,
   getPocketHome,
   getPocketManagement,
   getPocketTransactions,
   getWithdrawalAccounts,
   getWithdrawals,
   requestWithdrawal,
+  startMileageConversion,
 } from '@/api/pocket'
 import { newIdempotencyKey } from '@/api/client'
 
 export const usePocketStore = defineStore('pocket', () => {
   const home = ref(null)
+  const balance = ref(null)
+  const convertibleMileage = ref(null)
   const transactions = ref(null)
   const management = ref(null)
   const accounts = ref([])
@@ -27,6 +33,9 @@ export const usePocketStore = defineStore('pocket', () => {
   const withdrawalsError = ref(null)
   const withdrawalError = ref(null)
   const withdrawalKey = ref(null)
+  const conversionError = ref(null)
+  const conversionLoading = ref(false)
+  const pendingConversion = ref(null)
 
   const defaultAccount = computed(
     () => accounts.value.find((account) => account.isDefault) ?? accounts.value[0] ?? null,
@@ -48,11 +57,27 @@ export const usePocketStore = defineStore('pocket', () => {
   async function fetchHome() {
     const data = await run(getPocketHome)
     if (data) home.value = data
+    return data
   }
 
-  async function fetchTransactions() {
-    const data = await run(() => getPocketTransactions({ direction: 'CREDIT', page: 0, size: 20 }))
+  async function fetchBalance() {
+    const data = await run(getPocketBalance)
+    if (data) balance.value = data
+    return data
+  }
+
+  async function fetchConvertibleMileage() {
+    const data = await run(getConvertibleMileage)
+    if (data) convertibleMileage.value = data
+    return data
+  }
+
+  async function fetchTransactions(direction = null) {
+    const params = { page: 0, size: 20 }
+    if (direction) params.direction = direction
+    const data = await run(() => getPocketTransactions(params))
     if (data) transactions.value = data
+    return data
   }
 
   async function fetchManagement() {
@@ -60,6 +85,43 @@ export const usePocketStore = defineStore('pocket', () => {
     if (data) {
       management.value = data
       accounts.value = data.accounts ?? []
+      accountsLoaded.value = true
+    }
+    return data
+  }
+
+  async function startConversion(roundId) {
+    conversionLoading.value = true
+    conversionError.value = null
+    try {
+      const started = await startMileageConversion({ roundId, agreed: true })
+      pendingConversion.value = started
+      return started
+    } catch (nextError) {
+      conversionError.value = nextError
+      return null
+    } finally {
+      conversionLoading.value = false
+    }
+  }
+
+  async function completeConversion() {
+    if (!pendingConversion.value) return null
+    conversionLoading.value = true
+    conversionError.value = null
+    try {
+      const result = await completeMileageConversion(
+        pendingConversion.value.conversionId,
+        newIdempotencyKey(),
+      )
+      pendingConversion.value = null
+      await fetchHome()
+      return result
+    } catch (nextError) {
+      conversionError.value = nextError
+      return null
+    } finally {
+      conversionLoading.value = false
     }
   }
 
@@ -116,6 +178,8 @@ export const usePocketStore = defineStore('pocket', () => {
 
   return {
     home,
+    balance,
+    convertibleMileage,
     transactions,
     management,
     accounts,
@@ -130,11 +194,18 @@ export const usePocketStore = defineStore('pocket', () => {
     withdrawalsLoading,
     withdrawalsError,
     withdrawalError,
+    conversionError,
+    conversionLoading,
+    pendingConversion,
     fetchHome,
+    fetchBalance,
+    fetchConvertibleMileage,
     fetchTransactions,
     fetchManagement,
     fetchWithdrawalAccounts,
     fetchWithdrawals,
     withdraw,
+    startConversion,
+    completeConversion,
   }
 })

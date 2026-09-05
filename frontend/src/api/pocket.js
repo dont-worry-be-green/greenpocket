@@ -4,6 +4,14 @@ export function getPocketHome() {
   return client.get('/pocket')
 }
 
+export function getPocketBalance() {
+  return client.get('/pocket/balance')
+}
+
+export function getConvertibleMileage() {
+  return client.get('/pocket/convertible-mileage')
+}
+
 export function getPocketTransactions(params = {}) {
   return client.get('/pocket/transactions', { params })
 }
@@ -22,6 +30,16 @@ export function getWithdrawals(params = {}) {
 
 export function requestWithdrawal(payload, idempotencyKey) {
   return client.post('/pocket/withdrawals', payload, {
+    headers: { 'Idempotency-Key': idempotencyKey },
+  })
+}
+
+export function startMileageConversion(payload) {
+  return client.post('/pocket/conversions', payload)
+}
+
+export function completeMileageConversion(conversionId, idempotencyKey) {
+  return client.post(`/pocket/conversions/${conversionId}/complete`, null, {
     headers: { 'Idempotency-Key': idempotencyKey },
   })
 }
