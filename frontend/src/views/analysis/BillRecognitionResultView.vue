@@ -59,10 +59,15 @@ function editResult() {
   })
 }
 
-function confirmResult() {
+async function confirmResult() {
   saveRecognizedDraft()
-  store.confirmBillDraft()
-  router.push({ path: '/analysis', query: { preview: 'confirmed' } })
+  const savedBill = await store.submitBillDraft()
+  if (!savedBill) return
+
+  router.push({
+    path: '/analysis',
+    query: { month: savedBill.recalculated.diagnosisMonth, preview: 'confirmed' },
+  })
 }
 
 function saveRecognizedDraft() {
@@ -121,7 +126,12 @@ function saveRecognizedDraft() {
       >
         수정하기
       </button>
-      <GpButton @click="confirmResult">확정하기</GpButton>
+      <GpButton :disabled="store.isSaving" @click="confirmResult">
+        {{ store.isSaving ? '저장 중...' : '확정하기' }}
+      </GpButton>
     </div>
+    <p v-if="store.saveError" class="text-caption text-negative mt-3 mb-0" role="alert">
+      {{ store.saveError.message }}
+    </p>
   </AppSubLayout>
 </template>
