@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import AppSubLayout from '@/components/layout/AppSubLayout.vue'
 import GpButton from '@/components/ui/GpButton.vue'
+import IconChevronRight from '@/components/ui/icons/IconChevronRight.vue'
 import { usePocketStore } from '@/stores/pocket'
 
 const BANKS = [
@@ -95,7 +96,12 @@ async function submit() {
           :aria-expanded="isBankPickerOpen"
           @click="isBankPickerOpen = !isBankPickerOpen"
         >
-          {{ selectedBank.name }}
+          <span class="flex-1">{{ selectedBank.name }}</span>
+          <IconChevronRight
+            :size="18"
+            class="text-icon-off transition-transform"
+            :class="isBankPickerOpen ? '-rotate-90' : 'rotate-90'"
+          />
         </button>
         <div
           v-if="isBankPickerOpen"
