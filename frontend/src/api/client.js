@@ -52,6 +52,23 @@ client.interceptors.request.use((config) => {
   return config
 })
 
+/**
+ * 401 뒤처리 — 온보딩 완료 플래그를 지우고 ONB-01 로 돌려보낸다.
+ *
+ * ⚠️ 라우터를 **지연 import 한다.** `router/index.js` → 라우트 → 뷰 → 스토어 → 이 파일로
+ * 이어지는 순환이라 최상단에서 import 하면 로딩 순서에 따라 undefined 가 된다.
+ * 이미 온보딩에 있으면 아무것도 하지 않는다 — 401 이 여러 번 나도 화면이 튀지 않게.
+ */
+async function redirectToOnboarding() {
+  const { clearOnboarded } = await import('@/router/guards')
+  clearOnboarded()
+
+  const { default: router } = await import('@/router')
+  if (!router.currentRoute.value.path.startsWith('/onboarding')) {
+    router.replace('/onboarding/start')
+  }
+}
+
 client.interceptors.response.use(
   // 공통 응답 래퍼(1.3)는 여기서 한 번만 벗긴다. 컴포넌트에서 res.data.data 를 파싱하지 않는다.
   (response) => response.data?.data,
@@ -61,8 +78,8 @@ client.interceptors.response.use(
 
     if (status === 401) {
       // 서버가 모르는 키다. 버리고 온보딩(ONB-01)부터 다시 시작해야 한다.
-      // ONB-01 라우트가 생기면 여기서 리다이렉트를 연결한다.
       clearDemoKey()
+      redirectToOnboarding()
     }
 
     if (body) {

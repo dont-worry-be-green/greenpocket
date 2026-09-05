@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
+import { onboardingGuard } from './guards'
 import onboarding from './routes/onboarding'
 import analysis from './routes/analysis'
 import greenlife from './routes/greenlife'
@@ -19,5 +20,8 @@ const router = createRouter({
     return { top: 0 }
   },
 })
+
+// 온보딩 미완료 진입 가드(COM-02). 규칙은 ./guards.js 에 있다
+router.beforeEach(onboardingGuard)
 
 export default router
