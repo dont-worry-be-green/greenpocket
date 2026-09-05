@@ -52,6 +52,20 @@ const recognizedItems = [
 ]
 
 function editResult() {
+  saveRecognizedDraft()
+  router.push({
+    path: '/analysis/bills/new',
+    query: { month: targetYearMonth.value, mode: 'manual', prefill: 'recognition' },
+  })
+}
+
+function confirmResult() {
+  saveRecognizedDraft()
+  store.confirmBillDraft()
+  router.push({ path: '/analysis', query: { preview: 'confirmed' } })
+}
+
+function saveRecognizedDraft() {
   store.saveBillDraft({
     billingMonth: targetYearMonth.value,
     billType: 'MANAGEMENT',
@@ -62,10 +76,6 @@ function editResult() {
       usage: item.usage,
       usageUnit: item.unit === '㎥' ? 'm3' : item.unit,
     })),
-  })
-  router.push({
-    path: '/analysis/bills/new',
-    query: { month: targetYearMonth.value, mode: 'manual', prefill: 'recognition' },
   })
 }
 </script>
@@ -103,6 +113,15 @@ function editResult() {
       </ul>
     </section>
 
-    <GpButton class="mt-5" @click="editResult">인식 내용 수정하기</GpButton>
+    <div class="mt-5 grid grid-cols-2 gap-3">
+      <button
+        type="button"
+        class="border-control-border bg-surface text-ink h-(--gp-cta-h) rounded-md border text-button"
+        @click="editResult"
+      >
+        수정하기
+      </button>
+      <GpButton @click="confirmResult">확정하기</GpButton>
+    </div>
   </AppSubLayout>
 </template>

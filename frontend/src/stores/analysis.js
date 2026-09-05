@@ -39,6 +39,23 @@ export const useAnalysisStore = defineStore('analysis', () => {
     billDraft.value = draft
   }
 
+  function confirmBillDraft() {
+    if (!billDraft.value) return null
+
+    const items = billDraft.value.items ?? []
+    diagnosis.value = {
+      empty: false,
+      screen: 'AN-07',
+      yearMonth: billDraft.value.billingMonth,
+      summary: {
+        currentTotal: items.reduce((total, item) => total + Number(item.amount), 0),
+        hasPreviousYear: false,
+        items,
+      },
+    }
+    return diagnosis.value
+  }
+
   return {
     diagnosis,
     targetMonth,
@@ -49,5 +66,6 @@ export const useAnalysisStore = defineStore('analysis', () => {
     fetchHome,
     selectImage,
     saveBillDraft,
+    confirmBillDraft,
   }
 })
