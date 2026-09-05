@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import BillManualForm from '@/components/analysis/BillManualForm.vue'
 import AppSubLayout from '@/components/layout/AppSubLayout.vue'
 import GpButton from '@/components/ui/GpButton.vue'
 import IconCamera from '@/components/ui/icons/IconCamera.vue'
@@ -19,6 +20,7 @@ const store = useAnalysisStore()
 const cameraInput = ref(null)
 const albumInput = ref(null)
 const fileError = ref('')
+const inputMode = ref(route.query.mode === 'manual' ? 'manual' : 'photo')
 
 const targetYearMonth = computed(
   () => route.query.month ?? store.targetMonth?.targetYearMonth ?? '2026-08',
@@ -53,16 +55,13 @@ function onFileSelected(event) {
   router.push({ path: '/analysis/bills/analyzing', query: { month: targetYearMonth.value } })
 }
 
-function goToManualEntry() {
-  router.push({
-    path: '/analysis/bills/edit',
-    query: { month: targetYearMonth.value, mode: 'manual' },
-  })
+function completeManualEntry() {
+  router.push('/analysis/bills/confirm')
 }
 </script>
 
 <template>
-  <AppSubLayout back="/analysis">
+  <AppSubLayout back="/analysis" :has-footer="inputMode === 'manual'">
     <header class="mb-5">
       <h1 class="text-title tracking-title text-ink mt-1 mb-1">
         {{ monthLabel }} 고지서를 등록해요
@@ -73,21 +72,25 @@ function goToManualEntry() {
     <div class="bg-primary-bg mb-5 grid grid-cols-2 rounded-xl p-1">
       <button
         type="button"
-        class="bg-surface text-primary shadow-float flex min-h-11 items-center justify-center gap-2 rounded-lg border-0 text-label"
+        class="flex min-h-11 items-center justify-center gap-2 rounded-lg border-0 text-label"
+        :class="inputMode === 'photo' ? 'bg-surface text-primary shadow-float' : 'text-muted bg-transparent'"
+        @click="inputMode = 'photo'"
       >
         <IconCamera :size="19" />
         사진 분석
       </button>
       <button
         type="button"
-        class="text-muted flex min-h-11 items-center justify-center gap-2 border-0 bg-transparent text-label"
-        @click="goToManualEntry"
+        class="flex min-h-11 items-center justify-center gap-2 rounded-lg border-0 text-label"
+        :class="inputMode === 'manual' ? 'bg-surface text-ink shadow-float' : 'text-muted bg-transparent'"
+        @click="inputMode = 'manual'"
       >
         <IconPencil :size="19" />
         직접 입력
       </button>
     </div>
 
+    <template v-if="inputMode === 'photo'">
     <section
       class="border-primary-soft bg-surface relative flex min-h-72 flex-col items-center justify-center overflow-hidden rounded-lg border border-dashed px-6 text-center"
     >
@@ -132,6 +135,13 @@ function goToManualEntry() {
       type="file"
       accept="image/jpeg,image/png"
       @change="onFileSelected"
+    />
+    </template>
+
+    <BillManualForm
+      v-else
+      :billing-month="targetYearMonth"
+      @complete="completeManualEntry"
     />
   </AppSubLayout>
 </template>

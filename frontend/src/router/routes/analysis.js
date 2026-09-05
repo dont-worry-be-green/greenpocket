@@ -32,7 +32,10 @@ export default [
   {
     path: '/analysis/bills/edit',
     name: 'an-bill-edit',
-    component: () => import('@/views/analysis/BillManualEntryView.vue'),
+    redirect: (to) => ({
+      path: '/analysis/bills/new',
+      query: { ...to.query, mode: 'manual' },
+    }),
     meta: { title: '인식 내용 수정' },
   },
   {
