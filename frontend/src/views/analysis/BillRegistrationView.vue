@@ -77,7 +77,7 @@ function completeManualEntry() {
         @click="inputMode = 'photo'"
       >
         <IconCamera :size="19" />
-        사진 분석
+        사진 촬영
       </button>
       <button
         type="button"
@@ -107,7 +107,7 @@ function completeManualEntry() {
     </section>
 
     <div class="mt-4 grid grid-cols-2 gap-3">
-      <GpButton @click="openCamera">사진 찍기</GpButton>
+      <GpButton @click="openCamera">사진 촬영</GpButton>
       <button
         type="button"
         class="border-control-border bg-surface text-ink h-(--gp-cta-h) rounded-md border text-button"
