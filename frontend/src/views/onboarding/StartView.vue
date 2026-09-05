@@ -8,11 +8,16 @@
  *
  * 이 화면의 저장이 **데모 키를 서버에 등록한다**(`POST /users`). 그전에는 나머지 API 가 전부
  * 401 이다 — 자세한 것은 `api/onboarding.js` 의 `startUser` 주석.
+ *
+ * ⚠️ 시안은 이름 라벨 옆에 「선택」 배지를 달아 두었지만 **넣지 않는다.**
+ * api-spec.md 4.1 에서 `name` 은 필수이고, 그 값이 그대로 그린포켓 예금주가 된다(결정 C-14).
  */
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import GpButton from '@/components/ui/GpButton.vue'
+import IconInfo from '@/components/ui/icons/IconInfo.vue'
+import IconPlant from '@/components/ui/icons/IconPlant.vue'
 import { useOnboardingStore } from '@/stores/onboarding'
 
 const router = useRouter()
@@ -43,43 +48,53 @@ async function submit() {
 
 <template>
   <div class="bg-canvas flex min-h-dvh flex-col px-(--gp-gutter)">
-    <main class="flex flex-1 flex-col pt-16">
-      <h1 class="text-title tracking-display text-ink m-0">그린포켓</h1>
-      <p class="text-body text-ink-soft mt-3 mb-0">
-        관리비 고지서로 새는 돈을 찾고, 아낀 만큼 마일리지로 모아요.
+    <main class="flex flex-1 flex-col items-center justify-center py-10 text-center">
+      <span
+        class="bg-primary-bg text-primary flex size-24 items-center justify-center rounded-2xl"
+        aria-hidden="true"
+      >
+        <IconPlant :size="48" />
+      </span>
+
+      <h1 class="text-title tracking-display text-ink mt-6 mb-0">그린포켓</h1>
+      <p class="text-body text-muted mt-3 mb-0">
+        전기 고지서 한 장으로<br />
+        얼마나 아낄 수 있는지 알려드려요
       </p>
-
-      <p class="text-caption text-muted bg-surface mt-6 mb-0 rounded-lg p-4">
-        발표용 데모예요. 회원가입 없이 바로 쓰고, 입력한 정보는 이 기기에만 저장돼요.
-      </p>
-
-      <form class="mt-8" @submit.prevent="submit">
-        <label class="block">
-          <span class="text-body-strong text-muted mb-3 block">이름</span>
-          <input
-            v-model="name"
-            type="text"
-            autocomplete="name"
-            maxlength="20"
-            placeholder="이름을 입력해주세요"
-            class="bg-surface text-body placeholder:text-disabled-text min-h-14 w-full rounded-lg border-0 px-4 outline-hidden"
-            @blur="touched = true"
-          />
-        </label>
-
-        <p v-if="touched && validationMessage" class="text-body-sm text-negative mt-3 mb-0">
-          {{ validationMessage }}
-        </p>
-        <p v-else-if="store.error" class="text-body-sm text-negative mt-3 mb-0">
-          {{ store.error.message }}
-        </p>
-      </form>
     </main>
 
-    <div class="pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
-      <GpButton :disabled="!canSubmit" @click="submit">
+    <form
+      class="pt-2 pb-[max(12px,env(safe-area-inset-bottom))]"
+      @submit.prevent="submit"
+    >
+      <label class="block">
+        <span class="text-body-strong text-ink mb-3 block">어떻게 부를까요?</span>
+        <input
+          v-model="name"
+          type="text"
+          autocomplete="name"
+          maxlength="20"
+          placeholder="이름을 입력하세요"
+          class="bg-surface border-border text-body placeholder:text-disabled-text min-h-14 w-full rounded-lg border px-4 outline-hidden"
+          @blur="touched = true"
+        />
+      </label>
+
+      <p v-if="touched && validationMessage" class="text-body-sm text-negative mt-3 mb-0">
+        {{ validationMessage }}
+      </p>
+      <p v-else-if="store.error" class="text-body-sm text-negative mt-3 mb-0">
+        {{ store.error.message }}
+      </p>
+
+      <GpButton class="mt-4" :disabled="!canSubmit" @click="submit">
         {{ store.isLoading ? '시작하는 중...' : '시작하기' }}
       </GpButton>
-    </div>
+
+      <p class="text-caption text-muted bg-surface-sub mt-3 mb-0 flex gap-2 rounded-md p-3">
+        <IconInfo :size="16" class="text-icon-off mt-0.5 shrink-0" aria-hidden="true" />
+        <span>발표용 데모예요. 회원가입 없이 바로 쓰고, 입력한 정보는 이 기기에만 저장돼요.</span>
+      </p>
+    </form>
   </div>
 </template>
