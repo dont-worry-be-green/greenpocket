@@ -116,7 +116,7 @@ function goToRegistration() {
           {{ targetMonthOnlyLabel }} 생활요금 합계
         </p>
         <div class="relative flex items-center justify-between gap-3">
-          <strong class="block text-[42px] leading-none font-bold tracking-tight tabular-nums">
+          <strong class="block text-[38px] leading-none font-bold tracking-tight tabular-nums">
             {{ formatWon(diagnosis.summary.currentTotal) }}
           </strong>
           <span
