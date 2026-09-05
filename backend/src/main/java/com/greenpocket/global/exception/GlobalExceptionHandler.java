@@ -4,6 +4,7 @@ import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -15,10 +16,20 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import com.greenpocket.global.response.ApiError;
 import com.greenpocket.global.response.ApiResponse;
+import com.greenpocket.bill.exception.BillErrorCode;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+	@ExceptionHandler(MaxUploadSizeExceededException.class)
+	public ResponseEntity<ApiResponse<Void>> handleMaxUploadSizeExceeded(
+		MaxUploadSizeExceededException exception
+	) {
+		BillErrorCode errorCode = BillErrorCode.IMAGE_TOO_LARGE;
+		ApiError error = ApiError.of(errorCode, "image", null);
+		return ResponseEntity.status(errorCode.status()).body(ApiResponse.failure(error));
+	}
 
 	@ExceptionHandler(BusinessException.class)
 	public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException exception) {

@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -26,7 +27,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.greenpocket.bill.dto.BillCreateRequest;
 import com.greenpocket.bill.dto.BillCreateResponse;
@@ -34,10 +37,13 @@ import com.greenpocket.bill.dto.BillDeleteResponse;
 import com.greenpocket.bill.dto.BillDetailResponse;
 import com.greenpocket.bill.dto.BillDuplicateCheckResponse;
 import com.greenpocket.bill.dto.BillListResponse;
+import com.greenpocket.bill.dto.BillOcrResultResponse;
+import com.greenpocket.bill.dto.BillOcrStartResponse;
 import com.greenpocket.bill.dto.BillTargetMonthResponse;
 import com.greenpocket.bill.dto.BillUpdateRequest;
 import com.greenpocket.bill.dto.BillUpdateResponse;
 import com.greenpocket.bill.service.BillArchiveService;
+import com.greenpocket.bill.service.BillOcrService;
 import com.greenpocket.bill.service.BillRegistrationService;
 import com.greenpocket.global.auth.CurrentUserId;
 import com.greenpocket.global.response.ApiResponse;
@@ -52,6 +58,48 @@ public class BillController {
 
 	private final BillRegistrationService billRegistrationService;
 	private final BillArchiveService billArchiveService;
+	private final BillOcrService billOcrService;
+
+	@Operation(
+		summary = "고지서 OCR 요청",
+		description = "JPG·PNG 고지서 이미지를 CLOVA OCR로 비동기 분석하고 조회할 작업 ID를 반환합니다. 원본 이미지는 분석 후 저장하지 않습니다."
+	)
+	@ApiResponses({
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "202", description = "OCR 작업 접수 성공"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "이미지 누락 또는 청구 월 힌트 형식 오류"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Demo Key 인증 실패"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "413", description = "이미지 크기 10MB 초과"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "415", description = "JPG·PNG가 아닌 이미지")
+	})
+	@PostMapping(value = "/ocr", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public ResponseEntity<ApiResponse<BillOcrStartResponse>> startOcr(
+		@Parameter(hidden = true) @CurrentUserId Long userId,
+		@Parameter(description = "JPG·PNG 고지서 이미지(최대 10MB)", required = true)
+		@RequestPart("image") MultipartFile image,
+		@Parameter(description = "대상 월 힌트(YYYY-MM)", example = "2026-07")
+		@RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth billingMonthHint
+	) {
+		BillOcrStartResponse response = billOcrService.start(userId, image, billingMonthHint);
+		return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.success(response));
+	}
+
+	@Operation(
+		summary = "OCR 진행·결과 조회",
+		description = "OCR 작업의 진행 상태를 조회합니다. 완료 시 전기·수도·가스 3개 항목을 고정 순서로 반환하며 미인식 항목은 hasData=false입니다."
+	)
+	@ApiResponses({
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "OCR 진행·성공·실패 결과 조회"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Demo Key 인증 실패"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "OCR 작업 없음 또는 다른 사용자의 작업")
+	})
+	@GetMapping("/ocr/{jobId}")
+	public ApiResponse<BillOcrResultResponse> getOcrResult(
+		@Parameter(hidden = true) @CurrentUserId Long userId,
+		@Parameter(description = "OCR 요청에서 반환된 작업 ID", example = "ocr_01J8ZK3")
+		@PathVariable String jobId
+	) {
+		return ApiResponse.success(billOcrService.getResult(userId, jobId));
+	}
 
 	@Operation(summary = "고지서 보관함 목록 조회", description = "에너지원·연도·페이지 조건으로 고지서를 최신 월 우선 조회합니다.")
 	@ApiResponses({
