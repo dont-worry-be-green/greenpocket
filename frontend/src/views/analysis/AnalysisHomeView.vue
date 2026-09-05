@@ -35,12 +35,15 @@ function goToRegistration() {
 </script>
 
 <template>
-  <AppTabLayout
-    tab="analysis"
-    :eyebrow="targetMonthLabel"
-    title="생활비 분석"
-    subtitle="고지서를 등록하면 지난달과 지역 평균을 비교해드려요."
-  >
+  <AppTabLayout tab="analysis" title="진단">
+    <header class="mb-5">
+      <p class="text-body-sm text-muted mt-0 mb-1">{{ targetMonthLabel }}</p>
+      <h1 class="text-title tracking-title text-ink mt-0 mb-1">생활비 분석</h1>
+      <p class="text-caption text-muted m-0">
+        고지서를 등록하면 지난달과 지역 평균을 비교해드려요.
+      </p>
+    </header>
+
     <div v-if="store.isLoading && !isEmptyPreview" class="bg-surface h-72 animate-pulse rounded-lg" />
 
     <section v-else-if="store.error && !isEmptyPreview" class="bg-surface rounded-lg px-5 py-8 text-center">
