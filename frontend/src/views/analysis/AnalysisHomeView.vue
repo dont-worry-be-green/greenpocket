@@ -81,10 +81,7 @@ function goToRegistration() {
 
 <template>
   <AppTabLayout tab="analysis" title="진단">
-    <div v-if="diagnosis?.summary" class="mt-7 mb-4">
-      <h1 class="text-title text-ink m-0">생활비 분석</h1>
-    </div>
-    <p v-else class="text-section text-ink mt-8 mb-2">{{ targetMonthLabel }}</p>
+    <p v-if="!diagnosis?.summary" class="text-section text-ink mt-8 mb-2">{{ targetMonthLabel }}</p>
 
     <div v-if="store.isLoading && !isEmptyPreview" class="bg-surface h-72 animate-pulse rounded-lg" />
 
@@ -114,7 +111,7 @@ function goToRegistration() {
     </section>
 
     <template v-else-if="diagnosis?.summary">
-      <section class="analysis-summary bg-ink relative overflow-hidden rounded-xl px-6 py-7 text-white">
+      <section class="analysis-summary relative mt-7 overflow-hidden rounded-xl px-6 py-7 text-white">
         <p class="text-body-strong relative mt-0 mb-4 text-white/60">
           {{ targetMonthOnlyLabel }} 생활요금 합계
         </p>
@@ -260,6 +257,10 @@ function goToRegistration() {
   background: var(--color-primary-soft);
   box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary-soft) 55%, transparent);
   animation: scan-bill 1.6s var(--ease-standard) infinite alternate;
+}
+
+.analysis-summary {
+  background-color: #3a6e52;
 }
 
 @keyframes scan-bill {
