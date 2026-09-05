@@ -13,7 +13,7 @@ const store = usePocketStore()
 const amount = ref(0)
 const isSubmitting = ref(false)
 
-const balance = computed(() => 12400)
+const balance = computed(() => store.balance?.balance ?? 0)
 const defaultAccount = computed(() => store.defaultAccount)
 const validationMessage = computed(() => {
   if (!Number.isInteger(amount.value) || amount.value <= 0) return '출금 금액을 입력해 주세요.'
@@ -29,8 +29,10 @@ const canSubmit = computed(
     !isSubmitting.value,
 )
 
-amount.value = balance.value
-onMounted(() => store.fetchWithdrawalAccounts())
+onMounted(async () => {
+  await Promise.all([store.fetchBalance(), store.fetchWithdrawalAccounts()])
+  amount.value = balance.value
+})
 
 function selectAmount(value) {
   if (value > balance.value) return
