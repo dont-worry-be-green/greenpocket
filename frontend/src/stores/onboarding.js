@@ -18,6 +18,7 @@ import {
   saveProfile as saveProfileApi,
   startUser as startUserApi,
 } from '@/api/onboarding'
+import { markOnboarded } from '@/router/guards'
 
 export const useOnboardingStore = defineStore('onboarding', () => {
   const user = ref(null)
@@ -71,10 +72,18 @@ export const useOnboardingStore = defineStore('onboarding', () => {
     }
   }
 
-  /** ONB-02 (A-1-05). 성공하면 `nextScreen: 'WF-06'` 이라 뷰가 /whatif 로 보낸다 */
+  /**
+   * ONB-02 (A-1-05). 성공하면 `nextScreen: 'WF-06'` 이라 뷰가 /whatif 로 보낸다.
+   *
+   * 여기서 온보딩 완료 플래그를 남긴다 — 진입 가드가 볼 근거다.
+   * 서버의 `onboardingCompleted` 를 쓰지 못하는 이유는 `router/guards.js` 주석에 있다.
+   */
   async function saveProfile(payload) {
     const data = await run(() => saveProfileApi(payload))
-    if (data) profileResult.value = data
+    if (data) {
+      profileResult.value = data
+      markOnboarded()
+    }
     return data
   }
 
