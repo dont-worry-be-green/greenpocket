@@ -2,10 +2,12 @@
  * 픽스처 격리 가드.
  *
  * 화면이 `src/fixtures/` 를 직접 import 하기 시작하면 연동 시점에 뷰를 전부 고쳐야 한다.
- * **픽스처를 아는 파일은 `src/api/eco.js` 하나여야 한다** — 거기 `USE_FIXTURES` 한 줄만 뒤집으면
+ * **픽스처를 아는 것은 `src/api/` 계층뿐이다** — 거기 `USE_FIXTURES` 한 줄만 뒤집으면
  * 스토어와 뷰는 그대로 산다.
  *
- * 이 테스트가 깨지면 import 를 지우는 게 정답이지, 목록에 파일을 더하는 게 아니다.
+ * 이 테스트가 깨지면 import 를 지우는 게 정답이지, 예외를 더하는 게 아니다.
+ * 파일 이름을 박지 않고 `api/` 접두사로 두는 이유가 그것이다 — 도메인이 늘 때마다
+ * 목록을 손대면 결국 예외 목록이 되고, 가드가 아니라 기록이 된다.
  */
 
 import { readdirSync, readFileSync, statSync } from 'node:fs'
@@ -36,11 +38,12 @@ describe('픽스처 격리', () => {
   const violations = sourceFiles(SRC)
     .filter(importsFixtures)
     .map(toPosix)
-    .filter((path) => path !== 'api/eco.js')
+    // 픽스처를 아는 것은 api 계층뿐이다
+    .filter((path) => !path.startsWith('api/'))
     .sort()
 
   // 예외 목록을 두지 않는다. 깨지면 import 를 지우는 게 정답이지 여기에 파일을 더하는 게 아니다
-  it('api/eco.js 말고는 @/fixtures 를 import 하지 않는다', () => {
+  it('src/api/ 밖에서는 @/fixtures 를 import 하지 않는다', () => {
     expect(violations).toEqual([])
   })
 
