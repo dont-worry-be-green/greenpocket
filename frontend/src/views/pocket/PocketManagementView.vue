@@ -3,7 +3,6 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AppSubLayout from '@/components/layout/AppSubLayout.vue'
-import PocketAccountSelectModal from '@/components/pocket/PocketAccountSelectModal.vue'
 import PocketState from '@/components/pocket/PocketState.vue'
 import GpTag from '@/components/ui/GpTag.vue'
 import IconPocket from '@/components/ui/icons/IconPocket.vue'
@@ -13,7 +12,8 @@ import { formatWon } from '@/utils/format'
 const store = usePocketStore()
 const router = useRouter()
 const copyMessage = ref('')
-const isDefaultModalOpen = ref(false)
+const isDefaultEditing = ref(false)
+const draftDefaultId = ref(null)
 
 const management = computed(
   () => store.management ?? { pocket: { accountNo: '', holder: '', balance: 0 }, accounts: [] },
@@ -31,9 +31,20 @@ async function copyAccount() {
   window.setTimeout(() => (copyMessage.value = ''), 2000)
 }
 
-async function saveDefaultAccount(accountId) {
-  const result = await store.setDefaultAccount(accountId)
-  if (result) isDefaultModalOpen.value = false
+function startDefaultEditing() {
+  draftDefaultId.value = store.defaultAccount?.accountId ?? store.accounts[0]?.accountId ?? null
+  isDefaultEditing.value = true
+}
+
+function cancelDefaultEditing() {
+  isDefaultEditing.value = false
+  draftDefaultId.value = null
+}
+
+async function saveDefaultAccount() {
+  if (draftDefaultId.value === null) return
+  const result = await store.setDefaultAccount(draftDefaultId.value)
+  if (result) cancelDefaultEditing()
 }
 </script>
 
@@ -69,11 +80,29 @@ async function saveDefaultAccount(accountId) {
         <section>
           <div class="mb-3 flex min-h-11 items-center justify-between gap-3">
             <h2 class="text-body-strong text-muted m-0">출금 계좌 관리</h2>
+            <div v-if="isDefaultEditing" class="flex items-center gap-1">
+              <button
+                type="button"
+                class="text-label text-muted min-h-11 border-0 bg-transparent px-2"
+                @click="cancelDefaultEditing"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                class="text-label text-primary min-h-11 border-0 bg-transparent px-2 disabled:text-disabled-text"
+                :disabled="store.accountDefaultLoading"
+                @click="saveDefaultAccount"
+              >
+                {{ store.accountDefaultLoading ? '저장 중...' : '저장' }}
+              </button>
+            </div>
             <button
+              v-else
               type="button"
               class="text-label text-primary min-h-11 border-0 bg-transparent px-1 disabled:text-disabled-text"
               :disabled="!store.accounts.length"
-              @click="isDefaultModalOpen = true"
+              @click="startDefaultEditing"
             >
               기본 계좌 변경
             </button>
@@ -84,6 +113,21 @@ async function saveDefaultAccount(accountId) {
               :key="account.accountId"
               class="bg-surface flex min-h-16 items-center gap-3 rounded-lg px-4"
             >
+              <button
+                v-if="isDefaultEditing"
+                type="button"
+                class="flex size-5 shrink-0 items-center justify-center rounded-full border-2 bg-transparent p-0"
+                :class="
+                  draftDefaultId === account.accountId ? 'border-primary' : 'border-control-border'
+                "
+                :aria-label="`${account.bankName} 기본 계좌로 선택`"
+                @click="draftDefaultId = account.accountId"
+              >
+                <span
+                  v-if="draftDefaultId === account.accountId"
+                  class="bg-primary size-2.5 rounded-full"
+                ></span>
+              </button>
               <span
                 class="bg-primary-bg text-primary flex size-9 items-center justify-center rounded-md"
                 ><IconPocket :size="20"
@@ -107,6 +151,9 @@ async function saveDefaultAccount(accountId) {
               + 출금 계좌 추가
             </button>
           </div>
+          <p v-if="store.accountDefaultError" class="text-body-sm text-negative mt-3 mb-0">
+            {{ store.accountDefaultError.message }}
+          </p>
         </section>
 
         <div class="bg-surface flex gap-3 rounded-lg p-4">
@@ -128,16 +175,5 @@ async function saveDefaultAccount(accountId) {
     >
       {{ copyMessage }}
     </div>
-
-    <PocketAccountSelectModal
-      :open="isDefaultModalOpen"
-      title="기본 계좌 변경"
-      :accounts="store.accounts"
-      :selected-id="store.defaultAccount?.accountId"
-      :saving="store.accountDefaultLoading"
-      :error="store.accountDefaultError"
-      @close="isDefaultModalOpen = false"
-      @save="saveDefaultAccount"
-    />
   </AppSubLayout>
 </template>
