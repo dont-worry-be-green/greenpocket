@@ -20,7 +20,7 @@ export default [
   {
     /*
      * 홈. 온보딩을 마치면 항상 What-if 탭으로 진입한다 — 마지막 방문 탭 복원은 만들지 않는다(결정 C-1).
-     * 온보딩 미완료 시 ONB-01 로 보내는 가드(COM-02)는 ONB 라우트가 생긴 뒤에 붙인다.
+     * 온보딩 미완료 시 ONB-01 로 보내는 가드(COM-02)는 `router/guards.js` 에 있다.
      */
     path: '/',
     redirect: '/whatif',
@@ -35,6 +35,20 @@ export default [
     component: () => import('@/views/eco/WhatIfHomeView.vue'),
     // 제목·부제가 화면 상태마다 달라 subtitle 은 뷰가 AppTabLayout 에 직접 넘긴다
     meta: { tab: 'whatif', title: 'Green What-if' },
+  },
+  {
+    path: '/whatif/link',
+    name: 'wf-01a-verify',
+    /*
+     * WF-01a 본인확인. ⚠️ **기능명세서에 없는 화면이다.**
+     *
+     * `POST /eco/link` 는 `X-Demo-Key` 밖에 모르는데 「작년 우리 집 사용량」을 내려준다.
+     * 신원을 잇는 단계가 흐름에 빠져 있어 그 자리를 화면으로 채운다. 서버 계약은 그대로다.
+     *
+     * 미가입 안내(WF-01b)는 라우트가 아니라 이 화면의 두 번째 상태다.
+     */
+    component: () => import('@/views/eco/EcoLinkVerifyView.vue'),
+    meta: { tab: 'whatif', title: '에코마일리지 본인확인' },
   },
   {
     path: '/whatif/goal',

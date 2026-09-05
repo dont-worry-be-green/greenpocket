@@ -121,6 +121,7 @@ onMounted(() => {
 watch(
   [screen, () => store.roundId],
   ([value, roundId]) => {
+    if (value === 'WF_02_LINKING') ensurePolling()
     if (value === 'WF_03_NO_GOAL' && !store.currentRound) store.fetchCurrentRound()
     if (!IN_PROGRESS_SCREENS.includes(value) || !roundId) return
     if (!store.todayMissions) store.fetchTodayMissions(roundId)
@@ -131,23 +132,36 @@ watch(
 
 // ── 연동 (B-1-02 · B-1-03) ────────────────────────────────────────────
 
+/*
+ * **연동을 시작하는 것은 이 화면이 아니라 WF-01a 다.** 여기는 서버가 WF-02 를 내려주면
+ * 그때부터 폴링만 이어받는다 — 본인확인을 거치지 않고 연동이 시작되는 길을 남기지 않으려는 것이다.
+ * 그래서 진입 경로가 둘이다(인증 직후 replace · 뒤로가기로 재진입). 어느 쪽으로 들어와도
+ * 폴링이 한 벌만 돌아야 해서 타이머가 아니라 `polling` 플래그로 막는다 —
+ * 첫 `pollOnce()` 를 await 하는 동안에는 타이머가 아직 없어 watch 가 두 번 들어올 수 있다.
+ */
 let pollTimer = null
+let polling = false
+
 function stopPolling() {
+  polling = false
   if (pollTimer) window.clearInterval(pollTimer)
   pollTimer = null
 }
 onUnmounted(stopPolling)
 
-async function startLink() {
-  const linkJobId = await store.startLink()
-  if (!linkJobId) return
+async function ensurePolling() {
+  if (polling || !store.linkJobId) return
+  polling = true
 
-  // 서버가 화면을 WF-02 로 바꾼다. 화면이 스스로 바꾸지 않는다
-  await store.fetchHome()
   await pollOnce()
-  if (pollTimer === null && store.linkJob?.status === 'RUNNING') {
+  if (polling && store.linkJob?.status === 'RUNNING') {
     pollTimer = window.setInterval(pollOnce, POLL_INTERVAL_MS)
   }
+}
+
+/** WF-01 「연동하기」. 여기서 부르지 않고 본인확인 화면으로 보낸다 */
+function goToLinkVerify() {
+  router.push('/whatif/link')
 }
 
 async function pollOnce() {
@@ -229,7 +243,7 @@ function retry() {
     <EcoUnlinkedPanel
       v-else-if="screen === 'WF_01_UNLINKED'"
       :linkable="store.status?.linkable ?? true"
-      @link="startLink"
+      @link="goToLinkVerify"
     />
 
     <EcoLinkingPanel v-else-if="screen === 'WF_02_LINKING'" :utilities="linkingUtilities" />
