@@ -117,7 +117,6 @@ function completeManualEntry() {
         앨범에서 고르기
       </button>
     </div>
-    <p class="text-caption text-muted mt-3 mb-0">원본 이미지는 분석 후 삭제돼요.</p>
     <p v-if="fileError" class="text-caption text-negative mt-2 mb-0" role="alert">
       {{ fileError }}
     </p>
