@@ -62,7 +62,7 @@ public class BillController {
 
 	@Operation(
 		summary = "고지서 OCR 요청",
-		description = "JPG·PNG 고지서 이미지를 CLOVA OCR로 비동기 분석하고 조회할 작업 ID를 반환합니다. 원본 이미지는 분석 후 저장하지 않습니다."
+		description = "JPG·PNG 관리비 통합·개별 전기·수도·도시가스 고지서를 CLOVA OCR로 비동기 분석하고 조회할 작업 ID를 반환합니다. 원본 이미지는 분석 후 저장하지 않습니다."
 	)
 	@ApiResponses({
 		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "202", description = "OCR 작업 접수 성공"),
@@ -85,7 +85,7 @@ public class BillController {
 
 	@Operation(
 		summary = "OCR 진행·결과 조회",
-		description = "OCR 작업의 진행 상태를 조회합니다. 완료 시 전기·수도·가스 3개 항목을 고정 순서로 반환하며 미인식 항목은 hasData=false입니다."
+		description = "OCR 작업의 진행 상태를 조회합니다. 관리비 통합 고지서는 전기·수도·가스 3개 항목을 고정 순서로, 개별 고지서는 해당 에너지원 1개 항목을 반환합니다."
 	)
 	@ApiResponses({
 		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "OCR 진행·성공·실패 결과 조회"),
