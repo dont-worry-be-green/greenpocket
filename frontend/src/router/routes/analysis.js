@@ -26,8 +26,14 @@ export default [
   {
     path: '/analysis/bills/analyzing',
     name: 'an-bill-analyzing',
-    component: () => import('@/views/ComingSoonView.vue'),
+    component: () => import('@/views/analysis/BillAnalyzingView.vue'),
     meta: { title: '고지서 분석' },
+  },
+  {
+    path: '/analysis/bills/result',
+    name: 'an-bill-result',
+    component: () => import('@/views/analysis/BillRecognitionResultView.vue'),
+    meta: { title: '인식 결과 확인' },
   },
   {
     path: '/analysis/bills/edit',
