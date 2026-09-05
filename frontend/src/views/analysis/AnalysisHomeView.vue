@@ -4,6 +4,9 @@ import { useRoute, useRouter } from 'vue-router'
 
 import AppTabLayout from '@/components/layout/AppTabLayout.vue'
 import GpButton from '@/components/ui/GpButton.vue'
+import IconDrop from '@/components/ui/icons/IconDrop.vue'
+import IconFlame from '@/components/ui/icons/IconFlame.vue'
+import IconLightning from '@/components/ui/icons/IconLightning.vue'
 import billIcon from '@/assets/icons/bill.svg'
 import { useAnalysisStore } from '@/stores/analysis'
 import { formatMonth, formatMonthOnly, formatSignedWon, formatUtilityType, formatWon } from '@/utils/format'
@@ -12,6 +15,11 @@ const route = useRoute()
 const router = useRouter()
 const store = useAnalysisStore()
 const selectedUtilityType = ref('ELECTRICITY')
+const UTILITY_STYLE = {
+  ELECTRICITY: { icon: IconLightning, tone: 'text-elec' },
+  WATER: { icon: IconDrop, tone: 'text-water' },
+  GAS: { icon: IconFlame, tone: 'text-gas' },
+}
 
 const isEmptyPreview = computed(() => route.query.preview === 'empty')
 const isConfirmedPreview = computed(() => route.query.preview === 'confirmed')
@@ -74,10 +82,7 @@ function goToRegistration() {
 <template>
   <AppTabLayout tab="analysis" title="진단">
     <div v-if="diagnosis?.summary" class="mt-7 mb-4">
-      <div>
-        <p class="text-caption text-muted mt-0 mb-2">{{ diagnosis.profileSummary }}</p>
-        <h1 class="text-title text-ink m-0">생활비 분석</h1>
-      </div>
+      <h1 class="text-title text-ink m-0">생활비 분석</h1>
     </div>
     <p v-else class="text-section text-ink mt-8 mb-2">{{ targetMonthLabel }}</p>
 
@@ -109,34 +114,45 @@ function goToRegistration() {
     </section>
 
     <template v-else-if="diagnosis?.summary">
-      <section class="analysis-summary bg-primary relative overflow-hidden rounded-xl p-5 text-white">
-        <span class="absolute -top-14 -right-10 size-40 rounded-full bg-white/5" aria-hidden="true" />
-        <p class="text-body-strong relative mt-0 mb-3 text-white/85">
+      <section class="analysis-summary bg-ink relative overflow-hidden rounded-xl px-6 py-7 text-white">
+        <p class="text-body-strong relative mt-0 mb-4 text-white/60">
           {{ targetMonthOnlyLabel }} 생활요금 합계
         </p>
         <div class="relative flex items-center justify-between gap-3">
           <strong class="text-amount block tabular-nums">{{ formatWon(diagnosis.summary.currentTotal) }}</strong>
           <span
             v-if="diagnosis.summary.hasPreviousYear"
-            class="rounded-full bg-white/12 px-3 py-2 text-label font-semibold"
+            class="rounded-full bg-white/12 px-3 py-2 text-label font-semibold whitespace-nowrap"
           >
             작년보다 {{ formatSignedWon(diagnosis.summary.diffLastYearTotal) }}
           </span>
         </div>
 
-        <ul class="relative mt-5 mb-0 grid list-none grid-cols-3 gap-2 p-0">
+        <ul class="relative mt-6 mb-0 grid list-none grid-cols-3 p-0">
           <li
             v-for="item in diagnosis.summary.items"
             :key="item.utilityType"
-            class="min-w-0 rounded-md bg-white/8 px-3 py-4"
+            class="border-divider/25 min-w-0 border-l px-3 first:border-l-0 first:pl-0 last:pr-0"
           >
-            <span class="text-caption block text-white/70">{{ utilityCostLabel(item.utilityType) }}</span>
-            <strong class="text-body-strong mt-2 block tabular-nums">{{ formatWon(item.amount) }}</strong>
+            <span class="text-caption flex items-center gap-2 text-white/60">
+              <component
+                :is="UTILITY_STYLE[item.utilityType]?.icon"
+                :size="17"
+                :class="UTILITY_STYLE[item.utilityType]?.tone"
+              />
+              {{ utilityCostLabel(item.utilityType) }}
+            </span>
+            <strong
+              class="text-list-title mt-3 block tabular-nums"
+              :class="UTILITY_STYLE[item.utilityType]?.tone"
+            >
+              {{ formatWon(item.amount) }}
+            </strong>
           </li>
         </ul>
       </section>
 
-      <section v-if="diagnosis.lastYearComparison?.available" class="bg-surface mt-4 rounded-xl p-5">
+      <section v-if="diagnosis.lastYearComparison?.available" class="bg-surface mt-5 rounded-xl px-5 py-6">
         <div class="flex items-start justify-between gap-3">
           <div>
             <h2 class="text-section text-ink mt-0 mb-1">작년 동월과 비교</h2>
@@ -174,7 +190,7 @@ function goToRegistration() {
         </div>
       </section>
 
-      <section v-if="diagnosis.regionComparison" class="bg-surface mt-4 rounded-xl p-5">
+      <section v-if="diagnosis.regionComparison" class="bg-surface mt-5 rounded-xl px-5 py-6">
         <div class="flex items-start justify-between gap-3">
           <div>
             <h2 class="text-section text-ink mt-0 mb-1">같은 지역 가구 평균</h2>
@@ -185,13 +201,13 @@ function goToRegistration() {
           </span>
         </div>
 
-        <div class="bg-canvas mt-5 grid grid-cols-3 rounded-md p-1">
+        <div class="mt-5 grid grid-cols-3 gap-2">
           <button
             v-for="tab in diagnosis.regionComparison.tabs"
             :key="tab.utilityType"
             type="button"
-            class="min-h-10 rounded-sm border-0 text-label"
-            :class="selectedUtilityType === tab.utilityType ? 'bg-primary text-white' : 'text-muted bg-transparent'"
+            class="min-h-11 rounded-md border-0 text-label"
+            :class="selectedUtilityType === tab.utilityType ? 'bg-primary text-white' : 'bg-confirmed-bg text-muted'"
             @click="selectedUtilityType = tab.utilityType"
           >
             {{ utilityCostLabel(tab.utilityType) }}
