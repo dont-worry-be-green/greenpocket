@@ -4,6 +4,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -18,6 +19,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -27,6 +29,9 @@ import com.greenpocket.bill.dto.BillDeleteResponse;
 import com.greenpocket.bill.dto.BillDetailResponse;
 import com.greenpocket.bill.dto.BillDuplicateCheckResponse;
 import com.greenpocket.bill.dto.BillListResponse;
+import com.greenpocket.bill.dto.BillOcrJobStatus;
+import com.greenpocket.bill.dto.BillOcrResultResponse;
+import com.greenpocket.bill.dto.BillOcrStartResponse;
 import com.greenpocket.bill.dto.BillRecalculatedResponse;
 import com.greenpocket.bill.dto.BillTargetMonthResponse;
 import com.greenpocket.bill.dto.BillUpdateRequest;
@@ -37,6 +42,7 @@ import com.greenpocket.bill.entity.RecordStatus;
 import com.greenpocket.bill.entity.UsageUnit;
 import com.greenpocket.bill.exception.BillErrorCode;
 import com.greenpocket.bill.service.BillArchiveService;
+import com.greenpocket.bill.service.BillOcrService;
 import com.greenpocket.bill.service.BillRegistrationService;
 import com.greenpocket.global.auth.CurrentUserIdArgumentResolver;
 import com.greenpocket.global.auth.DemoKeyAuthenticationInterceptor;
@@ -50,19 +56,88 @@ class BillControllerTest {
 
 	private BillRegistrationService billRegistrationService;
 	private BillArchiveService billArchiveService;
+	private BillOcrService billOcrService;
 	private MockMvc mockMvc;
 
 	@BeforeEach
 	void setUp() {
 		billRegistrationService = mock(BillRegistrationService.class);
 		billArchiveService = mock(BillArchiveService.class);
+		billOcrService = mock(BillOcrService.class);
 		mockMvc = MockMvcBuilders.standaloneSetup(new BillController(
 			billRegistrationService,
-			billArchiveService
+			billArchiveService,
+			billOcrService
 		))
 			.setCustomArgumentResolvers(new CurrentUserIdArgumentResolver())
 			.setControllerAdvice(new GlobalExceptionHandler())
 			.build();
+	}
+
+	@Test
+	void acceptsOcrJob() throws Exception {
+		MockMultipartFile image = new MockMultipartFile(
+			"image", "bill.png", "image/png", new byte[] { 1, 2, 3 }
+		);
+		when(billOcrService.start(USER_ID, image, YearMonth.of(2026, 7)))
+			.thenReturn(new BillOcrStartResponse("ocr_01J8ZK3", BillOcrJobStatus.PENDING, 0, 1_000));
+
+		mockMvc.perform(multipart("/api/v1/bills/ocr")
+				.file(image)
+				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID)
+				.param("billingMonthHint", "2026-07"))
+			.andExpect(status().isAccepted())
+			.andExpect(jsonPath("$.data.jobId").value("ocr_01J8ZK3"))
+			.andExpect(jsonPath("$.data.status").value("PENDING"))
+			.andExpect(jsonPath("$.data.pollAfterMs").value(1_000));
+	}
+
+	@Test
+	void returnsCompletedOcrResult() throws Exception {
+		when(billOcrService.getResult(USER_ID, "ocr_01J8ZK3"))
+			.thenReturn(new BillOcrResultResponse(
+				"ocr_01J8ZK3",
+				BillOcrJobStatus.SUCCEEDED,
+				100,
+				BillType.MANAGEMENT,
+				"2026-07",
+				false,
+				List.of(new BillOcrResultResponse.Item(
+					UtilityType.ELECTRICITY,
+					true,
+					"2026-07",
+					18_080L,
+					new BigDecimal("113.000"),
+					UsageUnit.kWh,
+					new BigDecimal("0.9997"),
+					RecordStatus.CONFIRMED
+				)),
+				null,
+				null,
+				null
+			));
+
+		mockMvc.perform(get("/api/v1/bills/ocr/ocr_01J8ZK3")
+				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.status").value("SUCCEEDED"))
+			.andExpect(jsonPath("$.data.billType").value("MANAGEMENT"))
+			.andExpect(jsonPath("$.data.items[0].amount").value(18_080))
+			.andExpect(jsonPath("$.data.items[0].recordStatus").value("CONFIRMED"));
+	}
+
+	@Test
+	void malformedOcrMonthHintReturnsInvalidRequest() throws Exception {
+		MockMultipartFile image = new MockMultipartFile(
+			"image", "bill.png", "image/png", new byte[] { 1, 2, 3 }
+		);
+
+		mockMvc.perform(multipart("/api/v1/bills/ocr")
+				.file(image)
+				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID)
+				.param("billingMonthHint", "2026/07"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
 	}
 
 	@Test
