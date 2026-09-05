@@ -3,8 +3,10 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AppSubLayout from '@/components/layout/AppSubLayout.vue'
+import PocketAccountSelectModal from '@/components/pocket/PocketAccountSelectModal.vue'
 import GpButton from '@/components/ui/GpButton.vue'
 import GpTag from '@/components/ui/GpTag.vue'
+import IconPocket from '@/components/ui/icons/IconPocket.vue'
 import { usePocketStore } from '@/stores/pocket'
 import { formatNumber, formatWon } from '@/utils/format'
 
@@ -13,7 +15,7 @@ const store = usePocketStore()
 const amount = ref(0)
 const isSubmitting = ref(false)
 const selectedAccountId = ref(null)
-const isAccountListOpen = ref(false)
+const isAccountModalOpen = ref(false)
 
 const balance = computed(() => store.balance?.balance ?? 0)
 const selectedAccount = computed(
@@ -48,7 +50,7 @@ function selectAmount(value) {
 
 function selectAccount(accountId) {
   selectedAccountId.value = accountId
-  isAccountListOpen.value = false
+  isAccountModalOpen.value = false
 }
 
 async function submit() {
@@ -122,10 +124,9 @@ async function submit() {
         <div v-else-if="selectedAccount" class="space-y-3">
           <div class="bg-surface flex min-h-16 items-center gap-3 rounded-lg px-4">
             <span
-              class="border-primary flex size-5 shrink-0 items-center justify-center rounded-full border-2"
-              aria-hidden="true"
+              class="bg-primary-bg text-primary flex size-9 shrink-0 items-center justify-center rounded-md"
             >
-              <span class="bg-primary size-2.5 rounded-full"></span>
+              <IconPocket :size="20" />
             </span>
             <p class="text-body-strong m-0 min-w-0 flex-1">
               {{ selectedAccount.bankName }} {{ selectedAccount.accountNo }}
@@ -136,51 +137,14 @@ async function submit() {
           <button
             type="button"
             class="border-control-border text-body-strong min-h-12 w-full rounded-full border bg-transparent"
-            :aria-expanded="isAccountListOpen"
-            @click="isAccountListOpen = !isAccountListOpen"
+            @click="isAccountModalOpen = true"
           >
             출금 계좌 변경
           </button>
-
-          <div v-if="isAccountListOpen" class="space-y-2" aria-label="출금 계좌 목록">
-            <button
-              v-for="account in store.accounts"
-              :key="account.accountId"
-              type="button"
-              class="bg-surface flex min-h-16 w-full items-center gap-3 rounded-lg border-0 px-4 text-left"
-              @click="selectAccount(account.accountId)"
-            >
-              <span
-                class="flex size-5 shrink-0 items-center justify-center rounded-full border-2"
-                :class="
-                  account.accountId === selectedAccount.accountId
-                    ? 'border-primary'
-                    : 'border-control-border'
-                "
-                aria-hidden="true"
-              >
-                <span
-                  v-if="account.accountId === selectedAccount.accountId"
-                  class="bg-primary size-2.5 rounded-full"
-                ></span>
-              </span>
-              <span class="text-body-strong min-w-0 flex-1">
-                {{ account.bankName }} {{ account.accountNo }}
-              </span>
-              <GpTag v-if="account.isDefault" tone="estimated" small>기본 계좌</GpTag>
-            </button>
-          </div>
         </div>
         <div v-else class="bg-surface rounded-lg p-5 text-center">
           <p class="text-body-sm text-muted m-0">등록된 출금 계좌가 없어요.</p>
         </div>
-        <button
-          type="button"
-          class="border-control-border text-body-strong mt-3 min-h-12 w-full rounded-full border bg-transparent"
-          @click="router.push({ path: '/pocket/accounts/new', query: { from: 'withdraw' } })"
-        >
-          출금 계좌 추가
-        </button>
       </section>
 
       <div class="bg-confirmed-bg text-body-sm text-muted rounded-lg p-4">
@@ -198,5 +162,13 @@ async function submit() {
         <GpButton :disabled="!canSubmit" @click="submit">{{ formatWon(amount) }} 출금하기</GpButton>
       </div>
     </template>
+
+    <PocketAccountSelectModal
+      :open="isAccountModalOpen"
+      :accounts="store.accounts"
+      :selected-id="selectedAccount?.accountId"
+      @close="isAccountModalOpen = false"
+      @save="selectAccount"
+    />
   </AppSubLayout>
 </template>
