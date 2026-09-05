@@ -4,6 +4,9 @@
  *
  * linkable 은 GET /eco/status 의 필드다. 서울 밖이면 false + blockReason: 'NOT_SEOUL' 로
  * 내려와 버튼이 비활성된다(B-1-09). 사유 문장은 서버가 주지 않으므로 아래 안내 카드가 대신한다.
+ *
+ * `link` 는 이제 **연동 시작이 아니라 본인확인 화면(WF-01a)으로 가는 신호다.**
+ * 사용량을 가져오기 전에 신원을 잇는 단계가 있어야 해서 한 화면을 사이에 넣었다.
  */
 import GpButton from '@/components/ui/GpButton.vue'
 import GpCard from '@/components/ui/GpCard.vue'
@@ -26,7 +29,7 @@ defineEmits(['link'])
         <p class="text-body text-muted m-0">
           에코마일리지는 <strong class="text-ink-soft font-semibold">작년 같은 달</strong>과
           비교해요.<br />
-          전기·도시가스·수도 사용량을 불러올게요.
+          본인확인을 하면 전기·도시가스·수도 사용량을 불러올게요.
         </p>
       </div>
     </GpCard>
@@ -34,7 +37,7 @@ defineEmits(['link'])
     <div>
       <GpButton :disabled="!linkable" @click="$emit('link')">에코마일리지 연동하기</GpButton>
       <p class="text-caption text-muted mt-3 mb-0 text-center">
-        에코마일리지 회원이 아니어도 여기서 바로 가입할 수 있어요
+        다음 화면에서 본인확인을 해요. 아직 회원이 아니어도 거기서 가입할 수 있어요
       </p>
     </div>
 

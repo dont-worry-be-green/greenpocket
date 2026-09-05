@@ -80,8 +80,25 @@ describe('api/eco.js — 엔드포인트 함수', () => {
     'updateMissions',
   ]
 
+  /*
+   * 명세에 대응하는 엔드포인트가 없는 FE 전용 모의다(WF-01a 본인확인).
+   * 위 목록과 섞으면 「api-spec 에 있는 것」과 「우리가 만든 것」의 경계가 사라진다.
+   */
+  const FRONTEND_ONLY = ['verifyEcoIdentity']
+
   it('api-spec.md 8~11절의 19개가 모두 있다', () => {
-    expect(Object.keys(ecoApi).sort()).toEqual(EXPECTED)
+    const fromSpec = Object.keys(ecoApi)
+      .filter((name) => !FRONTEND_ONLY.includes(name))
+      .sort()
+    expect(fromSpec).toEqual(EXPECTED)
+  })
+
+  // 명세에 없는 함수가 조용히 늘어나면 여기서 걸린다
+  it('명세 밖 함수는 FE 전용 모의 하나뿐이다', () => {
+    const extra = Object.keys(ecoApi)
+      .filter((name) => !EXPECTED.includes(name))
+      .sort()
+    expect(extra).toEqual(FRONTEND_ONLY)
   })
 })
 

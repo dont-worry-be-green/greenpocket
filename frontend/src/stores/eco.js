@@ -36,6 +36,7 @@ import {
   saveMissionLog,
   updateGoal,
   updateMissions,
+  verifyEcoIdentity,
 } from '@/api/eco'
 
 export const useEcoStore = defineStore('eco', () => {
@@ -122,6 +123,14 @@ export const useEcoStore = defineStore('eco', () => {
   async function fetchStatus() {
     const data = await run(getEcoStatus)
     if (data) status.value = data
+  }
+
+  /**
+   * WF-01a 본인확인. 서버 계약이 아니라 화면만 있는 단계라 결과를 저장하지 않는다 —
+   * 성공하면 곧바로 `startLink()` 로 이어진다. 자세한 사정은 `api/eco.js` 주석.
+   */
+  async function verifyIdentity() {
+    return run(verifyEcoIdentity)
   }
 
   /** 202 지만 인터셉터가 `data` 만 준다. `linkJobId` 존재로 판단한다 */
@@ -391,6 +400,7 @@ export const useEcoStore = defineStore('eco', () => {
     showResultModal,
     fetchHome,
     fetchStatus,
+    verifyIdentity,
     startLink,
     pollLinkJob,
     fetchCurrentRound,
