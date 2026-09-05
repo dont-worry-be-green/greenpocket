@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import AppTabLayout from '@/components/layout/AppTabLayout.vue'
 import GpButton from '@/components/ui/GpButton.vue'
-import IconReceipt from '@/components/ui/icons/IconReceipt.vue'
+import billIcon from '@/assets/icons/bill.svg'
 import { useAnalysisStore } from '@/stores/analysis'
 import { formatMonth, formatMonthOnly } from '@/utils/format'
 
@@ -36,13 +36,7 @@ function goToRegistration() {
 
 <template>
   <AppTabLayout tab="analysis" title="진단">
-    <header class="mb-5">
-      <p class="text-body-sm text-muted mt-0 mb-1">{{ targetMonthLabel }}</p>
-      <h1 class="text-title tracking-title text-ink mt-0 mb-1">생활비 분석</h1>
-      <p class="text-caption text-muted m-0">
-        고지서를 등록하면 지난달과 지역 평균을 비교해드려요.
-      </p>
-    </header>
+    <p class="text-section text-ink mt-8 mb-2">{{ targetMonthLabel }}</p>
 
     <div v-if="store.isLoading && !isEmptyPreview" class="bg-surface h-72 animate-pulse rounded-lg" />
 
@@ -52,18 +46,20 @@ function goToRegistration() {
       <GpButton variant="wide" size="wide" @click="store.fetchHome">다시 시도</GpButton>
     </section>
 
-    <section v-else-if="diagnosis?.empty" class="bg-surface rounded-lg px-5 py-10 text-center">
+    <section v-else-if="diagnosis?.empty" class="bg-surface rounded-lg px-5 py-12 text-center">
       <div
-        class="bg-primary-bg text-primary mx-auto flex size-28 flex-col items-center justify-center rounded-full"
+        class="bg-primary-bg mx-auto flex size-28 flex-col items-center justify-center rounded-xl"
         aria-hidden="true"
       >
-        <IconReceipt :size="28" />
-        <span class="bg-primary-bg-strong mt-4 h-2 w-14 rounded-full" />
+        <span class="relative flex size-14 items-center justify-center">
+          <img :src="billIcon" alt="" class="size-8 drop-shadow-md" />
+          <span class="scan-line absolute left-1/2 block h-0.5 w-11 rounded-full" />
+        </span>
       </div>
 
-      <h2 class="text-section text-ink mt-7 mb-2">아직 등록된 고지서가 없어요</h2>
-      <p class="text-body-sm text-muted mx-auto mt-0 mb-7 max-w-72 break-keep">
-        전기·수도·도시가스가 포함된 관리비 고지서도 한 번에 분석할 수 있어요.
+      <h2 class="text-section text-ink mt-7 mb-3">아직 등록된 고지서가 없어요</h2>
+      <p class="text-body-sm text-muted mx-auto mt-0 mb-8 max-w-80 break-keep">
+        등록하면 전년 동월·지역 평균과 바로 비교해드려요.
       </p>
 
       <GpButton @click="goToRegistration">{{ targetMonthOnlyLabel }} 고지서 등록하기</GpButton>
@@ -75,3 +71,30 @@ function goToRegistration() {
     </section>
   </AppTabLayout>
 </template>
+
+<style scoped>
+.scan-line {
+  top: 50%;
+  background: var(--color-primary-soft);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary-soft) 55%, transparent);
+  animation: scan-bill 1.6s var(--ease-standard) infinite alternate;
+}
+
+@keyframes scan-bill {
+  from {
+    transform: translate(-50%, calc(-50% - 18px));
+    opacity: 0.55;
+  }
+  to {
+    transform: translate(-50%, calc(-50% + 18px));
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-line {
+    animation: none;
+    transform: translate(-50%, 0);
+  }
+}
+</style>
