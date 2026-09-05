@@ -151,42 +151,48 @@ function goToRegistration() {
         </ul>
       </section>
 
-      <section v-if="diagnosis.lastYearComparison?.available" class="bg-surface mt-5 rounded-xl px-5 py-6">
+      <section v-if="diagnosis.lastYearComparison" class="bg-surface mt-5 rounded-xl px-5 py-6">
         <div class="flex items-start justify-between gap-3">
           <div>
             <h2 class="text-section text-ink mt-0 mb-1">작년 동월과 비교</h2>
             <p class="text-caption text-muted m-0">작년과 올해 청구 금액</p>
           </div>
-          <span class="bg-primary-bg text-primary rounded-full px-3 py-2 text-label font-semibold">
+          <span
+            v-if="diagnosis.lastYearComparison.available"
+            class="bg-primary-bg text-primary rounded-full px-3 py-2 text-label font-semibold"
+          >
             총 {{ formatSignedWon(diagnosis.lastYearComparison.totalDiff) }}
           </span>
         </div>
 
-        <div class="text-caption text-muted mt-6 flex justify-end gap-4">
-          <span class="flex items-center gap-1"><i class="bg-control-off size-2 rounded-xs" />작년</span>
-          <span class="flex items-center gap-1"><i class="bg-primary size-2 rounded-xs" />올해</span>
-        </div>
-        <div class="mt-3 grid h-40 grid-cols-3 gap-4 border-b border-divider px-2">
-          <div
-            v-for="item in diagnosis.lastYearComparison.items"
-            :key="item.utilityType"
-            class="flex min-w-0 flex-col justify-end"
-          >
-            <div class="flex h-28 items-end justify-center gap-1.5">
-              <div class="bg-control-off relative w-7 rounded-t-sm" :style="{ height: barHeight(item.lastYearAmount) }">
-                <span class="text-caption-sm text-muted absolute -top-5 left-1/2 -translate-x-1/2 tabular-nums">
-                  {{ item.lastYearAmount.toLocaleString('ko-KR') }}
-                </span>
-              </div>
-              <div class="bg-primary relative w-7 rounded-t-sm" :style="{ height: barHeight(item.thisYearAmount) }">
-                <span class="text-caption-sm text-muted absolute -top-5 left-1/2 -translate-x-1/2 tabular-nums">
-                  {{ item.thisYearAmount.toLocaleString('ko-KR') }}
-                </span>
-              </div>
-            </div>
-            <span class="text-caption text-muted py-2 text-center">{{ utilityCostLabel(item.utilityType) }}</span>
+        <template v-if="diagnosis.lastYearComparison.available">
+          <div class="text-caption text-muted mt-6 flex justify-end gap-4">
+            <span class="flex items-center gap-1"><i class="bg-control-off size-2 rounded-xs" />작년</span>
+            <span class="flex items-center gap-1"><i class="bg-primary size-2 rounded-xs" />올해</span>
           </div>
-        </div>
+          <div class="mt-3 grid h-40 grid-cols-3 gap-4 border-b border-divider px-2">
+            <div
+              v-for="item in diagnosis.lastYearComparison.items"
+              :key="item.utilityType"
+              class="flex min-w-0 flex-col justify-end"
+            >
+              <div class="flex h-28 items-end justify-center gap-1.5">
+                <div class="bg-control-off relative w-7 rounded-t-sm" :style="{ height: barHeight(item.lastYearAmount) }">
+                  <span class="text-caption-sm text-muted absolute -top-5 left-1/2 -translate-x-1/2 tabular-nums">
+                    {{ item.lastYearAmount.toLocaleString('ko-KR') }}
+                  </span>
+                </div>
+                <div class="bg-primary relative w-7 rounded-t-sm" :style="{ height: barHeight(item.thisYearAmount) }">
+                  <span class="text-caption-sm text-muted absolute -top-5 left-1/2 -translate-x-1/2 tabular-nums">
+                    {{ item.thisYearAmount.toLocaleString('ko-KR') }}
+                  </span>
+                </div>
+              </div>
+              <span class="text-caption text-muted py-2 text-center">{{ utilityCostLabel(item.utilityType) }}</span>
+            </div>
+          </div>
+        </template>
+        <p v-else class="text-body-sm text-muted my-10 text-center">작년 비교 데이터를 준비하고 있어요.</p>
       </section>
 
       <section v-if="diagnosis.regionComparison" class="bg-surface mt-5 rounded-xl px-5 py-6">
