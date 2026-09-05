@@ -73,18 +73,11 @@ function goToRegistration() {
 
 <template>
   <AppTabLayout tab="analysis" title="진단">
-    <div v-if="diagnosis?.summary" class="mt-7 mb-4 flex items-end justify-between gap-3">
+    <div v-if="diagnosis?.summary" class="mt-7 mb-4">
       <div>
         <p class="text-caption text-muted mt-0 mb-2">{{ diagnosis.profileSummary }}</p>
         <h1 class="text-title text-ink m-0">생활비 분석</h1>
       </div>
-      <select
-        class="border-control-border bg-surface text-ink min-h-11 rounded-md border px-3 text-label font-semibold"
-        :value="targetYearMonth"
-        aria-label="분석 월"
-      >
-        <option :value="targetYearMonth">{{ targetMonthOnlyLabel }}</option>
-      </select>
     </div>
     <p v-else class="text-section text-ink mt-8 mb-2">{{ targetMonthLabel }}</p>
 
