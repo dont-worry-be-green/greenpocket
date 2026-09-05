@@ -103,7 +103,6 @@ function completeManualEntry() {
         <IconScan :size="28" />
       </span>
       <h2 class="text-section text-ink mt-0 mb-2">고지서 전체가 보이게 찍어주세요</h2>
-      <p class="text-caption text-muted m-0">청구 월·금액·사용량이 선명하면 돼요</p>
     </section>
 
     <div class="mt-4 grid grid-cols-2 gap-3">
