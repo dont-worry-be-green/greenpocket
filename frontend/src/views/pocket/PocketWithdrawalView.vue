@@ -3,7 +3,6 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AppSubLayout from '@/components/layout/AppSubLayout.vue'
-import PocketAccountSelectModal from '@/components/pocket/PocketAccountSelectModal.vue'
 import GpButton from '@/components/ui/GpButton.vue'
 import GpTag from '@/components/ui/GpTag.vue'
 import IconPocket from '@/components/ui/icons/IconPocket.vue'
@@ -15,7 +14,8 @@ const store = usePocketStore()
 const amount = ref(0)
 const isSubmitting = ref(false)
 const selectedAccountId = ref(null)
-const isAccountModalOpen = ref(false)
+const isAccountEditing = ref(false)
+const draftAccountId = ref(null)
 
 const balance = computed(() => store.balance?.balance ?? 0)
 const selectedAccount = computed(
@@ -48,9 +48,20 @@ function selectAmount(value) {
   amount.value = value
 }
 
-function selectAccount(accountId) {
-  selectedAccountId.value = accountId
-  isAccountModalOpen.value = false
+function startAccountEditing() {
+  draftAccountId.value = selectedAccount.value?.accountId ?? null
+  isAccountEditing.value = true
+}
+
+function cancelAccountEditing() {
+  isAccountEditing.value = false
+  draftAccountId.value = null
+}
+
+function saveAccount() {
+  if (draftAccountId.value === null) return
+  selectedAccountId.value = draftAccountId.value
+  cancelAccountEditing()
 }
 
 async function submit() {
@@ -103,11 +114,28 @@ async function submit() {
       <section>
         <div class="mb-3 flex min-h-11 items-center justify-between gap-3">
           <h2 class="text-body-strong text-muted m-0">출금 계좌</h2>
+          <div v-if="isAccountEditing" class="flex items-center gap-1">
+            <button
+              type="button"
+              class="text-label text-muted min-h-11 border-0 bg-transparent px-2"
+              @click="cancelAccountEditing"
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              class="text-label text-primary min-h-11 border-0 bg-transparent px-2"
+              @click="saveAccount"
+            >
+              저장
+            </button>
+          </div>
           <button
+            v-else
             type="button"
             class="text-label text-primary min-h-11 border-0 bg-transparent px-1 disabled:text-disabled-text"
             :disabled="!store.accounts.length"
-            @click="isAccountModalOpen = true"
+            @click="startAccountEditing"
           >
             계좌 변경
           </button>
@@ -137,6 +165,21 @@ async function submit() {
             :key="account.accountId"
             class="bg-surface flex min-h-16 items-center gap-3 rounded-lg px-4"
           >
+            <button
+              v-if="isAccountEditing"
+              type="button"
+              class="flex size-5 shrink-0 items-center justify-center rounded-full border-2 bg-transparent p-0"
+              :class="
+                draftAccountId === account.accountId ? 'border-primary' : 'border-control-border'
+              "
+              :aria-label="`${account.bankName} 출금 계좌로 선택`"
+              @click="draftAccountId = account.accountId"
+            >
+              <span
+                v-if="draftAccountId === account.accountId"
+                class="bg-primary size-2.5 rounded-full"
+              ></span>
+            </button>
             <span
               class="bg-primary-bg text-primary flex size-9 shrink-0 items-center justify-center rounded-md"
             >
@@ -171,13 +214,5 @@ async function submit() {
         <GpButton :disabled="!canSubmit" @click="submit">{{ formatWon(amount) }} 출금하기</GpButton>
       </div>
     </template>
-
-    <PocketAccountSelectModal
-      :open="isAccountModalOpen"
-      :accounts="store.accounts"
-      :selected-id="selectedAccount?.accountId"
-      @close="isAccountModalOpen = false"
-      @save="selectAccount"
-    />
   </AppSubLayout>
 </template>
