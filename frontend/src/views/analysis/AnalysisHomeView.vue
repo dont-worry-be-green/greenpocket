@@ -16,9 +16,9 @@ const router = useRouter()
 const store = useAnalysisStore()
 const selectedUtilityType = ref('ELECTRICITY')
 const UTILITY_STYLE = {
-  ELECTRICITY: { icon: IconLightning, tone: 'text-elec' },
-  WATER: { icon: IconDrop, tone: 'text-water' },
-  GAS: { icon: IconFlame, tone: 'text-gas' },
+  ELECTRICITY: { icon: IconLightning, tone: 'summary-electricity' },
+  WATER: { icon: IconDrop, tone: 'summary-water' },
+  GAS: { icon: IconFlame, tone: 'summary-gas' },
 }
 
 const isEmptyPreview = computed(() => route.query.preview === 'empty')
@@ -262,7 +262,19 @@ function goToRegistration() {
 }
 
 .analysis-summary {
-  background-color: #3a6e52;
+  background: linear-gradient(135deg, #3a6e52 0%, #4f8d6d 100%);
+}
+
+.summary-electricity {
+  color: #8cf0af;
+}
+
+.summary-water {
+  color: #8fc3f2;
+}
+
+.summary-gas {
+  color: #f5be7e;
 }
 
 @keyframes scan-bill {
