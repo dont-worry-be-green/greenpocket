@@ -8,12 +8,14 @@
 defineProps({
   title: { type: String, required: true },
   subtitle: { type: String, default: '' },
+  eyebrow: { type: String, default: '' },
 })
 </script>
 
 <template>
   <header class="flex items-start justify-between gap-3 px-(--gp-gutter) pt-5 pb-4">
     <div class="min-w-0">
+      <p v-if="eyebrow" class="text-body-sm text-muted mt-0 mb-1">{{ eyebrow }}</p>
       <h1 class="text-title tracking-title text-ink m-0">{{ title }}</h1>
       <p v-if="subtitle" class="text-caption text-muted mt-1 mb-0">{{ subtitle }}</p>
     </div>

@@ -14,8 +14,13 @@ export default [
   {
     path: '/analysis',
     name: 'an-home',
-    // TODO(진단 담당): AN-01 고지서 미등록 메인으로 교체
-    component: () => import('@/views/ComingSoonView.vue'),
+    component: () => import('@/views/analysis/AnalysisHomeView.vue'),
     meta: { tab: 'analysis', title: '진단' },
+  },
+  {
+    path: '/analysis/bills/new',
+    name: 'an-bill-create',
+    component: () => import('@/views/ComingSoonView.vue'),
+    meta: { title: '고지서 등록' },
   },
 ]

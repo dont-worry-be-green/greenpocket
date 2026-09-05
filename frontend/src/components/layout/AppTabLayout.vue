@@ -18,6 +18,7 @@ const props = defineProps({
   tab: { type: String, required: true }, // tabs.js 의 key
   title: { type: String, default: '' },
   subtitle: { type: String, default: '' },
+  eyebrow: { type: String, default: '' },
 })
 
 const router = useRouter()
@@ -31,7 +32,7 @@ function onChange(key) {
 
 <template>
   <div class="bg-canvas min-h-dvh">
-    <GpPageHeader v-if="title" :title="title" :subtitle="subtitle">
+    <GpPageHeader v-if="title" :title="title" :subtitle="subtitle" :eyebrow="eyebrow">
       <template v-if="$slots.headerAction" #action>
         <slot name="headerAction" />
       </template>
