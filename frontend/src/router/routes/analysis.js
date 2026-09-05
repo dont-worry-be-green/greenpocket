@@ -32,7 +32,13 @@ export default [
   {
     path: '/analysis/bills/edit',
     name: 'an-bill-edit',
-    component: () => import('@/views/ComingSoonView.vue'),
+    component: () => import('@/views/analysis/BillManualEntryView.vue'),
     meta: { title: '인식 내용 수정' },
+  },
+  {
+    path: '/analysis/bills/confirm',
+    name: 'an-bill-confirm',
+    component: () => import('@/views/ComingSoonView.vue'),
+    meta: { title: '고지서 최종 확인' },
   },
 ]

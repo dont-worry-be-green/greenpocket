@@ -7,6 +7,7 @@ export const useAnalysisStore = defineStore('analysis', () => {
   const diagnosis = ref(null)
   const targetMonth = ref(null)
   const selectedImage = ref(null)
+  const billDraft = ref(null)
   const isLoading = ref(false)
   const error = ref(null)
 
@@ -34,5 +35,19 @@ export const useAnalysisStore = defineStore('analysis', () => {
     selectedImage.value = file
   }
 
-  return { diagnosis, targetMonth, selectedImage, isLoading, error, fetchHome, selectImage }
+  function saveBillDraft(draft) {
+    billDraft.value = draft
+  }
+
+  return {
+    diagnosis,
+    targetMonth,
+    selectedImage,
+    billDraft,
+    isLoading,
+    error,
+    fetchHome,
+    selectImage,
+    saveBillDraft,
+  }
 })
