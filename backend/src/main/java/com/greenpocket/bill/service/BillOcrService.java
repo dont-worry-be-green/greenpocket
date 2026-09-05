@@ -92,7 +92,12 @@ public class BillOcrService {
 				jobs.put(jobId, OcrJob.failed(userId, failed(jobId, false)));
 				return;
 			}
-			BillOcrResultResponse response = normalize(jobId, recognition.fields(), billingMonthHint);
+			BillOcrResultResponse response = normalize(
+				jobId,
+				recognition.billType(),
+				recognition.fields(),
+				billingMonthHint
+			);
 			jobs.put(jobId, OcrJob.completed(userId, response));
 		}
 		catch (ClovaOcrClientException exception) {
@@ -103,7 +108,15 @@ public class BillOcrService {
 		}
 	}
 
-	private BillOcrResultResponse normalize(String jobId, List<Field> fields, YearMonth billingMonthHint) {
+	private BillOcrResultResponse normalize(
+		String jobId,
+		BillType billType,
+		List<Field> fields,
+		YearMonth billingMonthHint
+	) {
+		if (billType == null) {
+			return failed(jobId, false);
+		}
 		Map<String, Field> byName = new java.util.HashMap<>();
 		for (Field field : fields) {
 			if (field.name() != null) {
@@ -128,11 +141,9 @@ public class BillOcrService {
 			byName.get("gas_amount"), byName.get("gas_usage")
 		));
 
-		List<BillOcrResultResponse.Item> orderedItems = List.of(
-			items.get(UtilityType.ELECTRICITY),
-			items.get(UtilityType.WATER),
-			items.get(UtilityType.GAS)
-		);
+		List<BillOcrResultResponse.Item> orderedItems = expectedUtilityTypes(billType).stream()
+			.map(items::get)
+			.toList();
 		long recognizedCount = orderedItems.stream().filter(BillOcrResultResponse.Item::hasData).count();
 		if (recognizedCount == 0) {
 			return failed(jobId, false);
@@ -141,7 +152,7 @@ public class BillOcrService {
 			jobId,
 			BillOcrJobStatus.SUCCEEDED,
 			100,
-			BillType.MANAGEMENT,
+			billType,
 			billingMonth == null ? null : billingMonth.toString(),
 			recognizedCount < orderedItems.size(),
 			orderedItems,
@@ -149,6 +160,15 @@ public class BillOcrService {
 			null,
 			null
 		);
+	}
+
+	private static List<UtilityType> expectedUtilityTypes(BillType billType) {
+		return switch (billType) {
+			case MANAGEMENT -> List.of(UtilityType.ELECTRICITY, UtilityType.WATER, UtilityType.GAS);
+			case ELECTRICITY -> List.of(UtilityType.ELECTRICITY);
+			case WATER -> List.of(UtilityType.WATER);
+			case GAS -> List.of(UtilityType.GAS);
+		};
 	}
 
 	private BillOcrResultResponse.Item item(

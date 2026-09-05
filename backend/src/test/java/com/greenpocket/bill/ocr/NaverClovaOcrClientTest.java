@@ -14,10 +14,12 @@ import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 
+import com.greenpocket.bill.entity.BillType;
+
 class NaverClovaOcrClientTest {
 
 	@Test
-	void sendsMultipartRequestWithSecretAndTemplateId() throws Exception {
+	void sendsMultipartRequestWithSecretAndAllTemplateIds() throws Exception {
 		HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
 		AtomicReference<String> receivedSecret = new AtomicReference<>();
 		AtomicReference<String> receivedContentType = new AtomicReference<>();
@@ -27,7 +29,7 @@ class NaverClovaOcrClientTest {
 			receivedContentType.set(exchange.getRequestHeaders().getFirst("Content-Type"));
 			receivedBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.ISO_8859_1));
 			byte[] response = """
-				{"images":[{"inferResult":"SUCCESS","fields":[
+				{"images":[{"inferResult":"SUCCESS","matchedTemplate":{"id":43345},"fields":[
 				  {"name":"billing_month","inferText":"2026-07","inferConfidence":0.99}
 				]}]}
 				""".getBytes(StandardCharsets.UTF_8);
@@ -43,7 +45,7 @@ class NaverClovaOcrClientTest {
 				new ObjectMapper(),
 				"http://127.0.0.1:" + server.getAddress().getPort() + "/infer",
 				"local-test-secret",
-				"43341",
+				templateRegistry(),
 				HttpClient.newHttpClient()
 			);
 
@@ -53,12 +55,13 @@ class NaverClovaOcrClientTest {
 			);
 
 			assertThat(result.inferResult()).isEqualTo("SUCCESS");
+			assertThat(result.billType()).isEqualTo(BillType.ELECTRICITY);
 			assertThat(receivedSecret.get()).isEqualTo("local-test-secret");
 			assertThat(receivedContentType.get()).startsWith("multipart/form-data; boundary=");
 			assertThat(receivedBody.get()).contains(
 				"name=\"message\"",
 				"\"version\":\"V2\"",
-				"\"templateIds\":[43341]",
+				"\"templateIds\":[43341,43345,43347,43348]",
 				"name=\"file\"; filename=\"bill.png\""
 			);
 		}
@@ -70,7 +73,7 @@ class NaverClovaOcrClientTest {
 	@Test
 	void parsesOnlyRequiredFieldsFromClovaResponse() {
 		NaverClovaOcrClient client = new NaverClovaOcrClient(
-			new ObjectMapper(), "https://example.com/infer", "secret", "43341", mock(HttpClient.class)
+			new ObjectMapper(), "https://example.com/infer", "secret", templateRegistry(), mock(HttpClient.class)
 		);
 
 		var result = client.parse("""
@@ -89,6 +92,7 @@ class NaverClovaOcrClientTest {
 			""");
 
 		assertThat(result.inferResult()).isEqualTo("SUCCESS");
+		assertThat(result.billType()).isEqualTo(BillType.MANAGEMENT);
 		assertThat(result.fields()).hasSize(2);
 		assertThat(result.fields().getFirst().name()).isEqualTo("billing_month");
 		assertThat(result.fields().getFirst().text()).isEqualTo("2026년 7월");
@@ -97,10 +101,31 @@ class NaverClovaOcrClientTest {
 	@Test
 	void rejectsMalformedProviderResponse() {
 		NaverClovaOcrClient client = new NaverClovaOcrClient(
-			new ObjectMapper(), "https://example.com/infer", "secret", "43341", mock(HttpClient.class)
+			new ObjectMapper(), "https://example.com/infer", "secret", templateRegistry(), mock(HttpClient.class)
 		);
 
 		assertThatThrownBy(() -> client.parse("not-json"))
 			.isInstanceOf(ClovaOcrClientException.class);
+	}
+
+	@Test
+	void leavesBillTypeEmptyForUnknownOrMissingMatchedTemplate() {
+		NaverClovaOcrClient client = new NaverClovaOcrClient(
+			new ObjectMapper(), "https://example.com/infer", "secret", templateRegistry(), mock(HttpClient.class)
+		);
+
+		var unknown = client.parse("""
+			{"images":[{"inferResult":"SUCCESS","matchedTemplate":{"id":99999},"fields":[]}]}
+			""");
+		var missing = client.parse("""
+			{"images":[{"inferResult":"SUCCESS","fields":[]}]}
+			""");
+
+		assertThat(unknown.billType()).isNull();
+		assertThat(missing.billType()).isNull();
+	}
+
+	private static ClovaOcrTemplateRegistry templateRegistry() {
+		return new ClovaOcrTemplateRegistry("43341", "43345", "43347", "43348");
 	}
 }

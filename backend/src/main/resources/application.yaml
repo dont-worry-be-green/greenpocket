@@ -28,7 +28,10 @@ clova:
   ocr:
     invoke-url: ${CLOVA_OCR_INVOKE_URL:}
     secret: ${CLOVA_OCR_SECRET:}
-    template-id: ${CLOVA_OCR_TEMPLATE_ID:}
+    management-template-id: ${CLOVA_OCR_MANAGEMENT_TEMPLATE_ID:${CLOVA_OCR_TEMPLATE_ID:}}
+    electricity-template-id: ${CLOVA_OCR_ELECTRICITY_TEMPLATE_ID:}
+    water-template-id: ${CLOVA_OCR_WATER_TEMPLATE_ID:}
+    gas-template-id: ${CLOVA_OCR_GAS_TEMPLATE_ID:}
 
 server:
   port: ${SERVER_PORT:8080}

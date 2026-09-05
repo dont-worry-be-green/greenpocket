@@ -56,7 +56,7 @@ class BillOcrServiceTest {
 
 	@Test
 	void returnsThreeFixedItemsAndMarksPartialRecognition() {
-		BillOcrService service = service((image, format) -> new Recognition("SUCCESS", List.of(
+		BillOcrService service = service((image, format) -> new Recognition("SUCCESS", BillType.MANAGEMENT, List.of(
 			field("billing_month", "2026년 7월", "0.9900"),
 			field("electricity_usage", "113kWh", "0.9900"),
 			field("electricity_amount", "18,080", "0.9900")
@@ -73,7 +73,7 @@ class BillOcrServiceTest {
 
 	@Test
 	void usesBillingMonthHintWhenMonthWasNotRecognized() {
-		BillOcrService service = service((image, format) -> new Recognition("SUCCESS", List.of(
+		BillOcrService service = service((image, format) -> new Recognition("SUCCESS", BillType.ELECTRICITY, List.of(
 			field("electricity_usage", "113kWh", "0.9900"),
 			field("electricity_amount", "18,080", "0.9900")
 		)));
@@ -87,7 +87,7 @@ class BillOcrServiceTest {
 
 	@Test
 	void lowConfidenceRequiresReview() {
-		BillOcrService service = service((image, format) -> new Recognition("SUCCESS", List.of(
+		BillOcrService service = service((image, format) -> new Recognition("SUCCESS", BillType.ELECTRICITY, List.of(
 			field("billing_month", "2026년 7월", "0.9900"),
 			field("electricity_usage", "113kWh", "0.6900"),
 			field("electricity_amount", "18,080", "0.9900")
@@ -101,7 +101,7 @@ class BillOcrServiceTest {
 
 	@Test
 	void convertsRecognitionFailureToFallbackResult() {
-		BillOcrService service = service((image, format) -> new Recognition("FAILURE", List.of()));
+		BillOcrService service = service((image, format) -> new Recognition("FAILURE", null, List.of()));
 
 		var started = service.start(USER_ID, png(), null);
 		var result = service.getResult(USER_ID, started.jobId());
@@ -123,6 +123,72 @@ class BillOcrServiceTest {
 		assertThat(result.status()).isEqualTo(BillOcrJobStatus.TIMEOUT);
 		assertThat(result.errorCode()).isEqualTo("EXTERNAL_TIMEOUT");
 		assertThat(result.fallbackScreen()).isEqualTo("AN-05");
+	}
+
+	@Test
+	void normalizesIndividualElectricityWaterAndGasResults() {
+		assertIndividual(
+			BillType.ELECTRICITY,
+			UtilityType.ELECTRICITY,
+			"electricity_usage",
+			"113 kWh",
+			"electricity_amount",
+			"18,080원",
+			18_080L,
+			"113.000"
+		);
+		assertIndividual(
+			BillType.WATER,
+			UtilityType.WATER,
+			"water_usage",
+			"11 m³",
+			"water_amount",
+			"13,840원",
+			13_840L,
+			"11.000"
+		);
+		assertIndividual(
+			BillType.GAS,
+			UtilityType.GAS,
+			"gas_usage",
+			"14 m³",
+			"gas_amount",
+			"12,400원",
+			12_400L,
+			"14.000"
+		);
+	}
+
+	@Test
+	void rejectsUnknownTemplateAndMismatchedIndividualFields() {
+		BillOcrService unknownTemplateService = service((image, format) ->
+			new Recognition("SUCCESS", null, List.of(
+				field("billing_month", "2026년 7월", "0.9900"),
+				field("electricity_usage", "113 kWh", "0.9900"),
+				field("electricity_amount", "18,080원", "0.9900")
+			))
+		);
+		BillOcrService mismatchedFieldsService = service((image, format) ->
+			new Recognition("SUCCESS", BillType.WATER, List.of(
+				field("billing_month", "2026년 7월", "0.9900"),
+				field("electricity_usage", "113 kWh", "0.9900"),
+				field("electricity_amount", "18,080원", "0.9900")
+			))
+		);
+
+		var unknownResult = unknownTemplateService.getResult(
+			USER_ID,
+			unknownTemplateService.start(USER_ID, png(), null).jobId()
+		);
+		var mismatchedResult = mismatchedFieldsService.getResult(
+			USER_ID,
+			mismatchedFieldsService.start(USER_ID, png(), null).jobId()
+		);
+
+		assertThat(unknownResult.status()).isEqualTo(BillOcrJobStatus.FAILED);
+		assertThat(unknownResult.errorCode()).isEqualTo("OCR_FAILED");
+		assertThat(mismatchedResult.status()).isEqualTo(BillOcrJobStatus.FAILED);
+		assertThat(mismatchedResult.errorCode()).isEqualTo("OCR_FAILED");
 	}
 
 	@Test
@@ -161,7 +227,7 @@ class BillOcrServiceTest {
 	}
 
 	private static Recognition successFields() {
-		return new Recognition("SUCCESS", List.of(
+		return new Recognition("SUCCESS", BillType.MANAGEMENT, List.of(
 			field("billing_month", "2026년 7월", "0.99975"),
 			field("electricity_usage", "113kWh", "0.9997"),
 			field("electricity_amount", "18,080", "0.9998"),
@@ -170,6 +236,33 @@ class BillOcrServiceTest {
 			field("gas_usage", "14m3", "0.9997"),
 			field("gas_amount", "12,400", "1.0")
 		));
+	}
+
+	private static void assertIndividual(
+		BillType billType,
+		UtilityType utilityType,
+		String usageFieldName,
+		String usageText,
+		String amountFieldName,
+		String amountText,
+		long expectedAmount,
+		String expectedUsage
+	) {
+		BillOcrService service = service((image, format) -> new Recognition("SUCCESS", billType, List.of(
+			field("billing_month", "2026년 7월", "0.9999"),
+			field(usageFieldName, usageText, "0.9998"),
+			field(amountFieldName, amountText, "0.9997")
+		)));
+
+		var result = service.getResult(USER_ID, service.start(USER_ID, png(), null).jobId());
+
+		assertThat(result.status()).isEqualTo(BillOcrJobStatus.SUCCEEDED);
+		assertThat(result.billType()).isEqualTo(billType);
+		assertThat(result.partialRecognition()).isFalse();
+		assertThat(result.items()).hasSize(1);
+		assertThat(result.items().getFirst().utilityType()).isEqualTo(utilityType);
+		assertThat(result.items().getFirst().amount()).isEqualTo(expectedAmount);
+		assertThat(result.items().getFirst().usage()).isEqualByComparingTo(expectedUsage);
 	}
 
 	private static Field field(String name, String text, String confidence) {

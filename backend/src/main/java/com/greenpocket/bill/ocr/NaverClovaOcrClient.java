@@ -30,7 +30,7 @@ public class NaverClovaOcrClient implements ClovaOcrClient {
 	private final ObjectMapper objectMapper;
 	private final String invokeUrl;
 	private final String secret;
-	private final Long templateId;
+	private final ClovaOcrTemplateRegistry templateRegistry;
 	private final HttpClient httpClient;
 
 	@Autowired
@@ -38,9 +38,9 @@ public class NaverClovaOcrClient implements ClovaOcrClient {
 		ObjectMapper objectMapper,
 		@Value("${clova.ocr.invoke-url:}") String invokeUrl,
 		@Value("${clova.ocr.secret:}") String secret,
-		@Value("${clova.ocr.template-id:}") String templateId
+		ClovaOcrTemplateRegistry templateRegistry
 	) {
-		this(objectMapper, invokeUrl, secret, templateId, HttpClient.newBuilder()
+		this(objectMapper, invokeUrl, secret, templateRegistry, HttpClient.newBuilder()
 			.connectTimeout(CONNECT_TIMEOUT)
 			.build());
 	}
@@ -49,13 +49,13 @@ public class NaverClovaOcrClient implements ClovaOcrClient {
 		ObjectMapper objectMapper,
 		String invokeUrl,
 		String secret,
-		String templateId,
+		ClovaOcrTemplateRegistry templateRegistry,
 		HttpClient httpClient
 	) {
 		this.objectMapper = objectMapper;
 		this.invokeUrl = invokeUrl;
 		this.secret = secret;
-		this.templateId = parseTemplateId(templateId);
+		this.templateRegistry = templateRegistry;
 		this.httpClient = httpClient;
 	}
 
@@ -103,7 +103,12 @@ public class NaverClovaOcrClient implements ClovaOcrClient {
 			List<Field> fields = image.fields() == null ? List.of() : image.fields().stream()
 				.map(field -> new Field(field.name(), field.inferText(), field.inferConfidence()))
 				.toList();
-			return new Recognition(image.inferResult(), fields);
+			Long matchedTemplateId = image.matchedTemplate() == null ? null : image.matchedTemplate().id();
+			return new Recognition(
+				image.inferResult(),
+				templateRegistry.resolve(matchedTemplateId),
+				fields
+			);
 		}
 		catch (JacksonException exception) {
 			throw new ClovaOcrClientException(false, exception);
@@ -112,12 +117,13 @@ public class NaverClovaOcrClient implements ClovaOcrClient {
 
 	private byte[] multipartBody(String boundary, byte[] image, String format) {
 		try {
-			Map<String, Object> imageMessage = templateId == null
-				? Map.of("format", format, "name", "greenpocket-management-bill")
+			List<Long> templateIds = templateRegistry.templateIds();
+			Map<String, Object> imageMessage = templateIds.isEmpty()
+				? Map.of("format", format, "name", "greenpocket-bill")
 				: Map.of(
 					"format", format,
-					"name", "greenpocket-management-bill",
-					"templateIds", List.of(templateId)
+					"name", "greenpocket-bill",
+					"templateIds", templateIds
 				);
 			Map<String, Object> message = Map.of(
 				"version", "V2",
@@ -155,22 +161,17 @@ public class NaverClovaOcrClient implements ClovaOcrClient {
 		output.write(value.getBytes(StandardCharsets.UTF_8));
 	}
 
-	private static Long parseTemplateId(String templateId) {
-		if (templateId == null || templateId.isBlank()) {
-			return null;
-		}
-		try {
-			return Long.valueOf(templateId);
-		}
-		catch (NumberFormatException exception) {
-			throw new IllegalArgumentException("CLOVA OCR template ID must be a number", exception);
-		}
-	}
-
 	private record ClovaResponse(List<ClovaImage> images) {
 	}
 
-	private record ClovaImage(String inferResult, List<ClovaField> fields) {
+	private record ClovaImage(
+		String inferResult,
+		ClovaMatchedTemplate matchedTemplate,
+		List<ClovaField> fields
+	) {
+	}
+
+	private record ClovaMatchedTemplate(Long id, String name) {
 	}
 
 	private record ClovaField(String name, String inferText, BigDecimal inferConfidence) {
