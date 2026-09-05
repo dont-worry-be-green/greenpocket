@@ -13,6 +13,7 @@ import { ref } from 'vue'
 import GpModal from '@/components/ui/GpModal.vue'
 import IconCheck from '@/components/ui/icons/IconCheck.vue'
 import IconChevronRight from '@/components/ui/icons/IconChevronRight.vue'
+import IconInfo from '@/components/ui/icons/IconInfo.vue'
 
 const props = defineProps({
   sidos: { type: Array, default: () => [] },
@@ -41,42 +42,50 @@ function selectSigungu(item) {
   <div>
     <span class="text-body-strong text-muted mb-3 block">지역</span>
 
-    <div class="flex gap-2">
+    <div class="space-y-2">
       <button
         type="button"
-        class="bg-surface text-body flex min-h-14 flex-1 items-center rounded-lg border-0 px-4 text-left"
+        class="bg-surface border-border text-body flex min-h-14 w-full items-center rounded-lg border px-4 text-left"
         aria-haspopup="listbox"
         @click="openLevel = 'SIDO'"
       >
         <span class="flex-1" :class="sido ? 'text-ink' : 'text-disabled-text'">
           {{ sido ? sido.name : '시 · 도' }}
         </span>
-        <IconChevronRight :size="18" class="text-icon-off rotate-90" />
+        <IconChevronRight :size="18" class="text-icon-off" />
       </button>
 
       <button
         type="button"
         :disabled="!sido"
-        class="bg-surface text-body flex min-h-14 flex-1 items-center rounded-lg border-0 px-4 text-left disabled:bg-disabled-bg disabled:cursor-not-allowed"
+        class="bg-surface border-border text-body flex min-h-14 w-full items-center rounded-lg border px-4 text-left disabled:bg-disabled-bg disabled:cursor-not-allowed"
         aria-haspopup="listbox"
         @click="openLevel = 'SIGUNGU'"
       >
         <span class="flex-1" :class="sigungu ? 'text-ink' : 'text-disabled-text'">
           {{ sigungu ? sigungu.name : '시 · 군 · 구' }}
         </span>
-        <IconChevronRight :size="18" class="text-icon-off rotate-90" />
+        <IconChevronRight :size="18" class="text-icon-off" />
       </button>
     </div>
 
     <!-- 데이터 없음은 오류가 아니다(핵심 규칙 8). 빈 목록도 안내로 그린다 -->
     <p
       v-if="sido && !sigungusLoading && sigungus.length === 0"
-      class="text-caption text-muted mt-3 mb-0"
+      class="text-caption text-muted bg-surface-sub mt-3 mb-0 flex gap-2 rounded-md p-3"
     >
-      {{ sido.name }}의 시·군·구 목록은 아직 준비되지 않았어요. 지금은 서울특별시만 고를 수 있어요.
+      <IconInfo :size="16" class="text-icon-off mt-0.5 shrink-0" aria-hidden="true" />
+      <span>
+        {{ sido.name }}의 시·군·구 목록은 아직 준비되지 않았어요. 지금은 서울특별시만 고를 수
+        있어요.
+      </span>
     </p>
-    <p v-else-if="sigungu && !sigungu.hasRegionAverage" class="text-caption text-muted mt-3 mb-0">
-      비교 자료가 없는 지역은 더 넓은 범위의 평균을 쓰고, 그 범위를 화면에 표시해요.
+    <p
+      v-else-if="sigungu && !sigungu.hasRegionAverage"
+      class="text-caption text-muted bg-surface-sub mt-3 mb-0 flex gap-2 rounded-md p-3"
+    >
+      <IconInfo :size="16" class="text-icon-off mt-0.5 shrink-0" aria-hidden="true" />
+      <span>비교 자료가 없는 지역은 더 넓은 범위의 평균을 쓰고, 그 범위를 화면에 표시해요.</span>
     </p>
 
     <GpModal :open="openLevel === 'SIDO'" title="시 · 도 선택" @close="openLevel = null">

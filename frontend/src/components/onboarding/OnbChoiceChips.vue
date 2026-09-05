@@ -27,11 +27,11 @@ defineEmits(['update:modelValue'])
         type="button"
         role="radio"
         :aria-checked="option.value === modelValue"
-        class="ease-standard text-body-strong min-h-11 cursor-pointer rounded-full border-0 px-4 transition-colors duration-140"
+        class="ease-standard text-body-strong min-h-11 cursor-pointer rounded-full border px-3.5 transition-colors duration-140"
         :class="
           option.value === modelValue
-            ? 'bg-primary-bg text-primary-on-soft shadow-[inset_0_0_0_2px_var(--color-primary)]'
-            : 'bg-surface text-ink-soft'
+            ? 'bg-primary border-primary text-on-primary'
+            : 'bg-surface border-border text-ink-soft'
         "
         @click="$emit('update:modelValue', option.value)"
       >

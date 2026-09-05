@@ -15,6 +15,8 @@ import { useRouter } from 'vue-router'
 
 import AppSubLayout from '@/components/layout/AppSubLayout.vue'
 import OnbChoiceChips from '@/components/onboarding/OnbChoiceChips.vue'
+import OnbProgress from '@/components/onboarding/OnbProgress.vue'
+import OnbRadioList from '@/components/onboarding/OnbRadioList.vue'
 import OnbRegionPicker from '@/components/onboarding/OnbRegionPicker.vue'
 import GpButton from '@/components/ui/GpButton.vue'
 import { useOnboardingStore } from '@/stores/onboarding'
@@ -81,11 +83,17 @@ async function submit() {
 </script>
 
 <template>
-  <AppSubLayout title="주거 프로필" back="/onboarding/start" has-footer>
+  <!-- 시안에 헤더 제목이 없다. 본문 큰 제목이 그 자리를 대신한다 -->
+  <AppSubLayout back="/onboarding/start">
+    <OnbProgress :step="2" :total="2" />
+
     <div class="space-y-6 pt-5">
-      <p class="text-body text-ink-soft m-0">
-        같은 지역·같은 조건의 가구와 비교해서 고지서를 진단해요.
-      </p>
+      <div>
+        <h1 class="text-title tracking-display text-ink m-0">어디에 살고 계세요?</h1>
+        <p class="text-body-sm text-muted mt-2 mb-0">
+          같은 지역·같은 조건 가구와 비교하는 데 써요
+        </p>
+      </div>
 
       <OnbRegionPicker
         :sidos="store.sidos"
@@ -98,19 +106,14 @@ async function submit() {
       />
 
       <OnbChoiceChips v-model="housingType" :options="HOUSING_TYPES" label="주거 형태" />
-      <OnbChoiceChips v-model="areaBand" :options="AREA_BANDS" label="평수" />
+      <OnbRadioList v-model="areaBand" :options="AREA_BANDS" label="평수" />
 
       <p v-if="store.error" class="text-body-sm text-negative m-0">{{ store.error.message }}</p>
-    </div>
 
-    <template #footer>
-      <div
-        class="bg-canvas fixed inset-x-0 bottom-0 mx-auto max-w-(--gp-viewport-w) px-(--gp-gutter) pt-3 pb-[max(12px,env(safe-area-inset-bottom))]"
-      >
-        <GpButton :disabled="!canSubmit" @click="submit">
-          {{ store.isLoading ? '저장하는 중...' : '저장하고 시작하기' }}
-        </GpButton>
-      </div>
-    </template>
+      <!-- 시안대로 CTA 를 하단 고정이 아니라 콘텐츠 흐름 안에 둔다. 폼이 길어 가릴 것이 없다 -->
+      <GpButton :disabled="!canSubmit" @click="submit">
+        {{ store.isLoading ? '저장하는 중...' : '다음' }}
+      </GpButton>
+    </div>
   </AppSubLayout>
 </template>
