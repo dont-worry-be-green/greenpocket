@@ -251,6 +251,9 @@ function goToRegistration() {
         </template>
         <p v-else class="text-body-sm text-muted my-10 text-center">지역 비교 데이터를 준비하고 있어요.</p>
       </section>
+      <div class="mt-5 pb-2">
+        <GpButton variant="wide" size="wide" @click="goToRegistration">고지서 등록하기</GpButton>
+      </div>
     </template>
 
     <section v-else class="bg-surface rounded-lg px-5 py-8 text-center">

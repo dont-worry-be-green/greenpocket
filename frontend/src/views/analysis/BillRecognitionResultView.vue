@@ -18,38 +18,29 @@ const targetYearMonth = computed(
   () => route.query.month ?? store.targetMonth?.targetYearMonth ?? '2026-08',
 )
 
-const recognizedItems = [
-  {
-    type: 'electricity',
-    label: '전기',
-    amount: 43200,
-    usage: 287,
-    unit: 'kWh',
-    precision: 0,
-    icon: IconLightning,
-    color: 'text-primary',
-  },
-  {
-    type: 'water',
-    label: '수도',
-    amount: 8900,
-    usage: 8.9,
-    unit: '㎥',
-    precision: 1,
-    icon: IconDrop,
-    color: 'text-water',
-  },
-  {
-    type: 'gas',
-    label: '도시가스',
-    amount: 12400,
-    usage: 12.4,
-    unit: '㎥',
-    precision: 1,
-    icon: IconFlame,
-    color: 'text-gas',
-  },
-]
+const UTILITY_META = {
+  ELECTRICITY: { type: 'electricity', label: '전기', icon: IconLightning, color: 'text-primary' },
+  WATER: { type: 'water', label: '수도', icon: IconDrop, color: 'text-water' },
+  GAS: { type: 'gas', label: '도시가스', icon: IconFlame, color: 'text-gas' },
+}
+const recognizedItems = computed(() =>
+  (store.ocrResult?.items ?? [])
+    .filter((item) => item.hasData)
+    .map((item) => ({
+      ...item,
+      ...UTILITY_META[item.utilityType],
+      unit: item.usageUnit === 'm3' ? '㎥' : item.usageUnit,
+      precision: item.usageUnit === 'm3' ? 1 : 0,
+    })),
+)
+const recognizedMonth = computed(
+  () => store.ocrResult?.billingMonth ?? recognizedItems.value[0]?.billingMonth ?? targetYearMonth.value,
+)
+const billType = computed(() => store.ocrResult?.billType ?? 'MANAGEMENT')
+
+if (!store.ocrResult) {
+  router.replace({ path: '/analysis/bills/new', query: { month: targetYearMonth.value } })
+}
 
 function editResult() {
   saveRecognizedDraft()
@@ -72,14 +63,15 @@ async function confirmResult() {
 
 function saveRecognizedDraft() {
   store.saveBillDraft({
-    billingMonth: targetYearMonth.value,
-    billType: 'MANAGEMENT',
+    billingMonth: recognizedMonth.value,
+    billType: billType.value,
     inputSource: 'OCR',
-    items: recognizedItems.map((item) => ({
-      utilityType: item.type.toUpperCase(),
+    items: recognizedItems.value.map((item) => ({
+      utilityType: item.utilityType,
       amount: item.amount,
       usage: item.usage,
-      usageUnit: item.unit === '㎥' ? 'm3' : item.unit,
+      usageUnit: item.usageUnit,
+      confidence: item.confidence,
     })),
   })
 }
@@ -95,7 +87,10 @@ function saveRecognizedDraft() {
     <section class="bg-surface rounded-xl p-5 shadow-sm">
       <div class="mb-5">
         <p class="text-caption text-muted mt-0 mb-1">인식된 고지서</p>
-        <h2 class="text-section text-ink m-0">{{ formatMonthOnly(targetYearMonth) }} 생활비 고지서</h2>
+        <h2 class="text-section text-ink m-0">{{ formatMonthOnly(recognizedMonth) }} 생활비 고지서</h2>
+        <p v-if="store.ocrResult?.partialRecognition" class="text-caption text-negative mt-2 mb-0">
+          일부 항목만 인식됐어요. 내용을 확인해 주세요.
+        </p>
       </div>
 
       <ul class="m-0 list-none p-0">
@@ -106,6 +101,12 @@ function saveRecognizedDraft() {
         >
           <component :is="item.icon" :size="20" :class="item.color" />
           <span class="text-body-sm text-ink flex-1">{{ item.label }}</span>
+          <span
+            v-if="item.recordStatus === 'REVIEW_REQUIRED'"
+            class="bg-warning-bg text-negative rounded-full px-2 py-1 text-caption"
+          >
+            확인 필요
+          </span>
           <div class="text-right">
             <strong class="text-body-strong text-ink block tabular-nums">
               {{ formatWon(item.amount) }}

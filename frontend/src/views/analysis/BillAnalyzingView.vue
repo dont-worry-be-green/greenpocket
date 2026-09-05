@@ -1,21 +1,32 @@
 <script setup>
-import { onBeforeUnmount, onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import billIcon from '@/assets/icons/bill.svg'
 import AppSubLayout from '@/components/layout/AppSubLayout.vue'
+import GpButton from '@/components/ui/GpButton.vue'
+import { useAnalysisStore } from '@/stores/analysis'
 
 const route = useRoute()
 const router = useRouter()
-let resultTimer
+const store = useAnalysisStore()
+const progress = computed(() => Math.min(100, Math.max(0, store.ocrProgress ?? 0)))
 
-onMounted(() => {
-  resultTimer = window.setTimeout(() => {
+async function analyze() {
+  const result = await store.analyzeSelectedImage(route.query.month)
+  if (result) {
     router.replace({ path: '/analysis/bills/result', query: { month: route.query.month } })
-  }, 1400)
-})
+  }
+}
 
-onBeforeUnmount(() => window.clearTimeout(resultTimer))
+function useManualEntry() {
+  router.replace({
+    path: '/analysis/bills/new',
+    query: { month: route.query.month, mode: 'manual' },
+  })
+}
+
+onMounted(analyze)
 </script>
 
 <template>
@@ -28,8 +39,31 @@ onBeforeUnmount(() => window.clearTimeout(resultTimer))
         <img :src="billIcon" alt="" class="h-14 w-14" />
         <span class="analysis-scan-line absolute left-6 h-0.5 w-24 rounded-full" />
       </div>
-      <h1 class="text-title text-ink mt-0 mb-2">고지서를 읽고 있어요</h1>
-      <p class="text-body-sm text-muted m-0">잠시만 기다려 주세요.</p>
+      <template v-if="!store.ocrError">
+        <h1 class="text-title text-ink mt-0 mb-2">고지서를 읽고 있어요</h1>
+        <p class="text-body-sm text-muted mt-0 mb-5">잠시만 기다려 주세요.</p>
+        <div class="bg-disabled-bg h-2 w-full max-w-64 overflow-hidden rounded-full">
+          <span
+            class="bg-primary block h-full rounded-full transition-[width] duration-300"
+            :style="{ width: `${progress}%` }"
+          />
+        </div>
+        <strong class="text-caption text-primary mt-2">{{ progress }}%</strong>
+      </template>
+      <template v-else>
+        <h1 class="text-title text-ink mt-0 mb-2">고지서를 읽지 못했어요</h1>
+        <p class="text-body-sm text-muted mt-0 mb-6">{{ store.ocrError.message }}</p>
+        <div class="grid w-full max-w-72 grid-cols-2 gap-3">
+          <button
+            type="button"
+            class="border-control-border bg-surface text-ink h-(--gp-cta-h) rounded-md border text-button"
+            @click="useManualEntry"
+          >
+            직접 입력
+          </button>
+          <GpButton @click="analyze">다시 시도</GpButton>
+        </div>
+      </template>
     </section>
   </AppSubLayout>
 </template>
