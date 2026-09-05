@@ -2,17 +2,25 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import {
+  completeMileageConversion,
+  createWithdrawalAccount,
+  getConvertibleMileage,
+  getPocketBalance,
   getPocketHome,
   getPocketManagement,
   getPocketTransactions,
   getWithdrawalAccounts,
   getWithdrawals,
   requestWithdrawal,
+  setDefaultWithdrawalAccount,
+  startMileageConversion,
 } from '@/api/pocket'
 import { newIdempotencyKey } from '@/api/client'
 
 export const usePocketStore = defineStore('pocket', () => {
   const home = ref(null)
+  const balance = ref(null)
+  const convertibleMileage = ref(null)
   const transactions = ref(null)
   const management = ref(null)
   const accounts = ref([])
@@ -23,10 +31,17 @@ export const usePocketStore = defineStore('pocket', () => {
   const accountsLoading = ref(false)
   const accountsLoaded = ref(false)
   const accountsError = ref(null)
+  const accountCreateLoading = ref(false)
+  const accountCreateError = ref(null)
+  const accountDefaultLoading = ref(false)
+  const accountDefaultError = ref(null)
   const withdrawalsLoading = ref(false)
   const withdrawalsError = ref(null)
   const withdrawalError = ref(null)
   const withdrawalKey = ref(null)
+  const conversionError = ref(null)
+  const conversionLoading = ref(false)
+  const pendingConversion = ref(null)
 
   const defaultAccount = computed(
     () => accounts.value.find((account) => account.isDefault) ?? accounts.value[0] ?? null,
@@ -48,11 +63,27 @@ export const usePocketStore = defineStore('pocket', () => {
   async function fetchHome() {
     const data = await run(getPocketHome)
     if (data) home.value = data
+    return data
   }
 
-  async function fetchTransactions() {
-    const data = await run(() => getPocketTransactions({ direction: 'CREDIT', page: 0, size: 20 }))
+  async function fetchBalance() {
+    const data = await run(getPocketBalance)
+    if (data) balance.value = data
+    return data
+  }
+
+  async function fetchConvertibleMileage() {
+    const data = await run(getConvertibleMileage)
+    if (data) convertibleMileage.value = data
+    return data
+  }
+
+  async function fetchTransactions(direction = null) {
+    const params = { page: 0, size: 20 }
+    if (direction) params.direction = direction
+    const data = await run(() => getPocketTransactions(params))
     if (data) transactions.value = data
+    return data
   }
 
   async function fetchManagement() {
@@ -60,6 +91,43 @@ export const usePocketStore = defineStore('pocket', () => {
     if (data) {
       management.value = data
       accounts.value = data.accounts ?? []
+      accountsLoaded.value = true
+    }
+    return data
+  }
+
+  async function startConversion(roundId) {
+    conversionLoading.value = true
+    conversionError.value = null
+    try {
+      const started = await startMileageConversion({ roundId, agreed: true })
+      pendingConversion.value = started
+      return started
+    } catch (nextError) {
+      conversionError.value = nextError
+      return null
+    } finally {
+      conversionLoading.value = false
+    }
+  }
+
+  async function completeConversion() {
+    if (!pendingConversion.value) return null
+    conversionLoading.value = true
+    conversionError.value = null
+    try {
+      const result = await completeMileageConversion(
+        pendingConversion.value.conversionId,
+        newIdempotencyKey(),
+      )
+      pendingConversion.value = null
+      await fetchHome()
+      return result
+    } catch (nextError) {
+      conversionError.value = nextError
+      return null
+    } finally {
+      conversionLoading.value = false
     }
   }
 
@@ -76,6 +144,44 @@ export const usePocketStore = defineStore('pocket', () => {
       return null
     } finally {
       accountsLoading.value = false
+    }
+  }
+
+  async function createAccount(payload) {
+    accountCreateLoading.value = true
+    accountCreateError.value = null
+    try {
+      const created = await createWithdrawalAccount(payload)
+      if (created.isDefault) {
+        accounts.value = accounts.value.map((account) => ({ ...account, isDefault: false }))
+      }
+      accounts.value = [...accounts.value, created]
+      accountsLoaded.value = true
+      return created
+    } catch (nextError) {
+      accountCreateError.value = nextError
+      return null
+    } finally {
+      accountCreateLoading.value = false
+    }
+  }
+
+  async function setDefaultAccount(accountId) {
+    accountDefaultLoading.value = true
+    accountDefaultError.value = null
+    try {
+      const result = await setDefaultWithdrawalAccount(accountId)
+      accounts.value = accounts.value.map((account) => ({
+        ...account,
+        isDefault: account.accountId === result.accountId,
+      }))
+      if (management.value) management.value = { ...management.value, accounts: accounts.value }
+      return result
+    } catch (nextError) {
+      accountDefaultError.value = nextError
+      return null
+    } finally {
+      accountDefaultLoading.value = false
     }
   }
 
@@ -116,6 +222,8 @@ export const usePocketStore = defineStore('pocket', () => {
 
   return {
     home,
+    balance,
+    convertibleMileage,
     transactions,
     management,
     accounts,
@@ -127,14 +235,27 @@ export const usePocketStore = defineStore('pocket', () => {
     accountsLoading,
     accountsLoaded,
     accountsError,
+    accountCreateLoading,
+    accountCreateError,
+    accountDefaultLoading,
+    accountDefaultError,
     withdrawalsLoading,
     withdrawalsError,
     withdrawalError,
+    conversionError,
+    conversionLoading,
+    pendingConversion,
     fetchHome,
+    fetchBalance,
+    fetchConvertibleMileage,
     fetchTransactions,
     fetchManagement,
     fetchWithdrawalAccounts,
+    createAccount,
+    setDefaultAccount,
     fetchWithdrawals,
     withdraw,
+    startConversion,
+    completeConversion,
   }
 })

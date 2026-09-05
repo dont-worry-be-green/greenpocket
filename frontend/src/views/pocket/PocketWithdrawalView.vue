@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 
 import AppSubLayout from '@/components/layout/AppSubLayout.vue'
 import GpButton from '@/components/ui/GpButton.vue'
+import GpTag from '@/components/ui/GpTag.vue'
 import IconPocket from '@/components/ui/icons/IconPocket.vue'
 import { usePocketStore } from '@/stores/pocket'
 import { formatNumber, formatWon } from '@/utils/format'
@@ -12,35 +13,61 @@ const router = useRouter()
 const store = usePocketStore()
 const amount = ref(0)
 const isSubmitting = ref(false)
+const selectedAccountId = ref(null)
+const isAccountEditing = ref(false)
+const draftAccountId = ref(null)
 
-const balance = computed(() => 12400)
-const defaultAccount = computed(() => store.defaultAccount)
+const balance = computed(() => store.balance?.balance ?? 0)
+const selectedAccount = computed(
+  () =>
+    store.accounts.find((account) => account.accountId === selectedAccountId.value) ??
+    store.defaultAccount,
+)
 const validationMessage = computed(() => {
   if (!Number.isInteger(amount.value) || amount.value <= 0) return '출금 금액을 입력해 주세요.'
   if (amount.value > balance.value) return '출금 가능 잔액보다 큰 금액은 신청할 수 없어요.'
-  if (store.accountsLoaded && !defaultAccount.value) return '출금 계좌를 먼저 등록해 주세요.'
+  if (store.accountsLoaded && !selectedAccount.value) return '출금 계좌를 먼저 등록해 주세요.'
   return ''
 })
 const canSubmit = computed(
   () =>
     !validationMessage.value &&
-    Boolean(defaultAccount.value) &&
+    Boolean(selectedAccount.value) &&
     !store.accountsLoading &&
     !isSubmitting.value,
 )
 
-amount.value = balance.value
-onMounted(() => store.fetchWithdrawalAccounts())
+onMounted(async () => {
+  await Promise.all([store.fetchBalance(), store.fetchWithdrawalAccounts()])
+  amount.value = balance.value
+  selectedAccountId.value = store.defaultAccount?.accountId ?? null
+})
 
 function selectAmount(value) {
   if (value > balance.value) return
   amount.value = value
 }
 
+function startAccountEditing() {
+  draftAccountId.value = selectedAccount.value?.accountId ?? null
+  isAccountEditing.value = true
+}
+
+function cancelAccountEditing() {
+  isAccountEditing.value = false
+  draftAccountId.value = null
+}
+
+function saveAccount() {
+  if (draftAccountId.value === null) return
+  selectedAccountId.value = draftAccountId.value
+  cancelAccountEditing()
+}
+
 async function submit() {
   if (!canSubmit.value) return
   isSubmitting.value = true
-  const result = await store.withdraw(amount.value, defaultAccount.value.accountId)
+  const result = await store.withdraw(amount.value, selectedAccount.value.accountId)
   isSubmitting.value = false
   if (result) router.push('/pocket/withdraw/complete')
 }
@@ -85,7 +112,34 @@ async function submit() {
       </section>
 
       <section>
-        <h2 class="text-body-strong text-muted mb-3">출금 계좌</h2>
+        <div class="mb-3 flex min-h-11 items-center justify-between gap-3">
+          <h2 class="text-body-strong text-muted m-0">출금 계좌</h2>
+          <div v-if="isAccountEditing" class="flex items-center gap-1">
+            <button
+              type="button"
+              class="text-label text-muted min-h-11 border-0 bg-transparent px-2"
+              @click="cancelAccountEditing"
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              class="text-label text-primary min-h-11 border-0 bg-transparent px-2"
+              @click="saveAccount"
+            >
+              저장
+            </button>
+          </div>
+          <button
+            v-else
+            type="button"
+            class="text-label text-primary min-h-11 border-0 bg-transparent px-1 disabled:text-disabled-text"
+            :disabled="!store.accounts.length"
+            @click="startAccountEditing"
+          >
+            계좌 변경
+          </button>
+        </div>
         <div
           v-if="store.accountsLoading"
           class="bg-surface flex min-h-16 items-center justify-center rounded-lg px-4"
@@ -105,28 +159,44 @@ async function submit() {
             다시 시도
           </button>
         </div>
-        <div
-          v-else-if="defaultAccount"
-          class="bg-surface flex min-h-16 items-center gap-3 rounded-lg px-4"
-        >
-          <span
-            class="bg-primary-bg text-primary flex size-9 items-center justify-center rounded-md"
-            ><IconPocket :size="20"
-          /></span>
-          <p class="text-body-strong m-0 flex-1">
-            {{ defaultAccount.bankName }} {{ defaultAccount.accountNo }}
-          </p>
-          <span class="text-icon-off">›</span>
+        <div v-else-if="selectedAccount" class="space-y-3">
+          <div
+            v-for="account in store.accounts"
+            :key="account.accountId"
+            class="bg-surface flex min-h-16 items-center gap-3 rounded-lg px-4"
+          >
+            <button
+              v-if="isAccountEditing"
+              type="button"
+              class="flex size-5 shrink-0 items-center justify-center rounded-full border-2 bg-transparent p-0"
+              :class="
+                draftAccountId === account.accountId ? 'border-primary' : 'border-control-border'
+              "
+              :aria-label="`${account.bankName} 출금 계좌로 선택`"
+              @click="draftAccountId = account.accountId"
+            >
+              <span
+                v-if="draftAccountId === account.accountId"
+                class="bg-primary size-2.5 rounded-full"
+              ></span>
+            </button>
+            <span
+              class="bg-primary-bg text-primary flex size-9 shrink-0 items-center justify-center rounded-md"
+            >
+              <IconPocket :size="20" />
+            </span>
+            <p class="text-body-strong m-0 min-w-0 flex-1">
+              {{ account.bankName }} {{ account.accountNo }}
+            </p>
+            <GpTag v-if="account.accountId === selectedAccount.accountId" tone="primary" small>
+              출금 계좌
+            </GpTag>
+            <GpTag v-else-if="account.isDefault" tone="estimated" small>기본 계좌</GpTag>
+          </div>
         </div>
         <div v-else class="bg-surface rounded-lg p-5 text-center">
           <p class="text-body-sm text-muted m-0">등록된 출금 계좌가 없어요.</p>
         </div>
-        <button
-          type="button"
-          class="border-control-border text-body-strong mt-3 min-h-12 w-full rounded-full border bg-transparent"
-        >
-          출금 계좌 추가
-        </button>
       </section>
 
       <div class="bg-confirmed-bg text-body-sm text-muted rounded-lg p-4">
