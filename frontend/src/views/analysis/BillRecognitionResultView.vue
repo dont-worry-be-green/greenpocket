@@ -4,12 +4,11 @@ import { useRoute, useRouter } from 'vue-router'
 
 import AppSubLayout from '@/components/layout/AppSubLayout.vue'
 import GpButton from '@/components/ui/GpButton.vue'
-import IconCheck from '@/components/ui/icons/IconCheck.vue'
 import IconDrop from '@/components/ui/icons/IconDrop.vue'
 import IconFlame from '@/components/ui/icons/IconFlame.vue'
 import IconLightning from '@/components/ui/icons/IconLightning.vue'
 import { useAnalysisStore } from '@/stores/analysis'
-import { formatMonthOnly, formatWon } from '@/utils/format'
+import { formatMonthOnly, formatUsage, formatWon } from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -20,9 +19,36 @@ const targetYearMonth = computed(
 )
 
 const recognizedItems = [
-  { type: 'electricity', label: '전기', amount: 43200, icon: IconLightning, color: 'text-primary' },
-  { type: 'water', label: '수도', amount: 8900, icon: IconDrop, color: 'text-water' },
-  { type: 'gas', label: '도시가스', amount: 12400, icon: IconFlame, color: 'text-gas' },
+  {
+    type: 'electricity',
+    label: '전기',
+    amount: 43200,
+    usage: 287,
+    unit: 'kWh',
+    precision: 0,
+    icon: IconLightning,
+    color: 'text-primary',
+  },
+  {
+    type: 'water',
+    label: '수도',
+    amount: 8900,
+    usage: 8.9,
+    unit: '㎥',
+    precision: 1,
+    icon: IconDrop,
+    color: 'text-water',
+  },
+  {
+    type: 'gas',
+    label: '도시가스',
+    amount: 12400,
+    usage: 12.4,
+    unit: '㎥',
+    precision: 1,
+    icon: IconFlame,
+    color: 'text-gas',
+  },
 ]
 
 function editResult() {
@@ -39,14 +65,9 @@ function editResult() {
     </header>
 
     <section class="bg-surface rounded-xl p-5 shadow-sm">
-      <div class="mb-5 flex items-center justify-between">
-        <div>
-          <p class="text-caption text-muted mt-0 mb-1">인식된 고지서</p>
-          <h2 class="text-section text-ink m-0">{{ formatMonthOnly(targetYearMonth) }} 생활비 고지서</h2>
-        </div>
-        <span class="bg-primary-bg text-primary flex size-8 items-center justify-center rounded-full">
-          <IconCheck :size="18" />
-        </span>
+      <div class="mb-5">
+        <p class="text-caption text-muted mt-0 mb-1">인식된 고지서</p>
+        <h2 class="text-section text-ink m-0">{{ formatMonthOnly(targetYearMonth) }} 생활비 고지서</h2>
       </div>
 
       <ul class="m-0 list-none p-0">
@@ -57,7 +78,14 @@ function editResult() {
         >
           <component :is="item.icon" :size="20" :class="item.color" />
           <span class="text-body-sm text-ink flex-1">{{ item.label }}</span>
-          <strong class="text-body-strong text-ink tabular-nums">{{ formatWon(item.amount) }}</strong>
+          <div class="text-right">
+            <strong class="text-body-strong text-ink block tabular-nums">
+              {{ formatWon(item.amount) }}
+            </strong>
+            <span class="text-caption text-muted tabular-nums">
+              {{ formatUsage(item.usage, item.precision, item.unit) }}
+            </span>
+          </div>
         </li>
       </ul>
     </section>
