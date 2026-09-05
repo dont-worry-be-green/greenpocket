@@ -7,3 +7,13 @@ export function getDiagnosis(params = {}) {
 export function getBillTargetMonth() {
   return client.get('/bills/target-month')
 }
+
+export function checkBillDuplicates({ billingMonth, utilityTypes }) {
+  return client.get('/bills/duplicate-check', {
+    params: { billingMonth, utilityTypes: utilityTypes.join(',') },
+  })
+}
+
+export function createBill(payload) {
+  return client.post('/bills', payload)
+}

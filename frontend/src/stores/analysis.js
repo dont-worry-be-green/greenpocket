@@ -1,7 +1,12 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 
-import { getBillTargetMonth, getDiagnosis } from '@/api/analysis'
+import {
+  checkBillDuplicates,
+  createBill,
+  getBillTargetMonth,
+  getDiagnosis,
+} from '@/api/analysis'
 
 export const useAnalysisStore = defineStore('analysis', () => {
   const diagnosis = ref(null)
@@ -9,7 +14,9 @@ export const useAnalysisStore = defineStore('analysis', () => {
   const selectedImage = ref(null)
   const billDraft = ref(null)
   const isLoading = ref(false)
+  const isSaving = ref(false)
   const error = ref(null)
+  const saveError = ref(null)
 
   async function fetchHome() {
     isLoading.value = true
@@ -39,59 +46,34 @@ export const useAnalysisStore = defineStore('analysis', () => {
     billDraft.value = draft
   }
 
-  function confirmBillDraft() {
-    if (!billDraft.value) return null
+  async function submitBillDraft(draft = billDraft.value) {
+    if (!draft) return null
 
-    const items = billDraft.value.items ?? []
-    const currentTotal = items.reduce((total, item) => total + Number(item.amount), 0)
-    const previousAmounts = { ELECTRICITY: 40100, WATER: 8300, GAS: 14200 }
-    const previousYearTotal = Object.values(previousAmounts).reduce((total, amount) => total + amount, 0)
-    diagnosis.value = {
-      empty: false,
-      screen: 'AN-07',
-      yearMonth: billDraft.value.billingMonth,
-      profileSummary: '서울 관악구 · 아파트 20평대',
-      summary: {
-        currentTotal,
-        previousYearTotal,
-        diffLastYearTotal: currentTotal - previousYearTotal,
-        hasPreviousYear: true,
-        items,
-      },
-      lastYearComparison: {
-        available: true,
-        totalDiff: currentTotal - previousYearTotal,
-        items: items.map((item) => ({
-          utilityType: item.utilityType,
-          lastYearAmount: previousAmounts[item.utilityType],
-          thisYearAmount: item.amount,
-          diff: item.amount - previousAmounts[item.utilityType],
-        })),
-      },
-      regionComparison: {
-        regionLabel: '서울 관악구',
-        tabs: [
-          {
-            utilityType: 'ELECTRICITY',
-            available: true,
-            myAmount: 43200,
-            regionAvgAmount: 38900,
-            diffRegion: 4300,
-            series: [
-              { yearMonth: '2026-03', mine: 35100, regionAvg: 37200 },
-              { yearMonth: '2026-04', mine: 40500, regionAvg: 37800 },
-              { yearMonth: '2026-05', mine: 36200, regionAvg: 38100 },
-              { yearMonth: '2026-06', mine: 42000, regionAvg: 38400 },
-              { yearMonth: '2026-07', mine: 37100, regionAvg: 38600 },
-              { yearMonth: '2026-08', mine: 43200, regionAvg: 38900 },
-            ],
-          },
-          { utilityType: 'WATER', available: false, myAmount: 8900 },
-          { utilityType: 'GAS', available: false, myAmount: 12400 },
-        ],
-      },
+    isSaving.value = true
+    saveError.value = null
+
+    try {
+      const duplicateResult = await checkBillDuplicates({
+        billingMonth: draft.billingMonth,
+        utilityTypes: draft.items.map((item) => item.utilityType),
+      })
+      const duplicates = duplicateResult.results.filter((item) => item.duplicated)
+      if (duplicates.length) {
+        const duplicateError = new Error('이미 등록된 고지서 항목이 있어요.')
+        duplicateError.code = 'BILL_DUPLICATED'
+        duplicateError.details = duplicates
+        throw duplicateError
+      }
+
+      const savedBill = await createBill(draft)
+      diagnosis.value = await getDiagnosis({ month: savedBill.recalculated.diagnosisMonth })
+      return savedBill
+    } catch (nextError) {
+      saveError.value = nextError
+      return null
+    } finally {
+      isSaving.value = false
     }
-    return diagnosis.value
   }
 
   return {
@@ -100,10 +82,12 @@ export const useAnalysisStore = defineStore('analysis', () => {
     selectedImage,
     billDraft,
     isLoading,
+    isSaving,
     error,
+    saveError,
     fetchHome,
     selectImage,
     saveBillDraft,
-    confirmBillDraft,
+    submitBillDraft,
   }
 })
