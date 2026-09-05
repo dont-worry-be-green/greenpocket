@@ -101,7 +101,17 @@ async function submit() {
       </section>
 
       <section>
-        <h2 class="text-body-strong text-muted mb-3">출금 계좌</h2>
+        <div class="mb-3 flex min-h-11 items-center justify-between gap-3">
+          <h2 class="text-body-strong text-muted m-0">출금 계좌</h2>
+          <button
+            type="button"
+            class="text-label text-primary min-h-11 border-0 bg-transparent px-1 disabled:text-disabled-text"
+            :disabled="!store.accounts.length"
+            @click="isAccountModalOpen = true"
+          >
+            계좌 변경
+          </button>
+        </div>
         <div
           v-if="store.accountsLoading"
           class="bg-surface flex min-h-16 items-center justify-center rounded-lg px-4"
@@ -122,25 +132,24 @@ async function submit() {
           </button>
         </div>
         <div v-else-if="selectedAccount" class="space-y-3">
-          <div class="bg-surface flex min-h-16 items-center gap-3 rounded-lg px-4">
+          <div
+            v-for="account in store.accounts"
+            :key="account.accountId"
+            class="bg-surface flex min-h-16 items-center gap-3 rounded-lg px-4"
+          >
             <span
               class="bg-primary-bg text-primary flex size-9 shrink-0 items-center justify-center rounded-md"
             >
               <IconPocket :size="20" />
             </span>
             <p class="text-body-strong m-0 min-w-0 flex-1">
-              {{ selectedAccount.bankName }} {{ selectedAccount.accountNo }}
+              {{ account.bankName }} {{ account.accountNo }}
             </p>
-            <GpTag v-if="selectedAccount.isDefault" tone="estimated" small>기본 계좌</GpTag>
+            <GpTag v-if="account.accountId === selectedAccount.accountId" tone="primary" small>
+              출금 계좌
+            </GpTag>
+            <GpTag v-else-if="account.isDefault" tone="estimated" small>기본 계좌</GpTag>
           </div>
-
-          <button
-            type="button"
-            class="border-control-border text-body-strong min-h-12 w-full rounded-full border bg-transparent"
-            @click="isAccountModalOpen = true"
-          >
-            출금 계좌 변경
-          </button>
         </div>
         <div v-else class="bg-surface rounded-lg p-5 text-center">
           <p class="text-body-sm text-muted m-0">등록된 출금 계좌가 없어요.</p>
