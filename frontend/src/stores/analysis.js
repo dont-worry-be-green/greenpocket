@@ -6,6 +6,7 @@ import { getBillTargetMonth, getDiagnosis } from '@/api/analysis'
 export const useAnalysisStore = defineStore('analysis', () => {
   const diagnosis = ref(null)
   const targetMonth = ref(null)
+  const selectedImage = ref(null)
   const isLoading = ref(false)
   const error = ref(null)
 
@@ -29,5 +30,9 @@ export const useAnalysisStore = defineStore('analysis', () => {
     }
   }
 
-  return { diagnosis, targetMonth, isLoading, error, fetchHome }
+  function selectImage(file) {
+    selectedImage.value = file
+  }
+
+  return { diagnosis, targetMonth, selectedImage, isLoading, error, fetchHome, selectImage }
 })

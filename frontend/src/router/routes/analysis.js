@@ -20,7 +20,19 @@ export default [
   {
     path: '/analysis/bills/new',
     name: 'an-bill-create',
-    component: () => import('@/views/ComingSoonView.vue'),
+    component: () => import('@/views/analysis/BillRegistrationView.vue'),
     meta: { title: '고지서 등록' },
+  },
+  {
+    path: '/analysis/bills/analyzing',
+    name: 'an-bill-analyzing',
+    component: () => import('@/views/ComingSoonView.vue'),
+    meta: { title: '고지서 분석' },
+  },
+  {
+    path: '/analysis/bills/edit',
+    name: 'an-bill-edit',
+    component: () => import('@/views/ComingSoonView.vue'),
+    meta: { title: '인식 내용 수정' },
   },
 ]
