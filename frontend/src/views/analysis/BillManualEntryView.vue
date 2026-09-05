@@ -4,11 +4,9 @@ import { useRoute, useRouter } from 'vue-router'
 
 import AppSubLayout from '@/components/layout/AppSubLayout.vue'
 import GpButton from '@/components/ui/GpButton.vue'
-import IconCamera from '@/components/ui/icons/IconCamera.vue'
 import IconDrop from '@/components/ui/icons/IconDrop.vue'
 import IconFlame from '@/components/ui/icons/IconFlame.vue'
 import IconLightning from '@/components/ui/icons/IconLightning.vue'
-import IconPencil from '@/components/ui/icons/IconPencil.vue'
 import { useAnalysisStore } from '@/stores/analysis'
 
 const BILL_TYPES = [
@@ -64,10 +62,6 @@ function selectBillType(type) {
   submitted.value = false
 }
 
-function goToPhotoAnalysis() {
-  router.push({ path: '/analysis/bills/new', query: { month: billingMonth.value } })
-}
-
 function submit() {
   submitted.value = true
   if (!isValid.value) return
@@ -90,24 +84,6 @@ function submit() {
 
 <template>
   <AppSubLayout title="직접 입력" back="/analysis/bills/new" center-title has-footer>
-    <div class="bg-primary-bg mb-6 grid grid-cols-2 rounded-xl p-1">
-      <button
-        type="button"
-        class="text-muted flex min-h-11 items-center justify-center gap-2 border-0 bg-transparent text-label"
-        @click="goToPhotoAnalysis"
-      >
-        <IconCamera :size="19" />
-        사진 분석
-      </button>
-      <button
-        type="button"
-        class="bg-surface text-ink shadow-float flex min-h-11 items-center justify-center gap-2 rounded-lg border-0 text-label"
-      >
-        <IconPencil :size="19" class="text-primary" />
-        직접 입력
-      </button>
-    </div>
-
     <fieldset class="mb-6 border-0 p-0">
       <legend class="text-body-strong text-muted mb-3">고지서 종류</legend>
       <div class="grid grid-cols-4 gap-2">
