@@ -166,6 +166,13 @@ export function formatMonth(yearMonth) {
   return `${year}년 ${Number(month)}월`
 }
 
+/** '2026-08' → '8월' */
+export function formatMonthOnly(yearMonth) {
+  if (!yearMonth) return EMPTY
+  const [, month] = yearMonth.split('-')
+  return `${Number(month)}월`
+}
+
 /**
  * 평가 회차 기간. 같은 해면 뒤쪽 연도를 접는다 (B-1-07 완료 조건).
  *   ('2026-04','2026-09') → '2026-04 ~ 09'  ·  ('2025-10','2026-03') → '2025-10 ~ 2026-03'

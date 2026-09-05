@@ -14,8 +14,40 @@ export default [
   {
     path: '/analysis',
     name: 'an-home',
-    // TODO(진단 담당): AN-01 고지서 미등록 메인으로 교체
-    component: () => import('@/views/ComingSoonView.vue'),
+    component: () => import('@/views/analysis/AnalysisHomeView.vue'),
     meta: { tab: 'analysis', title: '진단' },
+  },
+  {
+    path: '/analysis/bills/new',
+    name: 'an-bill-create',
+    component: () => import('@/views/analysis/BillRegistrationView.vue'),
+    meta: { title: '고지서 등록' },
+  },
+  {
+    path: '/analysis/bills/analyzing',
+    name: 'an-bill-analyzing',
+    component: () => import('@/views/analysis/BillAnalyzingView.vue'),
+    meta: { title: '고지서 분석' },
+  },
+  {
+    path: '/analysis/bills/result',
+    name: 'an-bill-result',
+    component: () => import('@/views/analysis/BillRecognitionResultView.vue'),
+    meta: { title: '인식 결과 확인' },
+  },
+  {
+    path: '/analysis/bills/edit',
+    name: 'an-bill-edit',
+    redirect: (to) => ({
+      path: '/analysis/bills/new',
+      query: { ...to.query, mode: 'manual' },
+    }),
+    meta: { title: '인식 내용 수정' },
+  },
+  {
+    path: '/analysis/bills/confirm',
+    name: 'an-bill-confirm',
+    component: () => import('@/views/ComingSoonView.vue'),
+    meta: { title: '고지서 최종 확인' },
   },
 ]
