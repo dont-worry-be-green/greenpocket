@@ -196,3 +196,48 @@ export function formatDateTime(dateTime) {
     .replace(/\./g, '')
     .replace('24:', '00:')
 }
+
+/**
+ * 실천 항목 단가 (C-1-03 · BN-01 · BN-02 · BN-03).
+ *   (10, '건') → '10원/건'  ·  (300, '개') → '300원/개'
+ *
+ * **`미래세대실천행동` 은 단가가 0 이고 `rewardUnit` 이 '운영계획' 이다**(시드 기준).
+ * 그대로 조립하면 '0원/운영계획' 이 되어 단가가 있는 것처럼 읽힌다. 단가가 없는 항목은
+ * 서버가 저장해 둔 문구만 보여준다.
+ */
+export function formatUnitPrice(unitPrice, rewardUnit) {
+  if (isBlank(unitPrice)) return EMPTY
+  if (unitPrice === 0) return rewardUnit || EMPTY
+  const price = Math.round(unitPrice).toLocaleString('ko-KR')
+  return rewardUnit ? `${price}원/${rewardUnit}` : `${price}원`
+}
+
+/**
+ * 실천 내역의 짧은 날짜 (C-2-04 · BN-03). 같은 달 안의 목록이라 연도를 접는다.
+ *   '2026-08-28T13:20:00+09:00' → '08.28'
+ */
+export function formatShortDate(dateTime) {
+  if (!dateTime) return EMPTY
+  const date = new Date(dateTime)
+  if (Number.isNaN(date.getTime())) return EMPTY
+  return new Intl.DateTimeFormat('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    month: '2-digit',
+    day: '2-digit',
+  })
+    .format(date)
+    .replace(/\.\s*$/, '')
+    .replace(/\.\s*/g, '.')
+}
+
+/**
+ * 실적 상태 라벨 (C-2-05 · api-spec.md 3절 RewardStatus).
+ *
+ * 색만으로 구분하지 않고 이 문구를 반드시 함께 넣는다(COM-06). `PENDING` 은 아직 현금이
+ * 아니고 포켓 잔액에도 들어가지 않는다 — '적립 완료' 처럼 확정으로 읽히는 말을 쓰지 않는다.
+ */
+const REWARD_STATUS_LABEL = { PENDING: '적립 예정', PAID: '지급 완료' }
+
+export function formatRewardStatus(rewardStatus) {
+  return REWARD_STATUS_LABEL[rewardStatus] ?? EMPTY
+}

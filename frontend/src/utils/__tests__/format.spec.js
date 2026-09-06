@@ -15,6 +15,9 @@ import {
   formatTier,
   formatUnit,
   usagePrecision,
+  formatUnitPrice,
+  formatShortDate,
+  formatRewardStatus,
 } from '../format'
 
 describe('formatWon', () => {
@@ -181,5 +184,59 @@ describe('usagePrecision', () => {
   it('kWh 는 정수, ㎥ 는 소수 첫째 자리다 (preview 의 displayPrecision 규칙)', () => {
     expect(usagePrecision('kWh')).toBe(0)
     expect(usagePrecision('m3')).toBe(1)
+  })
+})
+
+describe('formatUnitPrice', () => {
+  it('단가와 단위를 붙인다', () => {
+    expect(formatUnitPrice(10, '건')).toBe('10원/건')
+    expect(formatUnitPrice(300, '개')).toBe('300원/개')
+    expect(formatUnitPrice(10000, '회')).toBe('10,000원/회')
+  })
+
+  /*
+   * 미래세대실천행동은 단가 0 · rewardUnit '운영계획' 이다(시드).
+   * 그대로 조립하면 '0원/운영계획' 이 되어 단가가 있는 것처럼 읽힌다.
+   */
+  it('단가가 0 이면 서버가 저장해 둔 문구만 보여준다', () => {
+    expect(formatUnitPrice(0, '운영계획')).toBe('운영계획')
+    expect(formatUnitPrice(0, '')).toBe('-')
+  })
+
+  it('단위가 없으면 금액만 붙인다', () => {
+    expect(formatUnitPrice(500, '')).toBe('500원')
+  })
+
+  it('값이 없으면 - 로 표시한다', () => {
+    expect(formatUnitPrice(null, '건')).toBe('-')
+  })
+})
+
+describe('formatShortDate', () => {
+  it('같은 달 목록이라 연도를 접는다', () => {
+    expect(formatShortDate('2026-08-28T13:20:00+09:00')).toBe('08.28')
+    expect(formatShortDate('2026-12-01T00:00:00+09:00')).toBe('12.01')
+  })
+
+  // UTC 로 오면 KST 로 옮겨야 날짜가 하루 밀리지 않는다
+  it('KST 기준으로 자른다', () => {
+    expect(formatShortDate('2026-08-28T20:00:00Z')).toBe('08.29')
+  })
+
+  it('값이 없거나 파싱되지 않으면 - 로 표시한다', () => {
+    expect(formatShortDate(null)).toBe('-')
+    expect(formatShortDate('없는날짜')).toBe('-')
+  })
+})
+
+describe('formatRewardStatus', () => {
+  // PENDING 은 아직 현금이 아니다. '적립 완료' 처럼 확정으로 읽히는 말을 쓰지 않는다 (C-2-05)
+  it('실적 상태 enum 을 라벨로 바꾼다', () => {
+    expect(formatRewardStatus('PENDING')).toBe('적립 예정')
+    expect(formatRewardStatus('PAID')).toBe('지급 완료')
+  })
+
+  it('값이 없으면 - 로 표시한다', () => {
+    expect(formatRewardStatus(null)).toBe('-')
   })
 })
