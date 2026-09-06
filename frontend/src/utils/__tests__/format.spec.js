@@ -52,9 +52,9 @@ describe('formatChangeRate', () => {
     expect(formatChangeRate(-2)).toBe('↑2% 늘었어요')
   })
 
-  it('소수 3자리로 오는 12.000 은 12% 로 보여준다', () => {
+  it('서버가 소수 3자리로 줘도 화면은 한 자리까지다', () => {
     expect(formatChangeRate(12.0)).toBe('↓12% 줄었어요')
-    expect(formatChangeRate(11.322)).toBe('↓11.322% 줄었어요')
+    expect(formatChangeRate(11.322)).toBe('↓11.3% 줄었어요')
   })
 
   it('0 은 화살표를 쓰지 않는다', () => {
@@ -77,9 +77,19 @@ describe('changeRateParts', () => {
     expect(changeRateParts(null).direction).toBe('none')
   })
 
-  it('11.322 의 자릿수를 깎지 않는다 (결정 C-13)', () => {
-    expect(changeRateParts(11.322).value).toBe('11.322')
+  it('소수 한 자리까지만 남긴다. 꼬리 0 은 접는다', () => {
+    expect(changeRateParts(11.322).value).toBe('11.3')
     expect(changeRateParts(12.0).value).toBe('12')
+  })
+
+  /*
+   * 반올림이 값을 0 으로 만들면 "↓0% 줄었어요" 가 되어 뜻이 뒤집힌다.
+   * 0 이 아니라는 사실이 자릿수보다 중요하다.
+   */
+  it('한 자리로 깎으면 0 이 되는 값도 0 으로 만들지 않는다', () => {
+    expect(changeRateParts(0.02).value).toBe('0.02')
+    expect(changeRateParts(0.02).direction).toBe('down')
+    expect(changeRateParts(0.004).value).toBe('0.004')
   })
 })
 
@@ -96,9 +106,15 @@ describe('formatDifficulty', () => {
 })
 
 describe('formatPercent', () => {
-  it('불필요한 0 은 떼고 유효 자릿수는 지킨다', () => {
+  it('불필요한 0 은 떼고 소수 한 자리까지 보여준다', () => {
     expect(formatPercent(64.0)).toBe('64%')
-    expect(formatPercent(11.322)).toBe('11.322%')
+    expect(formatPercent(11.322)).toBe('11.3%')
+    expect(formatPercent(12.499)).toBe('12.5%')
+    expect(formatPercent(1.039)).toBe('1%')
+  })
+
+  it('0 은 그대로 0% 다', () => {
+    expect(formatPercent(0)).toBe('0%')
   })
 
   it('값이 없으면 - 로 표시한다', () => {
@@ -147,8 +163,8 @@ describe('formatRoundPeriod', () => {
 })
 
 describe('formatPoint', () => {
-  it('퍼센트포인트를 붙이고 꼬리 0 을 접는다', () => {
-    expect(formatPoint(1.678)).toBe('1.678%p')
+  it('퍼센트포인트를 붙이고 소수 한 자리까지 보여준다', () => {
+    expect(formatPoint(1.678)).toBe('1.7%p')
     expect(formatPoint(2.0)).toBe('2%p')
   })
 

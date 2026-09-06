@@ -1,12 +1,12 @@
 /*
  * 온보딩 API — api-spec.md 4·5절. 화면 ONB-01 · ONB-02.
  *
- * ── 픽스처 shim ──────────────────────────────────────────────────────────
- * 백엔드에 `POST /users` 는 있지만 `GET /meta/regions` 는 컨트롤러가 없고
- * `POST /profile` 은 패키지 자체가 없다(origin/main 8654695 기준). 그동안 `src/fixtures/` 로 대신한다.
+ * ── 데이터 소스 ──────────────────────────────────────────────────────────
+ * 세 엔드포인트가 모두 백엔드에 있다(`UserController` · `RegionController` · `ProfileController`,
+ * 커밋 4a4b3ee). 기본값은 실 호출이고, `src/fixtures/` 는 서버 없이 걸어 볼 때만 쓴다.
  *
- * **연동할 때 고칠 파일은 여기 하나다.** `USE_FIXTURES` 를 false 로 두면 스토어·뷰는 그대로 산다.
- *   grep -n USE_FIXTURES src/api/onboarding.js
+ * **실 API 로 연동을 마쳤다.** 목데이터로 되돌리는 스위치는 `api/dataSource.js` 하나이고,
+ * 개발 빌드의 데모 도구(우하단 버튼)가 그 값을 바꾼다. 스토어·뷰는 어느 쪽이든 그대로 산다.
  *
  * `fake()` 를 async + 지연으로 둔 이유는 로딩 스피너와 await 순서를 **실제로 돌리기** 위해서다.
  * 스토어에 분기를 두면 즉시 return 이라 로딩 경로가 한 번도 실행되지 않는다.
@@ -18,8 +18,7 @@
 import { buildProfileResult, buildUserStart, SEOUL_SIGUNGUS, SIDOS } from '@/fixtures/onboarding'
 
 import client, { ApiError, getDemoKey } from './client'
-
-const USE_FIXTURES = true
+import { isFixtureMode } from './dataSource'
 
 /** 실제 호출처럼 지연을 준다. 값 대신 함수를 넘기면 호출 시점에 계산한다 */
 const fake = async (value, ms = 220) => {
@@ -40,7 +39,7 @@ const fake = async (value, ms = 220) => {
  */
 export async function startUser({ name }) {
   const payload = { demoKey: getDemoKey(), name: String(name ?? '').trim() }
-  if (!USE_FIXTURES) return client.post('/users', payload)
+  if (!isFixtureMode()) return client.post('/users', payload)
 
   assertNameValid(payload.name)
   const registered = await registerQuietly(payload)
@@ -55,7 +54,7 @@ export async function startUser({ name }) {
  * 기준선 조회 키가 되어 없는 지역을 가리키게 된다. 빈 배열은 에러가 아니라 안내다(핵심 규칙 8).
  */
 export function getRegions({ sidoCode } = {}) {
-  if (USE_FIXTURES) {
+  if (isFixtureMode()) {
     if (!sidoCode) return fake({ level: 'SIDO', items: SIDOS })
     return fake({ level: 'SIGUNGU', items: sidoCode === '11' ? SEOUL_SIGUNGUS : [] })
   }
@@ -64,11 +63,11 @@ export function getRegions({ sidoCode } = {}) {
 
 /** POST /profile — 프로필 저장·온보딩 완료 (A-1-05 · ONB-02) */
 export function saveProfile(payload) {
-  if (USE_FIXTURES) return fake(() => buildProfileResult(payload), 400)
+  if (isFixtureMode()) return fake(() => buildProfileResult(payload), 400)
   return client.post('/profile', payload)
 }
 
-// ── 픽스처 전용 헬퍼. USE_FIXTURES 를 끄면 아래는 아무도 부르지 않는다 ──
+// ── 픽스처 전용 헬퍼. 실 API 모드에서는 아래를 아무도 부르지 않는다 ──
 
 /**
  * 이름 검증을 shim 이 **실제로 던진다**(api-spec.md 4.1 `NAME_INVALID`).

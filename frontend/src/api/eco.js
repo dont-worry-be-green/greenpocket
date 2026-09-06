@@ -1,12 +1,15 @@
 /*
  * 에코마일리지 API — api-spec.md 8~11절. 화면 WF-01 ~ WF-11.
  *
- * ── 픽스처 shim ──────────────────────────────────────────────────────────
- * 백엔드는 엔드포인트가 다 있지만 시드 데이터(mission_catalog · 고지서 · CONFIRMED 회차)가
- * 없어서 실 호출은 200 을 주고도 화면을 그릴 수 없다. 그동안 `src/fixtures/` 로 대신한다.
+ * ── 데이터 소스 ──────────────────────────────────────────────────────────
+ * **기본값은 실 호출이다.** 연동(`POST /eco/link`)부터 목표 저장까지 실 서버로 확인했다 —
+ * 기준 사용량 1,340kWh·108㎥·66㎥, 합산 감축률 11.322%, 절감액 44,090원이 문서값과 일치한다.
  *
- * **연동할 때 고칠 파일은 여기 하나다.** `USE_FIXTURES` 를 false 로 두면 스토어·뷰는 그대로 산다.
- *   grep -n USE_FIXTURES src/api/eco.js
+ * 남은 구멍은 `mission_catalog` 시드 하나뿐이다(이슈 #75). 비어 있으면 `goal-form` 의
+ * `segments[].missions` 가 `[]` 로 와서 WF-04 실천 미션 카드가 빈 채로 뜬다. 목표 저장은 된다
+ * (`savedMissionCount: 0`). **미션이 있는 화면을 보려면 데모 도구에서 목데이터로 바꾼다.**
+ *
+ * 스위치는 `api/dataSource.js` 하나이고 온보딩과 공유한다.
  *
  * `fake()` 를 async + 지연으로 둔 이유는 로딩 스피너와 await 순서를 **실제로 돌리기** 위해서다.
  * 스토어에 분기를 두면 즉시 return 이라 로딩 경로가 한 번도 실행되지 않는다.
@@ -42,8 +45,7 @@ import {
 import { ECO_RESULT, ECO_SETTLEMENT } from '@/fixtures/ecoResult'
 
 import client, { ApiError } from './client'
-
-const USE_FIXTURES = true
+import { isFixtureMode } from './dataSource'
 
 /** 실제 호출처럼 지연을 준다. 값 대신 함수를 넘기면 호출 시점에 계산한다 */
 const fake = async (value, ms = 220) => {
@@ -76,7 +78,7 @@ const demoState = {
 
 /** GET /eco/status — 연동 상태 (B-1-01 · B-1-09) */
 export function getEcoStatus() {
-  if (USE_FIXTURES) return fake(ECO_STATUS)
+  if (isFixtureMode()) return fake(ECO_STATUS)
   return client.get('/eco/status')
 }
 
@@ -91,7 +93,7 @@ export function getEcoStatus() {
  * 마찬가지 이유로 `ECO_NOT_MEMBER` 같은 에러 코드를 만들지 않는다(AGENTS.md 3절).
  * 미가입 분기는 서버 판정이 아니라 사용자가 직접 고르는 방식이다.
  *
- * 백엔드에 본인확인이 생기면 이 함수와 `USE_FIXTURES` 분기를 함께 지운다.
+ * 백엔드에 본인확인이 생기면 이 함수를 지운다. **모드와 무관하게 항상 모의다.**
  */
 export function verifyEcoIdentity() {
   return fake({ verified: true }, 1500)
@@ -104,7 +106,7 @@ export function verifyEcoIdentity() {
  * **본문은 비운다.** 본인확인 입력은 화면에만 있고 서버 계약을 바꾸지 않는다.
  */
 export function linkEco(payload = {}) {
-  if (USE_FIXTURES) {
+  if (isFixtureMode()) {
     demoState.linkPollCount = 0
     demoState.linking = true
     return fake({ linkJobId: 'demo-link-job', status: 'RUNNING', estimatedSeconds: 12 }, 400)
@@ -119,7 +121,7 @@ export function linkEco(payload = {}) {
  * 연동 시점에 지울 곳을 놓친다. 뷰는 그리기만 하고 스토어는 폴링만 한다.
  */
 export function getEcoLinkJob(linkJobId) {
-  if (USE_FIXTURES) {
+  if (isFixtureMode()) {
     return fake(() => {
       const step = ++demoState.linkPollCount
       const done = step > ECO_LINK_UTILITIES.length
@@ -158,7 +160,7 @@ export function getEcoLinkJob(linkJobId) {
 
 /** GET /eco/rounds/current — 현재 회차·기준 사용량 (B-1-05 ~ B-1-07) */
 export function getCurrentRound() {
-  if (USE_FIXTURES) {
+  if (isFixtureMode()) {
     return fake(() => ({
       ...ECO_CURRENT_ROUND,
       goalSet: demoState.savedGoal !== null,
@@ -181,7 +183,7 @@ export function getCurrentRound() {
  * 화면이 쿼리로 데이터를 갈아끼우기 시작하면 연동 후 지울 곳이 뷰에 흩어진다.
  */
 export function getGoalForm(roundId) {
-  if (USE_FIXTURES) return fake(currentGoalForm)
+  if (isFixtureMode()) return fake(currentGoalForm)
   return client.get(`/eco/rounds/${roundId}/goal-form`)
 }
 
@@ -189,19 +191,19 @@ export function getGoalForm(roundId) {
 export function previewGoal(roundId, payload) {
   // goal-form 과 **같은 판**을 넘겨야 한다. 기본값(전부 등록)을 쓰면 WF-05 에서
   // 미등록 요금이 합산에 남아 excludedUtilities 가 비고 기준 요금이 부풀어 오른다
-  if (USE_FIXTURES) return fake(() => buildGoalPreview(payload, previewGoalForm()), 180)
+  if (isFixtureMode()) return fake(() => buildGoalPreview(payload, previewGoalForm()), 180)
   return client.post(`/eco/rounds/${roundId}/goal/preview`, payload)
 }
 
 /** POST /eco/rounds/{roundId}/goal — 목표 최초 저장 (B-2-08) */
 export function createGoal(roundId, payload) {
-  if (USE_FIXTURES) return fake(() => saveGoalFixture(payload), 400)
+  if (isFixtureMode()) return fake(() => saveGoalFixture(payload), 400)
   return client.post(`/eco/rounds/${roundId}/goal`, payload)
 }
 
 /** PUT /eco/rounds/{roundId}/goal — 목표 수정. `goalSet` 이 true 면 이쪽이다 */
 export function updateGoal(roundId, payload) {
-  if (USE_FIXTURES) return fake(() => saveGoalFixture(payload), 400)
+  if (isFixtureMode()) return fake(() => saveGoalFixture(payload), 400)
   return client.put(`/eco/rounds/${roundId}/goal`, payload)
 }
 
@@ -212,7 +214,7 @@ export function updateGoal(roundId, payload) {
  * `PUT /missions` 는 회차 전량을 받으므로, 화면에 없는 선택을 잃지 않으려면 근거가 필요하다.
  */
 export function getGoal(roundId) {
-  if (USE_FIXTURES) return fake(() => savedGoalFixture(roundId))
+  if (isFixtureMode()) return fake(() => savedGoalFixture(roundId))
   return client.get(`/eco/rounds/${roundId}/goal`)
 }
 
@@ -221,7 +223,7 @@ export function getGoal(roundId) {
  * 목표를 정하지 않았으면 목록이 비고 `emptyReason` 이 온다. **에러가 아니다**(핵심 규칙 8).
  */
 export function getTodayMissions(roundId, params = {}) {
-  if (USE_FIXTURES) return fake(todayMissionsFixture)
+  if (isFixtureMode()) return fake(todayMissionsFixture)
   return client.get(`/eco/rounds/${roundId}/missions/today`, { params })
 }
 
@@ -230,7 +232,7 @@ export function getTodayMissions(roundId, params = {}) {
  * 하루치를 **통째로** 덮어쓴다(`completedMissionIds` 전량). 토글 1건을 보내는 게 아니다.
  */
 export function saveMissionLog(roundId, date, payload) {
-  if (USE_FIXTURES) {
+  if (isFixtureMode()) {
     return fake(() => {
       demoState.completedMissionIds = [...(payload?.completedMissionIds ?? [])]
       const today = todayMissionsFixture()
@@ -245,7 +247,7 @@ export function saveMissionLog(roundId, date, payload) {
  * ⚠️ **쿼리는 `utility`, 응답 필드는 `utilityType` 이다.** 같은 요청/응답에서 이름이 다르다.
  */
 export function getMissionAdjust(roundId, params = {}) {
-  if (USE_FIXTURES) {
+  if (isFixtureMode()) {
     return fake(() => buildMissionAdjust(params.utility ?? 'ELECTRICITY', currentGoalForm()))
   }
   return client.get(`/eco/rounds/${roundId}/mission-adjust`, { params })
@@ -261,7 +263,7 @@ export function getMissionAdjust(roundId, params = {}) {
  * 보내야 한다. 화면에 보이는 것만 보내면 수도·도시가스 선택이 조용히 사라진다.
  */
 export function updateMissions(roundId, payload) {
-  if (USE_FIXTURES) {
+  if (isFixtureMode()) {
     return fake(() => {
       const ids = [...(payload?.selectedMissionIds ?? [])]
       if (demoState.savedGoal) demoState.savedGoal.selectedMissionIds = ids
@@ -280,7 +282,7 @@ export function updateMissions(roundId, payload) {
  * 연동 후 두 판정이 어긋난다. 여기서 데모 상태를 보고 서버처럼 답한다.
  */
 export function getEcoHome() {
-  if (USE_FIXTURES) {
+  if (isFixtureMode()) {
     return fake(() => {
       const inProgress = {
         ...ECO_HOME_IN_PROGRESS,
@@ -329,7 +331,7 @@ export function getEcoHome() {
  * `?month=2026-08` 처럼 리포트가 있는 달(2026-07) 말고를 요청하면 그 상태를 볼 수 있다.
  */
 export function getMonthlyReport(params = {}) {
-  if (USE_FIXTURES) {
+  if (isFixtureMode()) {
     return fake(() => {
       const report = buildMonthlyReport(currentGoalForm())
       if (params.month && params.month !== report.reportMonth) {
@@ -351,7 +353,7 @@ export function getMonthlyReport(params = {}) {
  * 픽스처도 그 실수를 덮어 주지 않도록 **확정된 회차가 아니면 그 에러를 그대로 낸다.**
  */
 export function getRoundResult(roundId) {
-  if (USE_FIXTURES) {
+  if (isFixtureMode()) {
     return fake(() => {
       if (Number(roundId) !== ECO_RESULT.roundId) {
         throw new ApiError({
@@ -374,7 +376,7 @@ export function getRoundResult(roundId) {
  * 픽스처도 `undefined` 를 돌려준다 — 값을 주면 호출부의 204 처리가 한 번도 검증되지 않는다.
  */
 export function markResultViewed(roundId) {
-  if (USE_FIXTURES) {
+  if (isFixtureMode()) {
     return fake(() => {
       demoState.resultViewed = true
       return undefined
@@ -388,13 +390,13 @@ export function markResultViewed(roundId) {
  * 결과와 같은 지난 회차다. `ECO_SETTLEMENT` 는 `ECO_RESULT` 와 같은 상수에서 뽑는다.
  */
 export function getSettlement(roundId) {
-  if (USE_FIXTURES) return fake(() => ({ ...ECO_SETTLEMENT, roundId: Number(roundId) }))
+  if (isFixtureMode()) return fake(() => ({ ...ECO_SETTLEMENT, roundId: Number(roundId) }))
   return client.get(`/eco/rounds/${roundId}/settlement`)
 }
 
 /** POST /eco/rounds/{roundId}/application — 에코마일리지 회원 신청 (B-4-05) */
 export function applyRound(roundId) {
-  if (USE_FIXTURES) {
+  if (isFixtureMode()) {
     return fake(() => {
       demoState.applied = true
       return { ...ECO_APPLICATION_APPLIED, roundId }
@@ -403,7 +405,7 @@ export function applyRound(roundId) {
   return client.post(`/eco/rounds/${roundId}/application`)
 }
 
-// ── 픽스처 전용 헬퍼. USE_FIXTURES 를 끄면 아래는 아무도 부르지 않는다 ──
+// ── 픽스처 전용 헬퍼. 실 API 모드에서는 아래를 아무도 부르지 않는다 ──
 
 /**
  * 오늘 체크한 실천을 반영해 돌려준다. `completedCount` 를 화면이 세지 않고 **서버가 준 값**을

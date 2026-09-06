@@ -9,6 +9,13 @@
  * ── `?month=` 는 선택이다 ────────────────────────────────────────────────
  * 없으면 서버가 「가장 최근에 채점 가능한 달」을 고른다. 홈의 「자세히」는 달을 붙이지 않고 오고,
  * 그래프의 막대에서 들어올 때만 붙는다. 그래서 쿼리가 바뀌면 다시 부른다.
+ *
+ * ── 카드 순서는 시안이 아니라 명세다 ──────────────────────────────────────
+ * B-4-07 이 ① 결과 → ② 원인 → ③ 처방 순서로 못 박는다. 그래프는 그 뒤에 온다 —
+ * 원인을 보기 전에 막대부터 나오면 "왜 그랬는지" 없이 "얼마나" 만 남는다.
+ *
+ * 「실천 다시 고르기」는 처방 카드 안이 아니라 **화면 하단 고정 CTA** 다(시안 WF-07).
+ * 스크롤을 끝까지 내려야 보이면 정작 조정이 필요한 사람이 못 찾는다.
  */
 import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -20,6 +27,7 @@ import EcoReportResultCard from '@/components/eco/EcoReportResultCard.vue'
 import AppSubLayout from '@/components/layout/AppSubLayout.vue'
 import GpButton from '@/components/ui/GpButton.vue'
 import { useEcoStore } from '@/stores/eco'
+import { formatMonthOnly, formatMonthDay, formatPercent, formatRoundPeriod, formatUtilityType } from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -27,6 +35,42 @@ const store = useEcoStore()
 
 const report = computed(() => store.monthlyReport)
 const hasResult = computed(() => Boolean(report.value?.result))
+
+/** '7월분 페이스' — 어느 달 이야기인지 제목이 먼저 말한다(시안 WF-07) */
+const title = computed(() =>
+  report.value?.reportMonth ? `${formatMonthOnly(report.value.reportMonth)}분 페이스` : '전달 리포트',
+)
+
+/*
+ * '7월 고지서 · 8월 3일 등록 · 평가 기간 2026-04 ~ 09'.
+ *
+ * ⚠️ 평가 기간은 `monthly-report` 응답에 **없다**(api-spec 10.3). 홈이나 회차 조회로 이미
+ * 받아 둔 것이 있을 때만 붙인다 — 없는 기간을 지어내지 않는다(핵심 규칙 8).
+ */
+const subtitle = computed(() => {
+  const data = report.value
+  if (!data?.reportMonth) return ''
+  const parts = [`${formatMonthOnly(data.reportMonth)} 고지서`]
+  if (data.billRegisteredAt) parts.push(`${formatMonthDay(data.billRegisteredAt)} 등록`)
+
+  const period = store.home?.header ?? store.currentRound
+  if (period?.periodStart) {
+    parts.push(`평가 기간 ${formatRoundPeriod(period.periodStart, period.periodEnd)}`)
+  }
+  return parts.join(' · ')
+})
+
+/** 하단 고정 CTA. 서버가 고른 조정 대상을 그대로 문구에 넣는다 */
+const adjustLabel = computed(() => {
+  const utilityType = report.value?.prescription?.adjustTargetUtility
+  return utilityType ? `${formatUtilityType(utilityType)} 실천 다시 고르기` : '실천 다시 고르기'
+})
+
+const chartCaption = computed(() =>
+  hasResult.value
+    ? `목표 ${formatPercent(report.value.result.targetRate)}를 넘긴 달은 진한 초록이에요`
+    : '',
+)
 
 function load() {
   const month = route.query.month
@@ -44,7 +88,7 @@ function goAdjust(utilityType) {
 </script>
 
 <template>
-  <AppSubLayout title="전달 리포트" back="/whatif">
+  <AppSubLayout :title="title" :subtitle="subtitle" back="/whatif" :has-footer="hasResult">
     <!-- 로딩·실패·빈 결과를 남기지 않는다 (COM-08) -->
     <p v-if="store.isLoading && !report" class="text-caption text-muted py-10 text-center">
       리포트를 불러오는 중이에요
@@ -67,6 +111,7 @@ function goAdjust(utilityType) {
       </GpButton>
     </div>
 
+    <!-- 순서는 B-4-07 ① 결과 → ② 원인 → ③ 처방. 그래프는 그 뒤다 -->
     <div v-else class="space-y-4 pt-1">
       <EcoReportResultCard
         :result="report.result"
@@ -75,15 +120,30 @@ function goAdjust(utilityType) {
         :bill-registered-at="report.billRegisteredAt"
       />
 
-      <EcoMonthlyRateChart :rows="report.monthlyRates" :target-rate="report.result.targetRate" />
-
       <EcoReportCauseList v-if="report.cause" :cause="report.cause" />
 
       <EcoReportPrescription
         v-if="report.prescription"
         :prescription="report.prescription"
-        @adjust="goAdjust"
+        :cause="report.cause"
+        :target-rate="report.result.targetRate"
+      />
+
+      <EcoMonthlyRateChart
+        :rows="report.monthlyRates"
+        :caption="chartCaption"
+        footnote="진단 탭에 등록한 고지서로 계산했어요. 월 평가는 페이스를 보려고 우리가 나눈 값이고, 실제 평가는 6개월 누적이에요."
       />
     </div>
+
+    <template v-if="hasResult" #footer>
+      <div
+        class="bg-canvas border-divider fixed inset-x-0 bottom-0 z-20 mx-auto max-w-(--gp-viewport-w) border-t px-(--gp-gutter) pt-3 pb-[max(12px,env(safe-area-inset-bottom))]"
+      >
+        <GpButton @click="goAdjust(report.prescription?.adjustTargetUtility)">
+          {{ adjustLabel }}
+        </GpButton>
+      </div>
+    </template>
   </AppSubLayout>
 </template>
