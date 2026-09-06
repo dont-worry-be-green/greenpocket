@@ -349,6 +349,8 @@ GET   /bills/ocr/{jobId}   200           → { status, progress, result | error 
 |---|---|---|
 | `sidoCode` | | 없으면 시도 목록, 있으면 그 시도의 시군구 목록 |
 
+MVP 서비스 지역은 서울특별시로 한정합니다(결정 C-15). `sidoCode`가 없으면 서울특별시 1건만, `sidoCode=11`이면 서울 25개 자치구를 반환합니다. 다른 시·도 코드는 `404 REGION_NOT_FOUND`입니다.
+
 **Response 200**
 
 ```json
@@ -362,6 +364,7 @@ GET   /bills/ocr/{jobId}   200           → { status, progress, result | error 
 
 - `hasRegionAverage` — `region_utility_snapshot` 에 해당 지역 행이 있는지. FE가 "비교 자료가 없는 지역은 더 넓은 범위의 평균을 써요" 안내를 미리 띄우는 데 씁니다(A-1-01).
 - 시군구 코드는 한전 API `cityCd` 와 겸용(`app_user.sigungu_code` COMMENT).
+- 코드·명칭의 출처는 행정안전부 [행정표준코드관리시스템](https://www.code.go.kr/stdcode/regCodeL.do)과 [행정표준코드 API](https://www.data.go.kr/data/15077871/openapi.do)이며, 외부 장애에 영향을 받지 않도록 실행 중에는 `backend/src/main/resources/data/seoul-regions.json`을 사용합니다.
 
 ---
 
@@ -383,6 +386,7 @@ GET   /bills/ocr/{jobId}   200           → { status, progress, result | error 
 
 - 서버 동작: `DELETE FROM app_user WHERE id = :uid` **한 줄.** FK CASCADE로 사용자 데이터 8개 테이블이 전부 정리되고 마스터(`mission_catalog` · `greenlife_item` · `region_utility_snapshot`)만 남습니다.
 - 스키마 기준(`docs/database/schema.sql`)에 FK 16개를 복원해 두었고, 위 동작을 MariaDB에서 실제로 확인했습니다(결정 4·9).
+- 유효한 UUID v4를 다시 요청해 대상 사용자가 이미 없어도 초기화 완료 상태이므로 `200`을 반환합니다. UUID v4 형식이 아니면 `400 INVALID_REQUEST`입니다.
 
 ---
 
@@ -402,6 +406,8 @@ GET   /bills/ocr/{jobId}   200           → { status, progress, result | error 
   "areaBand": "OVER_20"
 }
 ```
+
+`sidoName`·`sigunguName`은 호환성을 위해 요청에 둘 수 있지만 저장 기준은 서버의 서울 자치구 목록입니다. 서버는 코드에 해당하는 명칭을 저장하며 요청의 명칭을 신뢰하지 않습니다.
 
 | 필드 | 필수 | 규칙 |
 |---|---|---|

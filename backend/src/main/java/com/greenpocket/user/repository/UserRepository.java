@@ -44,6 +44,12 @@ public class UserRepository {
 			.update();
 	}
 
+	public int deleteByDemoKey(String demoKey) {
+		return jdbcClient.sql("DELETE FROM app_user WHERE demo_key = :demoKey")
+			.param("demoKey", demoKey)
+			.update();
+	}
+
 	private Optional<UserSnapshot> find(String condition, Object value) {
 		return jdbcClient.sql("""
 				SELECT id, demo_key, name, onboarding_completed,
