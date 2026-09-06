@@ -71,7 +71,7 @@ class PocketConversionServiceTest {
 		assertThat(response.conversionId()).isEqualTo(CONVERSION_ID);
 		assertThat(response.amount()).isEqualTo(30_000L);
 		assertThat(response.transactionStatus()).isEqualTo(TransactionStatus.REQUESTED);
-		assertThat(response.externalUrl()).isEqualTo("https://ecomileage.seoul.go.kr/mileage/convert");
+		assertThat(response.externalUrl()).isEqualTo("https://ecomileage.seoul.go.kr/goods/apply.do");
 		assertThat(response.requestedAt().toLocalDateTime()).isEqualTo(NOW);
 		assertThat(response.notice()).isEqualTo("현금으로 바꿔야 그린포켓 계좌로 들어와요");
 	}

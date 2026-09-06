@@ -1893,12 +1893,18 @@ requiredRate   = (targetRate × 6 − Σ monthlyRate) / remainingMonths
     "accountNo": "110-123-456789", "holder": "김수현", "isDefault": true
   },
   "recentTransactions": [
+    { "transactionId": 94, "transactionCode": "GP-2610-0006", "label": "그린포켓 출금",
+      "direction": "DEBIT", "transactionType": "WITHDRAWAL", "amount": 10000,
+      "transactionStatus": "COMPLETED", "completedAt": "2026-10-12T14:30:00+09:00" },
     { "transactionId": 91, "transactionCode": "GP-2610-0003", "label": "녹색생활실천 9월분",
       "direction": "CREDIT", "transactionType": "GREENLIFE", "amount": 3200,
       "transactionStatus": "COMPLETED", "completedAt": "2026-10-10T00:00:00+09:00" },
-    { "transactionId": 88, "transactionCode": "GP-2609-0012", "label": "녹색생활실천 8월분",
-      "direction": "CREDIT", "transactionType": "GREENLIFE", "amount": 5540,
-      "transactionStatus": "COMPLETED", "completedAt": "2026-09-10T00:00:00+09:00" }
+    { "transactionId": 88, "transactionCode": "GP-2609-0012", "label": "에코마일리지 2026 상반기",
+      "direction": "CREDIT", "transactionType": "ECO_MILEAGE", "amount": 30000,
+      "transactionStatus": "COMPLETED", "completedAt": "2026-09-06T21:24:00+09:00" },
+    { "transactionId": 87, "transactionCode": "GP-2609-0011", "label": "그린포켓 출금",
+      "direction": "DEBIT", "transactionType": "WITHDRAWAL", "amount": 12400,
+      "transactionStatus": "COMPLETED", "completedAt": "2026-09-05T14:22:00+09:00" }
   ],
   "empty": { "noAccount": false, "noTransaction": false },
   "notices": [
@@ -1914,7 +1920,7 @@ requiredRate   = (targetRate × 6 − Σ monthlyRate) / remainingMonths
 | `balance` | `SUM(CREDIT) − SUM(DEBIT)` **`COMPLETED` 만** (D-1-02) |
 | 잔액 제외 | 예상 마일리지 · 적립 예정 포인트 · 미전환 마일리지 · "덜 낸 요금" (비즈니스 규칙 3) |
 | `accountNo` | **전체 표시, 마스킹 없음** (결정 A-2). 단 서버 로그에는 남기지 않음 |
-| `recentTransactions` | 최근 2건 (D-1-04) |
+| `recentTransactions` | 방향·유형과 관계없이 최신 거래 4건. `COALESCE(completedAt, requestedAt)` 내림차순 (D-1-04·결정 C-16) |
 | `empty.noAccount` | 계좌 미등록. **계좌가 없어도 적립 내역은 조회 가능** (D-1-06) |
 
 ---
@@ -1948,13 +1954,13 @@ requiredRate   = (targetRate × 6 − Σ monthlyRate) / remainingMonths
 
 ---
 
-## 13.4 적립 내역 전체
+## 13.4 거래 내역 전체
 
 `GET /pocket/transactions` · **P0** · D-1-05 · PK-05
 
 | 쿼리 | 값 |
 |---|---|
-| `direction` | `CREDIT`\|`DEBIT` (없으면 전체) |
+| `direction` | `CREDIT`\|`DEBIT` (없으면 전체). 화면 탭은 전체=생략, 적립=`CREDIT`, 출금=`DEBIT` |
 | `type` | `ECO_MILEAGE`\|`GREENLIFE`\|`WITHDRAWAL` |
 | `page` · `size` | |
 
@@ -1987,7 +1993,7 @@ requiredRate   = (targetRate × 6 − Σ monthlyRate) / remainingMonths
 }
 ```
 
-월별 그룹 최신순, `subtotal` 합이 `totalCreditAmount` 와 일치해야 합니다(D-1-05 완료 조건).
+월별 그룹 최신순입니다. `subtotal`은 해당 그룹의 완료 거래를 기준으로 입금은 양수, 출금은 음수로 합산하며 완료되지 않은 거래는 0으로 계산합니다. `totalCreditAmount`는 필터와 관계없이 전체 완료 입금 합계입니다(D-1-05·결정 C-16).
 
 ---
 
@@ -2013,7 +2019,7 @@ requiredRate   = (targetRate × 6 − Σ monthlyRate) / remainingMonths
   "roundId": 7,
   "amount": 30000,
   "transactionStatus": "REQUESTED",
-  "externalUrl": "https://ecomileage.seoul.go.kr/mileage/convert",
+  "externalUrl": "https://ecomileage.seoul.go.kr/goods/apply.do",
   "requestedAt": "2026-09-03T18:58:00+09:00",
   "notice": "현금으로 바꿔야 그린포켓 계좌로 들어와요"
 }

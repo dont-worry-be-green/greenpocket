@@ -97,11 +97,8 @@ public class PocketQueryService {
 			.map(this::toDefaultAccount)
 			.orElse(null);
 		List<PocketTransactionItemResponse> recentTransactions = pocketTransactionRepository
-			.findTop2ByUserIdAndDirectionAndTransactionStatusOrderByCompletedAtDescIdDesc(
-				userId,
-				TransactionDirection.CREDIT,
-				TransactionStatus.COMPLETED
-			)
+			.findTransactions(userId, null, null, PageRequest.of(0, 4))
+			.getContent()
 			.stream()
 			.map(this::toTransactionItem)
 			.toList();

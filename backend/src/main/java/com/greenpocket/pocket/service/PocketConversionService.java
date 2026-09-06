@@ -29,7 +29,7 @@ import com.greenpocket.pocket.repository.PocketTransactionRepository;
 public class PocketConversionService {
 
 	private static final ZoneId KOREA_ZONE_ID = ZoneId.of("Asia/Seoul");
-	private static final String EXTERNAL_URL = "https://ecomileage.seoul.go.kr/mileage/convert";
+	private static final String EXTERNAL_URL = "https://ecomileage.seoul.go.kr/goods/apply.do";
 	private static final String CONVERSION_NOTICE = "현금으로 바꿔야 그린포켓 계좌로 들어와요";
 
 	private final PocketTransactionRepository pocketTransactionRepository;
