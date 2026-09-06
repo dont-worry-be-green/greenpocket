@@ -2,6 +2,7 @@
 import { useRouter } from 'vue-router'
 
 import GpButton from '@/components/ui/GpButton.vue'
+import IconBank from '@/components/ui/icons/IconBank.vue'
 import { usePocketStore } from '@/stores/pocket'
 import { formatDateTime, formatWon } from '@/utils/format'
 
@@ -16,9 +17,9 @@ const store = usePocketStore()
     <template v-if="store.withdrawalResult?.transactionStatus === 'COMPLETED'">
       <div class="text-center">
         <div
-          class="bg-primary-bg text-primary mx-auto flex size-20 items-center justify-center rounded-xl text-5xl"
+          class="bg-primary-bg text-primary mx-auto flex size-20 items-center justify-center rounded-xl"
         >
-          ✓
+          <IconBank :size="40" />
         </div>
         <h1 class="text-title mt-6 mb-2">출금 신청이 완료됐어요!</h1>
         <p class="text-body text-muted m-0">신청한 금액은 아래 계좌로<br />입금될 예정이에요.</p>
@@ -27,7 +28,9 @@ const store = usePocketStore()
       <section class="bg-surface mt-8 rounded-xl px-6 py-5">
         <div class="border-divider flex min-h-14 items-center justify-between border-b">
           <span class="text-muted">출금 금액</span
-          ><strong class="tabular-nums">{{ formatWon(store.withdrawalResult.amount) }}</strong>
+          ><strong class="text-list-title text-primary tabular-nums">{{
+            formatWon(store.withdrawalResult.amount)
+          }}</strong>
         </div>
         <div class="border-divider flex min-h-14 items-center justify-between gap-3 border-b">
           <span class="text-muted shrink-0">입금 계좌</span
