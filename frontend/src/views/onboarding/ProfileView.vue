@@ -20,22 +20,13 @@ import OnbRadioList from '@/components/onboarding/OnbRadioList.vue'
 import OnbRegionPicker from '@/components/onboarding/OnbRegionPicker.vue'
 import GpButton from '@/components/ui/GpButton.vue'
 import { useOnboardingStore } from '@/stores/onboarding'
+import { AREA_BAND_OPTIONS, HOUSING_TYPE_OPTIONS } from '@/utils/format'
 
 /*
  * ENUM 라벨은 api-spec.md 3절 · schema.sql 과 1:1 이다.
- * 이 화면 말고 쓰는 곳이 없어 `utils/format.js` 에 올리지 않는다.
+ * 여기 로컬 상수였는데 MY-01(라벨 되돌리기)·MY-02(같은 폼 재사용, A-1-06)가 함께 쓰게 되어
+ * `utils/format.js` 로 올렸다. 선택지와 라벨이 갈라지면 두 화면의 문구가 조용히 달라진다.
  */
-const HOUSING_TYPES = [
-  { value: 'ONE_ROOM', label: '원룸' },
-  { value: 'OFFICETEL', label: '오피스텔' },
-  { value: 'APARTMENT', label: '아파트' },
-  { value: 'MULTI_HOUSE', label: '다세대' },
-]
-const AREA_BANDS = [
-  { value: 'UNDER_10', label: '10평 이하' },
-  { value: 'FROM_10_TO_20', label: '10~20평' },
-  { value: 'OVER_20', label: '20평 이상' },
-]
 
 const router = useRouter()
 const store = useOnboardingStore()
@@ -110,8 +101,8 @@ async function submit() {
         @update:sigungu="sigungu = $event"
       />
 
-      <OnbChoiceChips v-model="housingType" :options="HOUSING_TYPES" label="주거 형태" />
-      <OnbRadioList v-model="areaBand" :options="AREA_BANDS" label="평수" />
+      <OnbChoiceChips v-model="housingType" :options="HOUSING_TYPE_OPTIONS" label="주거 형태" />
+      <OnbRadioList v-model="areaBand" :options="AREA_BAND_OPTIONS" label="평수" />
 
       <p v-if="store.error" class="text-body-sm text-negative m-0">{{ store.error.message }}</p>
 

@@ -16,10 +16,17 @@ import { createRouter, createWebHistory, RouterView } from 'vue-router'
 
 import { DATA_SOURCE, setDataSource } from '@/api/dataSource'
 import { DEMO_SHORTCUTS } from '@/components/layout/demoShortcuts'
-import routes from '@/router/routes/eco'
+import ecoRoutes from '@/router/routes/eco'
+import mypageRoutes from '@/router/routes/mypage'
 
 /*
- * eco 라우트만 등록해서 나는 링크 경고(/mypage · /pocket)와, 픽스처 모드에서도 실제로 나가는
+ * 바로가기가 가리키는 도메인의 라우트를 등록한다. 목록에 마이페이지가 들어온 뒤로는
+ * eco 만 등록하면 그 다섯 개가 전부 「경로 없음」으로 떨어져 검사가 통째로 무의미해진다.
+ */
+const routes = [...ecoRoutes, ...mypageRoutes]
+
+/*
+ * 등록하지 않은 탭으로 나는 링크 경고(/analysis · /pocket)와, 픽스처 모드에서도 실제로 나가는
  * 네트워크 실패를 거른다. 화면이 낸 오류와 섞이면 판정이 무의미해진다.
  */
 const HARNESS_NOISE = /VUE_ROUTER_R0004|ECONNREFUSED|Cross origin|Error: connect|Network Error/

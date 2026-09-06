@@ -1,21 +1,48 @@
 /*
  * 마이페이지 화면 (MY) — api-spec.md 15.3
- *   MY-01 마이페이지 메인
- *   MY-02 기본 정보 수정
- *   MY-03 고지서 보관함
- *   MY-04 리포트 보관함
+ *   MY-01 마이페이지 메인      MY-03 고지서 보관함
+ *   MY-02 기본 정보 수정       MY-04 리포트 보관함
  *
- * 탭바(COM-02)를 세우려면 탭 5개가 모두 갈 곳이 있어야 해서 마이페이지 탭 루트만 미리 물려 둔다.
- * **MY-01 을 붙일 때 아래 component 한 줄만 바꾸면 된다.** meta 형태는 routes/eco.js 주석 참고.
- *
- * 추가 형태는 routes/onboarding.js 주석 참고.
+ * meta 형태는 routes/eco.js 주석 참고. 추가 형태는 routes/onboarding.js 주석 참고.
  */
 export default [
   {
     path: '/mypage',
     name: 'my-home',
-    // TODO(마이페이지 담당): MY-01 마이페이지 메인으로 교체
-    component: () => import('@/views/ComingSoonView.vue'),
+    component: () => import('@/views/mypage/MypageHomeView.vue'),
     meta: { tab: 'mypage', title: '마이페이지' },
+  },
+  {
+    path: '/mypage/profile',
+    name: 'my-02-profile-edit',
+    /*
+     * MY-02. **시안이 없다** — 기능명세서 화면 목록이 "ONB-01·02 폼 재사용" 이라고 적었다.
+     * 그래서 이 화면은 `components/onboarding/` 의 폼 조각을 그대로 쓴다(뷰 주석 참고).
+     */
+    component: () => import('@/views/mypage/ProfileEditView.vue'),
+    meta: { title: '기본 정보 수정' },
+  },
+  {
+    path: '/mypage/bills',
+    name: 'my-03-bill-archive',
+    /*
+     * MY-03. 필터는 `?utility=ELECTRICITY&year=2026` 로 URL 이 들고 있다.
+     * ⚠️ **쿼리 키는 `utility`, 응답 필드는 `utilityType` 이다**(WF-08 과 같은 함정).
+     * 쿼리는 라우트에 선언하지 않는다 — 뷰가 `route.query` 로 읽는다.
+     *
+     * 기능 ID 는 A-2-12(고지서 도메인)이지만 **화면은 마이페이지 것**이라 여기에 둔다.
+     */
+    component: () => import('@/views/mypage/BillArchiveView.vue'),
+    meta: { title: '고지서 보관함' },
+  },
+  {
+    path: '/mypage/reports',
+    name: 'my-04-report-archive',
+    /*
+     * MY-04. 탭(월별·ECO)은 URL 이 아니라 화면 상태다 — 보관함은 한 번에 훑는 화면이고
+     * 탭까지 URL 에 올리면 뒤로가기가 탭 전환을 되짚는다(MY-03 의 필터와 다르다).
+     */
+    component: () => import('@/views/mypage/ReportArchiveView.vue'),
+    meta: { title: '리포트 보관함' },
   },
 ]

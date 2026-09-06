@@ -308,3 +308,100 @@ const REWARD_STATUS_LABEL = { PENDING: '적립 예정', PAID: '지급 완료' }
 export function formatRewardStatus(rewardStatus) {
   return REWARD_STATUS_LABEL[rewardStatus] ?? EMPTY
 }
+
+/**
+ * 주거 형태 · 평수 구간 (api-spec.md 3절 HousingType · AreaBand).
+ *
+ * ONB-02 가 로컬 상수로 들고 있던 것을 여기로 올렸다. MY-01 이 값을 라벨로 되돌려야 하고
+ * MY-02 가 ONB-02 와 **같은 선택지**를 그려야 해서(A-1-06 "ONB-01·02 폼 재사용") 세 화면이
+ * 쓰는 값이 됐다. 선택지 배열과 라벨 표가 갈라지면 온보딩과 수정 화면의 문구가 조용히 달라진다.
+ */
+const HOUSING_TYPE_LABEL = {
+  ONE_ROOM: '원룸',
+  OFFICETEL: '오피스텔',
+  APARTMENT: '아파트',
+  MULTI_HOUSE: '다세대',
+}
+const AREA_BAND_LABEL = {
+  UNDER_10: '10평 이하',
+  FROM_10_TO_20: '10~20평',
+  OVER_20: '20평 이상',
+}
+
+/** 선택 칩·라디오가 그대로 쓰는 `[{ value, label }]`. 순서가 곧 화면 순서다 */
+const toOptions = (labels) =>
+  Object.entries(labels).map(([value, label]) => ({ value, label }))
+
+export const HOUSING_TYPE_OPTIONS = toOptions(HOUSING_TYPE_LABEL)
+export const AREA_BAND_OPTIONS = toOptions(AREA_BAND_LABEL)
+
+export function formatHousingType(housingType) {
+  return HOUSING_TYPE_LABEL[housingType] ?? EMPTY
+}
+
+export function formatAreaBand(areaBand) {
+  return AREA_BAND_LABEL[areaBand] ?? EMPTY
+}
+
+/**
+ * 마이페이지 기본 정보의 「주거 형태」 한 행 (E-1-01 · MY-01).
+ *   ('ONE_ROOM', 'UNDER_10') → '원룸 · 10평 이하'
+ *
+ * `profileSummary` 는 지역까지 붙은 문장이라 이 행에 쓸 수 없다. 지역은 바로 위 행에 따로 있다.
+ */
+export function formatHousing(housingType, areaBand) {
+  const parts = [formatHousingType(housingType), formatAreaBand(areaBand)].filter(
+    (part) => part !== EMPTY,
+  )
+  return parts.length ? parts.join(' · ') : EMPTY
+}
+
+/**
+ * 고지서 종류 (api-spec.md 3절 BillType). 보관함 제목 「2026년 9월 · 전기 고지서」에 쓴다.
+ *
+ * `UtilityType` 과 값이 겹치지만 **다른 enum 이다.** 관리비 고지서 한 장이 전기·수도·가스
+ * 레코드 여러 건으로 쪼개지므로 `MANAGEMENT` 는 여기에만 있다(api-spec 6절 머리말).
+ * 'GAS' 라벨은 formatUtilityType 과 같은 '도시가스' 로 맞춘다 — 화면마다 갈리지 않게.
+ */
+const BILL_TYPE_LABEL = {
+  MANAGEMENT: '관리비',
+  ELECTRICITY: '전기',
+  GAS: '도시가스',
+  WATER: '수도',
+}
+
+export function formatBillType(billType) {
+  return BILL_TYPE_LABEL[billType] ?? EMPTY
+}
+
+/**
+ * 고지서 레코드 상태 (api-spec.md 3절 RecordStatus).
+ *
+ * `REVIEW_REQUIRED` 는 OCR 신뢰도가 낮아 사람이 확인해야 하는 건이다. '실패' 가 아니라
+ * '확인 대기' 다 — 값은 이미 저장돼 있고 진단에도 들어간다(핵심 규칙 11 과 다른 자리).
+ */
+const RECORD_STATUS_LABEL = { CONFIRMED: '등록 완료', REVIEW_REQUIRED: '확인 대기' }
+
+export function formatRecordStatus(recordStatus) {
+  return RECORD_STATUS_LABEL[recordStatus] ?? EMPTY
+}
+
+/**
+ * ISO-8601 일시 → '2026.09.25'. 보관함 목록의 등록일·생성일 자리다(MY-03 · MY-04 시안).
+ *
+ * `formatDate` 와 값은 같고 구분자만 점이다. **치환으로 만들지 않는다** — 하이픈을 점으로
+ * 바꾸다 날짜·시각 사이까지 함께 바뀌는 버그가 이미 있다(이슈 #83). 조각을 직접 조립한다.
+ */
+export function formatDotDate(dateTime) {
+  if (!dateTime) return EMPTY
+  const date = new Date(dateTime)
+  if (Number.isNaN(date.getTime())) return EMPTY
+  const parts = new Intl.DateTimeFormat('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+  const pick = (type) => parts.find((part) => part.type === type)?.value ?? ''
+  return `${pick('year')}.${pick('month')}.${pick('day')}`
+}
