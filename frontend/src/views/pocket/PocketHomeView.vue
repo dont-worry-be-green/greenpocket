@@ -122,7 +122,7 @@ async function completeConversionOnReturn() {
           <div class="mt-6 border-t border-white/35">
             <div class="flex min-h-16 items-center gap-3 pt-2">
               <span class="flex size-9 items-center justify-center rounded-md bg-white/20">
-                <IconLeaf :size="20" />
+                <IconCoins :size="20" />
               </span>
               <div class="min-w-0 flex-1">
                 <p class="text-body-sm m-0 opacity-80">전환 가능한 마일리지</p>
