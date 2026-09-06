@@ -1,7 +1,10 @@
 /*
  * 혜택 탭 홈이 **첫 렌더에서 터지지 않는지**, 그리고 **두 상태를 서버 판정대로 그리는지** 본다.
  *
- * `fetchStatus()` 는 `onMounted` 에서 부르는데 첫 렌더는 그보다 먼저다. 그 한 틱 동안
+ * 월 이동(#110)도 여기서 지킨다 — 보고 있는 달은 URL 이 들고 있고, **현황과 목록을 같은 달로**
+ * 함께 받아야 카드 합계와 목록 합계가 어긋나지 않는다(C-2-01).
+ *
+ * `fetchStatus()` 는 달을 지켜보는 watch 가 부르는데 첫 렌더는 그보다 먼저다. 그 한 틱 동안
  * `status` 가 null 인 채 본문이 그려지면 흰 화면이 된다(WhatIfHomeView 와 같은 함정).
  *
  * 이 도메인은 픽스처가 없어서(`api/__tests__/greenlife.spec.js`) API 모듈을 여기서 막는다.
@@ -13,6 +16,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRouter, createWebHistory } from 'vue-router'
 
 import routes from '@/router/routes/greenlife'
+import { currentMonth } from '@/utils/month'
 import BenefitHomeView from '@/views/greenlife/BenefitHomeView.vue'
 
 const { getGreenlifeStatus, getGreenlifeItems } = vi.hoisted(() => ({
@@ -65,9 +69,9 @@ const ITEMS = {
   collapsedAfter: 6,
 }
 
-async function mountHome() {
+async function mountHome(path = '/benefit') {
   const router = createRouter({ history: createWebHistory(), routes })
-  await router.push('/benefit')
+  await router.push(path)
   await router.isReady()
 
   const errors = []
@@ -80,8 +84,12 @@ async function mountHome() {
 
   spy.mockRestore()
   warn.mockRestore()
-  return { wrapper, errors }
+  return { wrapper, errors, router }
 }
+
+/** aria-label 로 찾는다. 화살표는 아이콘뿐이라 글자로는 못 짚는다 */
+const arrow = (wrapper, label) =>
+  wrapper.findAll('button').find((node) => node.attributes('aria-label') === label)
 
 describe('BenefitHomeView', () => {
   beforeEach(() => {
@@ -95,7 +103,7 @@ describe('BenefitHomeView', () => {
 
     expect(errors).toEqual([])
     const text = wrapper.text()
-    expect(text).toContain('2026년 8월 실천 현황')
+    expect(text).toContain('8월 실천 현황')
     // 적립 예정과 지급 완료는 색이 아니라 라벨로도 갈린다 (COM-06)
     expect(text).toContain('적립 예정')
     expect(text).toContain('5,540원')
@@ -133,6 +141,88 @@ describe('BenefitHomeView', () => {
 
     expect(errors).toEqual([])
     expect(wrapper.text()).toContain('다시 시도')
+    wrapper.unmount()
+  })
+})
+
+/*
+ * 월 이동 (#110).
+ *
+ * ⚠️ 이건 **기능명세에 없는 기능이다.** C-2-01·C-2-03·C-2-04 가 전부 "이번 달" 고정으로
+ * 적혀 있고 시안에도 컨트롤이 없다. 승인되면 엑셀 「결정 사항」 시트에 올려야 한다.
+ */
+describe('BenefitHomeView — 월 이동', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    getGreenlifeItems.mockResolvedValue(ITEMS)
+    getGreenlifeStatus.mockResolvedValue(PARTICIPATING)
+  })
+
+  /*
+   * 둘이 갈리면 카드 합계와 목록 합계가 어긋난다 — C-2-01 완료 조건이다.
+   * 쿼리가 없을 때 month 를 빼고 부르지 않는 이유는, 서버 기본값에 기대면 두 요청 사이에
+   * 날짜가 바뀌는 경계에서 서로 다른 달을 받을 수 있어서다.
+   */
+  it('현황과 목록을 같은 달로 함께 받는다', async () => {
+    const { wrapper } = await mountHome('/benefit?month=2026-08')
+
+    expect(getGreenlifeStatus).toHaveBeenCalledWith({ month: '2026-08' })
+    expect(getGreenlifeItems).toHaveBeenCalledWith({ month: '2026-08' })
+    wrapper.unmount()
+  })
+
+  it('이전 달을 누르면 URL 이 바뀌고 그 달로 다시 받는다', async () => {
+    const { wrapper, router } = await mountHome('/benefit?month=2026-08')
+
+    await arrow(wrapper, '이전 달').trigger('click')
+    await vi.waitFor(() => {
+      expect(router.currentRoute.value.query.month).toBe('2026-07')
+    })
+    await flushPromises()
+
+    expect(getGreenlifeStatus).toHaveBeenLastCalledWith({ month: '2026-07' })
+    expect(getGreenlifeItems).toHaveBeenLastCalledWith({ month: '2026-07' })
+    wrapper.unmount()
+  })
+
+  /*
+   * 서버는 미래 달도 200 + 0건으로 준다. 막지 않으면 「11월 실천 현황 0건」을 무한히 넘긴다.
+   * 아래쪽은 기준 연도 1월 — 연간 한도 카드가 같은 해 기준이라 한 화면 안에서 말이 맞는다.
+   */
+  it('이번 달에서는 다음 달로 못 간다', async () => {
+    const { wrapper } = await mountHome(`/benefit?month=${currentMonth()}`)
+    expect(arrow(wrapper, '다음 달').attributes('disabled')).toBeDefined()
+    expect(arrow(wrapper, '이전 달').attributes('disabled')).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  it('기준 연도 1월에서는 이전 달로 못 간다', async () => {
+    const { wrapper } = await mountHome('/benefit?month=2026-01')
+    expect(arrow(wrapper, '이전 달').attributes('disabled')).toBeDefined()
+    wrapper.unmount()
+  })
+
+  // 쿼리는 밖에서 들어오는 값이다. 서버는 이런 값에 400 을 준다
+  it.each([['bad'], ['2026-13'], ['2099-01']])('%s 는 이번 달로 떨어진다', async (bad) => {
+    const { wrapper } = await mountHome(`/benefit?month=${bad}`)
+    expect(getGreenlifeStatus).toHaveBeenCalledWith({ month: currentMonth() })
+    wrapper.unmount()
+  })
+
+  /** 상세도 같은 달을 봐야 한다 — C-2-04 「상세 건수가 목록 건수와 일치한다」 */
+  it('항목을 누르면 보던 달을 상세로 들고 간다', async () => {
+    const { wrapper, router } = await mountHome('/benefit?month=2026-08')
+
+    const row = wrapper.findAll('button').find((node) => node.text().includes('전자영수증'))
+    await row.trigger('click')
+    /*
+     * 뷰가 `router.push` 를 await 하지 않으므로 내비게이션이 언제 끝나는지 테스트가 알 수 없다.
+     * flushPromises 를 몇 번 부를지 세는 대신 조건이 참이 될 때까지 기다린다.
+     */
+    await vi.waitFor(() => {
+      expect(router.currentRoute.value.path).toBe('/benefit/items/1')
+    })
+    expect(router.currentRoute.value.query.month).toBe('2026-08')
     wrapper.unmount()
   })
 })

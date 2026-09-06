@@ -40,6 +40,7 @@ import {
   formatUnitPrice,
   formatWon,
 } from '@/utils/format'
+import { isMonth } from '@/utils/month'
 
 const route = useRoute()
 const store = useGreenlifeStore()
@@ -50,14 +51,24 @@ const iconKey = computed(
   () => store.items?.items?.find((item) => item.itemId === detail.value?.itemId)?.iconKey ?? '',
 )
 
-/** 목록에서 다른 항목으로 바로 넘어와도 다시 받도록 경로 파라미터를 지켜본다 */
-watch(
-  () => route.params.itemId,
-  (itemId) => {
-    if (itemId) store.fetchItemDetail(itemId)
-  },
-  { immediate: true },
-)
+/*
+ * 목록에서 다른 항목으로 바로 넘어와도 다시 받도록 경로 파라미터를 지켜본다.
+ *
+ * ⚠️ **`month` 를 함께 넘긴다.** 목록(BN-02)이 8월을 보고 있는데 여기서 빼면 서버가 이번 달을
+ * 골라 0건을 준다 — C-2-04 완료 조건("상세 건수가 목록 건수와 일치한다")이 깨진다.
+ * 쿼리가 없거나 형식이 아니면 넘기지 않는다. 그때는 서버가 이번 달을 고르고, 목록도 같다.
+ */
+const month = computed(() => (isMonth(route.query.month) ? route.query.month : null))
+
+/** 목록으로 돌아갈 때도 보던 달을 들고 간다 */
+const backTo = computed(() => ({ path: '/benefit', query: month.value ? { month: month.value } : {} }))
+
+function load() {
+  const itemId = route.params.itemId
+  if (itemId) store.fetchItemDetail(itemId, month.value ? { month: month.value } : {})
+}
+
+watch([() => route.params.itemId, month], load, { immediate: true })
 
 function openExternal() {
   const url = detail.value?.externalUrl
@@ -66,11 +77,11 @@ function openExternal() {
 </script>
 
 <template>
-  <AppSubLayout title="실천항목 상세" back="/benefit">
+  <AppSubLayout title="실천항목 상세" :back="backTo">
     <GreenlifeState
       :loading="store.detailLoading && !detail"
       :error="detail ? null : store.detailError"
-      @retry="store.fetchItemDetail(route.params.itemId)"
+      @retry="load"
     >
       <div v-if="detail" class="space-y-4">
         <GpCard>

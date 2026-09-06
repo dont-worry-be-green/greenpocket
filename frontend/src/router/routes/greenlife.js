@@ -11,13 +11,22 @@
  */
 export default [
   {
-    // BN-01·BN-02 는 라우트가 아니라 한 화면의 두 상태다. GET /greenlife/status 의 screen 이 정한다
+    /*
+     * BN-01·BN-02 는 라우트가 아니라 한 화면의 두 상태다. GET /greenlife/status 의 screen 이 정한다.
+     *
+     * `?month=2026-08` 은 선택이다 — 없으면 KST 기준 이번 달이고, 그건 서버가 month 를
+     * 생략했을 때 고르는 달과 같다. 쿼리는 라우트에 선언하지 않는다(뷰가 route.query 로 읽는다).
+     */
     path: '/benefit',
     name: 'bn-home',
     component: () => import('@/views/greenlife/BenefitHomeView.vue'),
     meta: { tab: 'benefit', title: '혜택' },
   },
   {
+    /*
+     * BN-03. `?month=` 를 목록에서 그대로 들고 온다 — 빼면 서버가 이번 달을 골라
+     * 목록과 건수가 어긋난다(C-2-04 완료 조건).
+     */
     path: '/benefit/items/:itemId',
     name: 'bn-item-detail',
     component: () => import('@/views/greenlife/BenefitItemDetailView.vue'),

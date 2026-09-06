@@ -116,15 +116,17 @@ export const useGreenlifeStore = defineStore('greenlife', () => {
    * 링크 응답에는 월 현황·연간 한도가 없다. 참여로 바뀌었으면 상태를 다시 받아야
    * BN-02 를 그릴 수 있다 — C-1-01 완료 조건이 그 전환이다.
    * 여전히 미참여면 200 정상 응답이므로 에러가 아니라 안내로 남긴다.
+   *
+   * `params` 는 보고 있는 달이다. 안 넘기면 새로고침 한 번에 이번 달로 되돌아간다.
    */
-  async function refreshLink() {
+  async function refreshLink(params) {
     linkLoading.value = true
     linkError.value = null
     linkNotice.value = ''
     try {
       const linked = await linkGreenlife()
       if (linked?.participating) {
-        await fetchStatus()
+        await fetchStatus(params)
       } else {
         linkNotice.value = '아직 참여 상태가 아니에요. 공식 누리집에서 가입을 마친 뒤 다시 눌러 주세요.'
       }
