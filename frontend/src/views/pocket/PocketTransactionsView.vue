@@ -9,9 +9,9 @@ import { usePocketStore } from '@/stores/pocket'
 import { formatDateTime, formatMonth, formatSignedWon } from '@/utils/format'
 
 const store = usePocketStore()
-const activeTab = ref('credit')
+const activeTab = ref('all')
 
-const statusLabels = {
+const withdrawalStatusLabels = {
   REQUESTED: '출금 요청',
   PROCESSING: '처리 중',
   COMPLETED: '출금 완료',
@@ -22,11 +22,19 @@ const statusLabels = {
 const activeHistory = computed(() => store.transactions ?? { groups: [] })
 
 function loadTransactions() {
-  return store.fetchTransactions(activeTab.value === 'credit' ? 'CREDIT' : 'DEBIT')
+  const direction = {
+    credit: 'CREDIT',
+    withdrawal: 'DEBIT',
+  }[activeTab.value]
+  return store.fetchTransactions(direction)
 }
 
-function statusLabel(status) {
-  return statusLabels[status] ?? status
+function statusLabel(item) {
+  if (item.direction === 'DEBIT') {
+    return withdrawalStatusLabels[item.transactionStatus] ?? item.transactionStatus
+  }
+  if (item.transactionStatus !== 'COMPLETED') return item.transactionStatus
+  return item.transactionType === 'GREENLIFE' ? '지급 완료' : '입금'
 }
 
 onMounted(loadTransactions)
@@ -36,10 +44,18 @@ watch(activeTab, loadTransactions)
 <template>
   <AppSubLayout title="내역" back="/pocket" center-title>
     <div class="space-y-5">
-      <div class="border-divider flex rounded-lg border p-1">
+      <div class="border-divider grid grid-cols-3 rounded-lg border p-1">
         <button
           type="button"
-          class="text-body-strong min-h-11 flex-1 rounded-md border-0 transition-colors"
+          class="text-body-strong min-h-11 rounded-md border-0 transition-colors"
+          :class="activeTab === 'all' ? 'bg-primary text-on-primary' : 'text-muted bg-transparent'"
+          @click="activeTab = 'all'"
+        >
+          전체
+        </button>
+        <button
+          type="button"
+          class="text-body-strong min-h-11 rounded-md border-0 transition-colors"
           :class="
             activeTab === 'credit' ? 'bg-primary text-on-primary' : 'text-muted bg-transparent'
           "
@@ -49,7 +65,7 @@ watch(activeTab, loadTransactions)
         </button>
         <button
           type="button"
-          class="text-body-strong min-h-11 flex-1 rounded-md border-0 transition-colors"
+          class="text-body-strong min-h-11 rounded-md border-0 transition-colors"
           :class="
             activeTab === 'withdrawal' ? 'bg-primary text-on-primary' : 'text-muted bg-transparent'
           "
@@ -74,7 +90,8 @@ watch(activeTab, loadTransactions)
       </div>
       <div v-else-if="!activeHistory.groups.length" class="bg-surface rounded-lg p-5 text-center">
         <p class="text-body-sm text-muted m-0">
-          아직 {{ activeTab === 'credit' ? '적립' : '출금' }} 내역이 없어요.
+          아직 {{ activeTab === 'all' ? '' : activeTab === 'credit' ? '적립 ' : '출금 ' }}내역이
+          없어요.
         </p>
       </div>
 
@@ -95,7 +112,7 @@ watch(activeTab, loadTransactions)
             <span
               class="bg-primary-bg text-primary flex size-10 shrink-0 items-center justify-center rounded-full"
             >
-              <IconLeaf v-if="activeTab === 'credit'" :size="20" />
+              <IconLeaf v-if="item.direction === 'CREDIT'" :size="20" />
               <IconPocket v-else :size="20" />
             </span>
             <div class="min-w-0 flex-1">
@@ -103,15 +120,19 @@ watch(activeTab, loadTransactions)
               <p class="text-caption text-muted mt-1 mb-0">
                 {{ formatDateTime(item.completedAt) }} · {{ item.transactionCode }}
               </p>
-              <GpTag v-if="item.transactionStatus" tone="positive" small class="mt-2">{{
-                statusLabel(item.transactionStatus)
-              }}</GpTag>
+              <GpTag
+                v-if="item.transactionStatus"
+                :tone="item.direction === 'DEBIT' ? 'negative' : 'positive'"
+                small
+                class="mt-2"
+                >{{ statusLabel(item) }}</GpTag
+              >
             </div>
             <p
               class="text-list-title tabular-nums m-0"
-              :class="activeTab === 'credit' ? 'text-primary' : 'text-ink'"
+              :class="item.direction === 'CREDIT' ? 'text-primary' : 'text-negative'"
             >
-              {{ formatSignedWon(activeTab === 'credit' ? item.amount : -item.amount) }}
+              {{ formatSignedWon(item.direction === 'CREDIT' ? item.amount : -item.amount) }}
             </p>
           </article>
         </div>
