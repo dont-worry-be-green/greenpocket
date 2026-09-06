@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   getBillOcrResult,
+  getDiagnosis,
+  getDiagnosisMonths,
   startBillOcr,
 } from '@/api/analysis'
 import { useAnalysisStore } from '@/stores/analysis'
@@ -13,6 +15,7 @@ vi.mock('@/api/analysis', () => ({
   getBillOcrResult: vi.fn(),
   getBillTargetMonth: vi.fn(),
   getDiagnosis: vi.fn(),
+  getDiagnosisMonths: vi.fn(),
   startBillOcr: vi.fn(),
 }))
 
@@ -83,5 +86,29 @@ describe('analysis store — OCR', () => {
       code: 'OCR_FAILED',
       message: '사진에서 값을 읽지 못했어요.',
     })
+  })
+})
+
+describe('analysis store — diagnosis month', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+  })
+
+  it('선택한 월의 진단과 등록된 월 목록을 조회한다', async () => {
+    getDiagnosis.mockResolvedValue({ empty: false, yearMonth: '2026-07', summary: {} })
+    getDiagnosisMonths.mockResolvedValue({
+      months: [{ yearMonth: '2026-07', registered: true }],
+      defaultMonth: '2026-07',
+    })
+
+    const store = useAnalysisStore()
+
+    await store.fetchHome('2026-07')
+    await store.fetchDiagnosisMonths()
+
+    expect(getDiagnosis).toHaveBeenCalledWith({ month: '2026-07' })
+    expect(getDiagnosisMonths).toHaveBeenCalledOnce()
+    expect(store.diagnosisMonths).toEqual([{ yearMonth: '2026-07', registered: true }])
   })
 })

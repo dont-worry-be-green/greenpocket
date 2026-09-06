@@ -9,7 +9,6 @@ import IconCamera from '@/components/ui/icons/IconCamera.vue'
 import IconPencil from '@/components/ui/icons/IconPencil.vue'
 import IconScan from '@/components/ui/icons/IconScan.vue'
 import { useAnalysisStore } from '@/stores/analysis'
-import { formatMonthOnly } from '@/utils/format'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png']
@@ -25,7 +24,6 @@ const inputMode = ref(route.query.mode === 'manual' ? 'manual' : 'photo')
 const targetYearMonth = computed(
   () => route.query.month ?? store.targetMonth?.targetYearMonth ?? '2026-08',
 )
-const monthLabel = computed(() => formatMonthOnly(targetYearMonth.value))
 const initialManualDraft = computed(() =>
   route.query.prefill === 'recognition' ? store.billDraft : null,
 )
@@ -73,9 +71,9 @@ async function completeManualEntry(draft) {
   <AppSubLayout back="/analysis" :has-footer="inputMode === 'manual'">
     <header class="mb-5">
       <h1 class="text-title tracking-title text-ink mt-1 mb-1">
-        {{ monthLabel }} 고지서를 등록해요
+        고지서를 등록해요
       </h1>
-      <p class="text-caption text-muted m-0">관리비·전기·수도·도시가스 고지서를 인식해요.</p>
+      <p class="text-caption text-muted m-0">사진에서 청구 월과 요금 정보를 자동으로 확인해요.</p>
     </header>
 
     <div class="bg-primary-bg mb-5 grid grid-cols-2 rounded-xl p-1">

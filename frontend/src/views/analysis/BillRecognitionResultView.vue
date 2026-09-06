@@ -8,7 +8,7 @@ import IconDrop from '@/components/ui/icons/IconDrop.vue'
 import IconFlame from '@/components/ui/icons/IconFlame.vue'
 import IconLightning from '@/components/ui/icons/IconLightning.vue'
 import { useAnalysisStore } from '@/stores/analysis'
-import { formatMonthOnly, formatUsage, formatWon } from '@/utils/format'
+import { formatMonth, formatUsage, formatWon } from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -86,8 +86,9 @@ function saveRecognizedDraft() {
 
     <section class="bg-surface rounded-xl p-5 shadow-sm">
       <div class="mb-5">
-        <p class="text-caption text-muted mt-0 mb-1">인식된 고지서</p>
-        <h2 class="text-section text-ink m-0">{{ formatMonthOnly(recognizedMonth) }} 생활비 고지서</h2>
+        <p class="text-caption text-muted mt-0 mb-1">사진에서 인식한 청구 월</p>
+        <h2 class="text-section text-ink m-0">{{ formatMonth(recognizedMonth) }}</h2>
+        <p class="text-caption text-muted mt-2 mb-0">청구 월이 다르면 수정하기에서 변경해 주세요.</p>
         <p v-if="store.ocrResult?.partialRecognition" class="text-caption text-negative mt-2 mb-0">
           일부 항목만 인식됐어요. 내용을 확인해 주세요.
         </p>

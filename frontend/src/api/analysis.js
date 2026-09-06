@@ -4,6 +4,10 @@ export function getDiagnosis(params = {}) {
   return client.get('/diagnosis', { params })
 }
 
+export function getDiagnosisMonths() {
+  return client.get('/diagnosis/months')
+}
+
 export function getBillTargetMonth() {
   return client.get('/bills/target-month')
 }

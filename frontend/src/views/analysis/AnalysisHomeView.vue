@@ -1,9 +1,10 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AppTabLayout from '@/components/layout/AppTabLayout.vue'
 import GpButton from '@/components/ui/GpButton.vue'
+import IconChevronDown from '@/components/ui/icons/IconChevronDown.vue'
 import IconDrop from '@/components/ui/icons/IconDrop.vue'
 import IconFlame from '@/components/ui/icons/IconFlame.vue'
 import IconLightning from '@/components/ui/icons/IconLightning.vue'
@@ -15,6 +16,9 @@ const route = useRoute()
 const router = useRouter()
 const store = useAnalysisStore()
 const selectedUtilityType = ref('ELECTRICITY')
+const selectedMonth = ref('')
+const isMonthMenuOpen = ref(false)
+const monthDropdown = ref(null)
 const UTILITY_STYLE = {
   ELECTRICITY: { icon: IconLightning, tone: 'summary-electricity' },
   WATER: { icon: IconDrop, tone: 'summary-water' },
@@ -32,7 +36,6 @@ const diagnosis = computed(() =>
 const targetYearMonth = computed(
   () => diagnosis.value?.yearMonth ?? store.targetMonth?.targetYearMonth ?? diagnosis.value?.targetYearMonth,
 )
-const targetMonthLabel = computed(() => formatMonth(targetYearMonth.value))
 const targetMonthOnlyLabel = computed(() => formatMonthOnly(targetYearMonth.value))
 const selectedRegionTab = computed(() =>
   diagnosis.value?.regionComparison?.tabs?.find(
@@ -70,9 +73,44 @@ function utilityCostLabel(utilityType) {
   return utilityType === 'GAS' ? '도시가스' : `${formatUtilityType(utilityType)}세`
 }
 
-onMounted(() => {
-  if (!isEmptyPreview.value && !isConfirmedPreview.value) store.fetchHome()
+onMounted(async () => {
+  document.addEventListener('pointerdown', closeMonthMenuOutside)
+  document.addEventListener('keydown', closeMonthMenuWithEscape)
+
+  if (isEmptyPreview.value || isConfirmedPreview.value) return
+
+  const requestedMonth = typeof route.query.month === 'string' ? route.query.month : undefined
+  await Promise.all([store.fetchHome(requestedMonth), store.fetchDiagnosisMonths()])
+  selectedMonth.value = store.diagnosis?.yearMonth ?? requestedMonth ?? ''
 })
+
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', closeMonthMenuOutside)
+  document.removeEventListener('keydown', closeMonthMenuWithEscape)
+})
+
+function closeMonthMenuOutside(event) {
+  if (!monthDropdown.value?.contains(event.target)) isMonthMenuOpen.value = false
+}
+
+function closeMonthMenuWithEscape(event) {
+  if (event.key === 'Escape') isMonthMenuOpen.value = false
+}
+
+function toggleMonthMenu() {
+  if (store.isLoading || store.areMonthsLoading || !store.diagnosisMonths.length) return
+  isMonthMenuOpen.value = !isMonthMenuOpen.value
+}
+
+async function changeMonth(month) {
+  isMonthMenuOpen.value = false
+  if (!month || month === diagnosis.value?.yearMonth) return
+
+  selectedMonth.value = month
+  selectedUtilityType.value = 'ELECTRICITY'
+  await router.replace({ query: { ...route.query, month } })
+  await store.fetchHome(month)
+}
 
 function goToRegistration() {
   router.push({ path: '/analysis/bills/new', query: { month: targetYearMonth.value } })
@@ -81,8 +119,45 @@ function goToRegistration() {
 
 <template>
   <AppTabLayout tab="analysis" title="진단">
-    <p v-if="!diagnosis?.summary" class="text-section text-ink mt-8 mb-2">{{ targetMonthLabel }}</p>
+    <template v-if="diagnosis?.summary" #headerAction>
+      <div ref="monthDropdown" class="relative shrink-0">
+        <button
+          type="button"
+          class="border-divider bg-surface text-ink flex min-h-11 items-center gap-1 rounded-md border px-3 py-2 text-label font-semibold shadow-xs disabled:cursor-not-allowed disabled:opacity-60"
+          :disabled="store.isLoading || store.areMonthsLoading || !store.diagnosisMonths.length"
+          aria-haspopup="listbox"
+          :aria-expanded="isMonthMenuOpen"
+          @click="toggleMonthMenu"
+        >
+          {{ formatMonth(selectedMonth || targetYearMonth) }}
+          <IconChevronDown
+            :size="14"
+            class="text-muted transition-transform"
+            :class="isMonthMenuOpen ? 'rotate-180' : ''"
+            aria-hidden="true"
+          />
+        </button>
 
+        <ul
+          v-if="isMonthMenuOpen"
+          class="border-divider bg-surface absolute top-full right-0 z-30 mt-2 min-w-full list-none overflow-hidden rounded-md border p-1 shadow-lg"
+          role="listbox"
+          aria-label="등록된 청구 월"
+        >
+          <li v-for="month in store.diagnosisMonths" :key="month.yearMonth" role="option">
+            <button
+              type="button"
+              class="text-ink hover:bg-primary-bg focus-visible:bg-primary-bg min-h-11 w-full rounded-sm border-0 bg-transparent px-3 py-2 text-left text-label font-semibold whitespace-nowrap outline-hidden"
+              :class="selectedMonth === month.yearMonth ? 'text-primary bg-primary-bg' : ''"
+              :aria-selected="selectedMonth === month.yearMonth"
+              @click="changeMonth(month.yearMonth)"
+            >
+              {{ formatMonth(month.yearMonth) }}
+            </button>
+          </li>
+        </ul>
+      </div>
+    </template>
     <div v-if="store.isLoading && !isEmptyPreview" class="bg-surface h-72 animate-pulse rounded-lg" />
 
     <section v-else-if="store.error && !isEmptyPreview" class="bg-surface rounded-lg px-5 py-8 text-center">
@@ -104,27 +179,36 @@ function goToRegistration() {
 
       <h2 class="text-section text-ink mt-7 mb-3">아직 등록된 고지서가 없어요</h2>
       <p class="text-body-sm text-muted mx-auto mt-0 mb-8 max-w-80 break-keep">
-        등록하면 전년 동월·지역 평균과 바로 비교해드려요.
+        사진에서 청구 월을 자동으로 확인해요.<br />등록하면 전년 동월·지역 평균과 바로 비교해드려요.
       </p>
 
-      <GpButton @click="goToRegistration">{{ targetMonthOnlyLabel }} 고지서 등록하기</GpButton>
+      <GpButton @click="goToRegistration">고지서 등록하기</GpButton>
     </section>
 
     <template v-else-if="diagnosis?.summary">
       <section class="analysis-summary relative mt-7 overflow-hidden rounded-xl px-6 py-7 text-white">
-        <p class="text-body-strong relative mt-0 mb-4 text-white/60">
-          {{ targetMonthOnlyLabel }} 생활요금 합계
-        </p>
-        <div class="relative flex items-center justify-between gap-3">
-          <strong class="block text-[38px] leading-none font-bold tracking-tight tabular-nums">
-            {{ formatWon(diagnosis.summary.currentTotal) }}
-          </strong>
+        <div class="relative mb-4 flex items-center justify-between gap-3">
+          <p class="text-body-strong m-0 text-white/60">
+            {{ targetMonthOnlyLabel }} 생활요금 합계
+          </p>
           <span
             v-if="diagnosis.summary.hasPreviousYear"
             class="rounded-full bg-white/12 px-3 py-2 text-label font-semibold whitespace-nowrap"
           >
             작년보다 {{ formatSignedWon(diagnosis.summary.diffLastYearTotal) }}
           </span>
+        </div>
+        <div class="relative flex items-center justify-between gap-3">
+          <strong class="block text-[38px] leading-none font-bold tracking-tight tabular-nums">
+            {{ formatWon(diagnosis.summary.currentTotal) }}
+          </strong>
+          <button
+            type="button"
+            class="h-9 shrink-0 rounded-sm border border-white/25 bg-white/12 px-2.5 text-caption font-semibold text-white active:scale-[0.985]"
+            @click="goToRegistration"
+          >
+            고지서 등록
+          </button>
         </div>
 
         <ul class="relative mt-6 mb-0 grid list-none grid-cols-3 p-0">
@@ -251,9 +335,6 @@ function goToRegistration() {
         </template>
         <p v-else class="text-body-sm text-muted my-10 text-center">지역 비교 데이터를 준비하고 있어요.</p>
       </section>
-      <div class="mt-5 pb-2">
-        <GpButton variant="wide" size="wide" @click="goToRegistration">고지서 등록하기</GpButton>
-      </div>
     </template>
 
     <section v-else class="bg-surface rounded-lg px-5 py-8 text-center">
