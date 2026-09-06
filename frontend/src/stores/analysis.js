@@ -7,6 +7,7 @@ import {
   getBillOcrResult,
   getBillTargetMonth,
   getDiagnosis,
+  getDiagnosisMonths,
   startBillOcr,
 } from '@/api/analysis'
 
@@ -15,6 +16,7 @@ const DEFAULT_POLL_AFTER_MS = 1000
 
 export const useAnalysisStore = defineStore('analysis', () => {
   const diagnosis = ref(null)
+  const diagnosisMonths = ref([])
   const targetMonth = ref(null)
   const selectedImage = ref(null)
   const billDraft = ref(null)
@@ -23,16 +25,17 @@ export const useAnalysisStore = defineStore('analysis', () => {
   const isAnalyzing = ref(false)
   const ocrError = ref(null)
   const isLoading = ref(false)
+  const areMonthsLoading = ref(false)
   const isSaving = ref(false)
   const error = ref(null)
   const saveError = ref(null)
 
-  async function fetchHome() {
+  async function fetchHome(month) {
     isLoading.value = true
     error.value = null
 
     try {
-      diagnosis.value = await getDiagnosis()
+      diagnosis.value = await getDiagnosis(month ? { month } : {})
 
       if (diagnosis.value?.empty) {
         targetMonth.value = await getBillTargetMonth()
@@ -44,6 +47,21 @@ export const useAnalysisStore = defineStore('analysis', () => {
       return null
     } finally {
       isLoading.value = false
+    }
+  }
+
+  async function fetchDiagnosisMonths() {
+    areMonthsLoading.value = true
+
+    try {
+      const response = await getDiagnosisMonths()
+      diagnosisMonths.value = response?.months ?? []
+      return response
+    } catch {
+      diagnosisMonths.value = []
+      return null
+    } finally {
+      areMonthsLoading.value = false
     }
   }
 
@@ -137,6 +155,7 @@ export const useAnalysisStore = defineStore('analysis', () => {
 
   return {
     diagnosis,
+    diagnosisMonths,
     targetMonth,
     selectedImage,
     billDraft,
@@ -145,10 +164,12 @@ export const useAnalysisStore = defineStore('analysis', () => {
     isAnalyzing,
     ocrError,
     isLoading,
+    areMonthsLoading,
     isSaving,
     error,
     saveError,
     fetchHome,
+    fetchDiagnosisMonths,
     selectImage,
     analyzeSelectedImage,
     saveBillDraft,
