@@ -6,9 +6,10 @@ import AppTabLayout from '@/components/layout/AppTabLayout.vue'
 import PocketState from '@/components/pocket/PocketState.vue'
 import GpButton from '@/components/ui/GpButton.vue'
 import GpModal from '@/components/ui/GpModal.vue'
+import GpTag from '@/components/ui/GpTag.vue'
+import IconBank from '@/components/ui/icons/IconBank.vue'
 import IconCoins from '@/components/ui/icons/IconCoins.vue'
 import IconLeaf from '@/components/ui/icons/IconLeaf.vue'
-import IconPocket from '@/components/ui/icons/IconPocket.vue'
 import { usePocketStore } from '@/stores/pocket'
 import { formatDateTime, formatMileage, formatSignedWon, formatWon } from '@/utils/format'
 
@@ -23,10 +24,16 @@ const recentTransactions = computed(() => {
   const groups = store.transactions?.groups ?? []
   return groups.flatMap((g) => g.items).slice(0, 3)
 })
+const withdrawalMap = computed(() => {
+  const map = {}
+  for (const w of store.withdrawals?.content ?? []) map[w.transactionId] = w
+  return map
+})
 
 onMounted(() => {
   store.fetchHome()
   store.fetchTransactions()
+  store.fetchWithdrawals()
   window.addEventListener('focus', completeConversionOnReturn)
 })
 onBeforeUnmount(() => window.removeEventListener('focus', completeConversionOnReturn))
@@ -53,6 +60,17 @@ async function convertMileage() {
     actionMessage.value = store.conversionError?.message
   }
   window.setTimeout(() => (actionMessage.value = ''), 2200)
+}
+
+const withdrawalStatusLabels = {
+  REQUESTED: '출금 요청', PROCESSING: '처리 중', COMPLETED: '출금',
+  FAILED: '출금 실패', CANCELED: '출금 취소',
+}
+
+function transactionStatusLabel(item) {
+  if (item.direction === 'DEBIT') return withdrawalStatusLabels[item.transactionStatus] ?? item.transactionStatus
+  if (item.transactionStatus !== 'COMPLETED') return item.transactionStatus
+  return item.transactionType === 'GREENLIFE' ? '지급 완료' : '입금'
 }
 
 async function completeConversionOnReturn() {
@@ -145,19 +163,32 @@ async function completeConversionOnReturn() {
               <span
                 class="bg-primary-bg text-primary flex size-10 shrink-0 items-center justify-center rounded-full"
               >
-                <IconLeaf v-if="item.direction === 'CREDIT'" :size="20" />
-                <IconPocket v-else :size="20" />
+                <IconBank v-if="item.direction === 'DEBIT'" :size="20" />
+                <IconLeaf v-else :size="20" />
               </span>
               <div class="min-w-0 flex-1">
-                <p class="text-body-strong m-0 truncate">{{ item.label }}</p>
+                <p class="text-body-strong m-0 truncate">
+                  <template v-if="item.direction === 'DEBIT' && withdrawalMap[item.transactionId]?.accountSnapshot">
+                    {{ withdrawalMap[item.transactionId].accountSnapshot.bankName }}
+                    {{ withdrawalMap[item.transactionId].accountSnapshot.accountNo }}
+                  </template>
+                  <template v-else>{{ item.label }}</template>
+                </p>
                 <p class="text-caption text-muted m-0">{{ formatDateTime(item.completedAt) }}</p>
               </div>
-              <p
-                class="text-list-title tabular-nums m-0"
-                :class="item.direction === 'CREDIT' ? 'text-primary' : 'text-negative'"
-              >
-                {{ formatSignedWon(item.direction === 'CREDIT' ? item.amount : -item.amount) }}
-              </p>
+              <div class="flex shrink-0 flex-col items-end gap-1">
+                <p
+                  class="text-list-title tabular-nums m-0"
+                  :class="item.direction === 'CREDIT' ? 'text-primary' : 'text-negative'"
+                >
+                  {{ formatSignedWon(item.direction === 'CREDIT' ? item.amount : -item.amount) }}
+                </p>
+                <GpTag
+                  v-if="item.transactionStatus"
+                  :tone="item.direction === 'DEBIT' ? 'negative' : 'positive'"
+                  small
+                >{{ transactionStatusLabel(item) }}</GpTag>
+              </div>
             </div>
           </div>
           <div v-else class="bg-surface rounded-lg px-5 py-8 text-center">
