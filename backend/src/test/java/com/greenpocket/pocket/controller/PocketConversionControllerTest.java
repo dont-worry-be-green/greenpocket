@@ -48,7 +48,7 @@ class PocketConversionControllerTest {
 			7L,
 			30_000L,
 			TransactionStatus.REQUESTED,
-			"https://ecomileage.seoul.go.kr/mileage/convert",
+			"https://ecomileage.seoul.go.kr/goods/apply.do",
 			OffsetDateTime.parse("2026-09-03T18:58:00+09:00"),
 			"현금으로 바꿔야 그린포켓 계좌로 들어와요"
 		));
@@ -62,7 +62,9 @@ class PocketConversionControllerTest {
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.data.conversionId").value(120))
 			.andExpect(jsonPath("$.data.transactionStatus").value("REQUESTED"))
-			.andExpect(jsonPath("$.data.amount").value(30000));
+			.andExpect(jsonPath("$.data.amount").value(30000))
+			.andExpect(jsonPath("$.data.externalUrl")
+				.value("https://ecomileage.seoul.go.kr/goods/apply.do"));
 	}
 
 	@Test
