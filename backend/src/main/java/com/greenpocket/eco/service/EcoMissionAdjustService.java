@@ -2,6 +2,9 @@ package com.greenpocket.eco.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -56,13 +59,13 @@ public class EcoMissionAdjustService {
 			.orElseThrow(() -> invalidUtility(utilityValue));
 		ReportValues reportValues = reportValues(report, utilityType);
 		BigDecimal currentRate = currentMissionRate(goal, utilityType);
-		Set<Long> recommendedIds = recommendedMissionIds(segment, currentRate, reportValues.requiredRate());
-		BigDecimal recommendedRate = segment.missions().stream()
-			.filter(mission -> recommendedIds.contains(mission.missionId()))
-			.map(EcoGoalFormResponse.Mission::computedRate)
-			.filter(java.util.Objects::nonNull)
-			.reduce(BigDecimal.ZERO, BigDecimal::add);
-		BigDecimal withRecommendedRate = scale(currentRate.add(recommendedRate));
+		RecommendationPlan recommendationPlan = recommendationPlan(
+			segment,
+			currentRate,
+			reportValues.requiredRate()
+		);
+		Set<Long> recommendedIds = recommendationPlan.missionIds();
+		BigDecimal withRecommendedRate = recommendationPlan.previewRate();
 		int consecutiveMisses = consecutiveMisses(report.monthlyRates());
 
 		return new EcoMissionAdjustResponse(
@@ -130,41 +133,91 @@ public class EcoMissionAdjustService {
 			.reduce(BigDecimal.ZERO, BigDecimal::add));
 	}
 
-	private Set<Long> recommendedMissionIds(
+	private RecommendationPlan recommendationPlan(
 		EcoGoalFormResponse.Segment segment,
 		BigDecimal currentRate,
 		BigDecimal requiredRate
 	) {
 		Set<Long> recommendedIds = new LinkedHashSet<>();
 		if (requiredRate == null || currentRate.compareTo(requiredRate) >= 0) {
-			return recommendedIds;
+			return new RecommendationPlan(recommendedIds, currentRate);
 		}
-		Set<String> usedDeviceGroups = new LinkedHashSet<>();
-		segment.missions().stream()
-			.filter(EcoGoalFormResponse.Mission::selected)
-			.map(EcoGoalFormResponse.Mission::deviceGroup)
-			.filter(java.util.Objects::nonNull)
-			.forEach(usedDeviceGroups::add);
 
 		BigDecimal previewRate = currentRate;
+		Map<String, BigDecimal> selectedGroupRates = selectedGroupRates(segment.missions());
+
+		for (Map.Entry<String, BigDecimal> selectedGroup : selectedGroupRates.entrySet()) {
+			BigDecimal remainingRate = requiredRate.subtract(previewRate);
+			EcoGoalFormResponse.Mission replacement = chooseCandidate(
+				segment.missions().stream()
+					.filter(mission -> !mission.selected())
+					.filter(mission -> selectedGroup.getKey().equals(mission.deviceGroup()))
+					.filter(this::hasPositiveRate)
+					.filter(mission -> mission.computedRate().compareTo(selectedGroup.getValue()) > 0)
+					.toList(),
+				remainingRate.add(selectedGroup.getValue())
+			);
+			if (replacement == null) {
+				continue;
+			}
+			recommendedIds.add(replacement.missionId());
+			previewRate = previewRate.add(replacement.computedRate().subtract(selectedGroup.getValue()));
+			selectedGroup.setValue(replacement.computedRate());
+			if (previewRate.compareTo(requiredRate) >= 0) {
+				return new RecommendationPlan(recommendedIds, scale(previewRate));
+			}
+		}
+
+		Map<String, List<EcoGoalFormResponse.Mission>> unusedGroups = new LinkedHashMap<>();
 		for (EcoGoalFormResponse.Mission mission : segment.missions()) {
-			if (mission.selected() || mission.computedRate() == null || mission.computedRate().signum() <= 0) {
+			if (mission.selected() || !hasPositiveRate(mission) || mission.deviceGroup() == null
+				|| selectedGroupRates.containsKey(mission.deviceGroup())) {
 				continue;
 			}
-			String deviceGroup = mission.deviceGroup();
-			if (deviceGroup != null && usedDeviceGroups.contains(deviceGroup)) {
-				continue;
-			}
-			recommendedIds.add(mission.missionId());
-			if (deviceGroup != null) {
-				usedDeviceGroups.add(deviceGroup);
-			}
-			previewRate = previewRate.add(mission.computedRate());
+			unusedGroups.computeIfAbsent(mission.deviceGroup(), ignored -> new ArrayList<>()).add(mission);
+		}
+		for (List<EcoGoalFormResponse.Mission> candidates : unusedGroups.values()) {
+			EcoGoalFormResponse.Mission addition = chooseCandidate(
+				candidates,
+				requiredRate.subtract(previewRate)
+			);
+			recommendedIds.add(addition.missionId());
+			previewRate = previewRate.add(addition.computedRate());
 			if (previewRate.compareTo(requiredRate) >= 0) {
 				break;
 			}
 		}
-		return recommendedIds;
+		return new RecommendationPlan(recommendedIds, scale(previewRate));
+	}
+
+	private Map<String, BigDecimal> selectedGroupRates(List<EcoGoalFormResponse.Mission> missions) {
+		Map<String, BigDecimal> rates = new LinkedHashMap<>();
+		for (EcoGoalFormResponse.Mission mission : missions) {
+			if (!mission.selected() || !hasPositiveRate(mission) || mission.deviceGroup() == null) {
+				continue;
+			}
+			rates.merge(mission.deviceGroup(), mission.computedRate(), BigDecimal::max);
+		}
+		return rates;
+	}
+
+	private EcoGoalFormResponse.Mission chooseCandidate(
+		List<EcoGoalFormResponse.Mission> candidates,
+		BigDecimal targetRate
+	) {
+		if (candidates.isEmpty()) {
+			return null;
+		}
+		return candidates.stream()
+			.filter(mission -> mission.computedRate().compareTo(targetRate) >= 0)
+			.min(Comparator.comparing(EcoGoalFormResponse.Mission::computedRate))
+			.orElseGet(() -> candidates.stream()
+				.max(Comparator.comparing(EcoGoalFormResponse.Mission::computedRate))
+				.orElseThrow());
+	}
+
+	private boolean hasPositiveRate(EcoGoalFormResponse.Mission mission) {
+		return mission.computedRate() != null && mission.computedRate().signum() > 0;
 	}
 
 	private int consecutiveMisses(List<EcoMonthlyReportResponse.MonthlyRate> monthlyRates) {
@@ -229,5 +282,8 @@ public class EcoMissionAdjustService {
 		BigDecimal carbonSharePercent,
 		BigDecimal actualRate
 	) {
+	}
+
+	private record RecommendationPlan(Set<Long> missionIds, BigDecimal previewRate) {
 	}
 }

@@ -43,7 +43,7 @@ class EcoMissionAdjustServiceTest {
 	}
 
 	@Test
-	void recommendsNonOverlappingDeviceGroupsUntilRequiredRateIsCovered() {
+	void recommendsStrongerMissionInSameDeviceGroupBeforeAddingAnotherGroup() {
 		EcoMissionAdjustResponse response = service.getMissionAdjust(
 			USER_ID,
 			ROUND_ID,
@@ -59,9 +59,28 @@ class EcoMissionAdjustServiceTest {
 		assertThat(response.missions())
 			.filteredOn(EcoMissionAdjustResponse.Mission::recommended)
 			.extracting(EcoMissionAdjustResponse.Mission::missionId)
-			.containsExactly(14L, 15L);
-		assertThat(response.missions().get(1).recommended()).isFalse();
-		assertThat(response.preview().withRecommendedRate()).isEqualByComparingTo("14.000");
+			.containsExactly(13L);
+		assertThat(response.preview().withRecommendedRate()).isEqualByComparingTo("18.000");
+		assertThat(response.preview().coversRequired()).isTrue();
+	}
+
+	@Test
+	void addsNonOverlappingGroupsWhenStrongerReplacementDoesNotCoverRequiredRate() {
+		when(ecoProgressService.getMonthlyReport(USER_ID, "2026-08"))
+			.thenReturn(monthlyReport(ROUND_ID, "25.000"));
+
+		EcoMissionAdjustResponse response = service.getMissionAdjust(
+			USER_ID,
+			ROUND_ID,
+			"ELECTRICITY",
+			"2026-08"
+		);
+
+		assertThat(response.missions())
+			.filteredOn(EcoMissionAdjustResponse.Mission::recommended)
+			.extracting(EcoMissionAdjustResponse.Mission::missionId)
+			.containsExactly(13L, 14L, 15L);
+		assertThat(response.preview().withRecommendedRate()).isEqualByComparingTo("29.000");
 		assertThat(response.preview().coversRequired()).isTrue();
 	}
 
@@ -190,6 +209,10 @@ class EcoMissionAdjustServiceTest {
 	}
 
 	private EcoMonthlyReportResponse monthlyReport(Long roundId) {
+		return monthlyReport(roundId, "10.000");
+	}
+
+	private EcoMonthlyReportResponse monthlyReport(Long roundId, String requiredRate) {
 		return new EcoMonthlyReportResponse(
 			"2026-08",
 			roundId,
@@ -219,11 +242,11 @@ class EcoMissionAdjustServiceTest {
 			new EcoMonthlyReportResponse.Prescription(
 				1,
 				List.of(9),
-				new BigDecimal("10.000"),
+				new BigDecimal(requiredRate),
 				true,
 				List.of(new EcoMonthlyReportResponse.RequiredUtility(
 					UtilityType.ELECTRICITY,
-					new BigDecimal("10.000"),
+					new BigDecimal(requiredRate),
 					"도시가스 16%, 수도 11% 감축을 지금처럼 유지할 때예요"
 				)),
 				new BigDecimal("3.000"),
