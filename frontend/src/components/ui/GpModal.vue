@@ -96,7 +96,11 @@ onUnmounted(() => {
         role="dialog"
         aria-modal="true"
       >
-        <header v-if="title || dismissible" class="mb-3 flex items-start justify-between gap-2">
+        <header
+          v-if="title || dismissible"
+          class="mb-3 flex items-start gap-2"
+          :class="title ? 'justify-between' : 'justify-end'"
+        >
           <h2 v-if="title" class="text-section tracking-display m-0">{{ title }}</h2>
           <button
             v-if="dismissible"
