@@ -57,8 +57,9 @@ const ITEMS = {
   month: '2026-08',
   standardYear: 2026,
   items: [
-    { itemId: 1, name: '전자영수증', unitPrice: 10, rewardUnit: '건', iconKey: 'receipt', monthCount: 24 },
-    { itemId: 7, name: '친환경제품 구매', unitPrice: 500, rewardUnit: '건', iconKey: 'eco', monthCount: 0 },
+    // monthAmount = monthCount × unitPrice (상한 적용). 행에 뜨는 것은 이 값이다
+    { itemId: 1, name: '전자영수증', unitPrice: 10, rewardUnit: '건', iconKey: 'receipt', monthCount: 24, monthAmount: 240 },
+    { itemId: 7, name: '친환경제품 구매', unitPrice: 500, rewardUnit: '건', iconKey: 'eco', monthCount: 0, monthAmount: 0 },
   ],
   totalCount: 17,
   collapsedAfter: 6,
@@ -102,8 +103,11 @@ describe('BenefitHomeView', () => {
     expect(text).toContain('3,140원')
     expect(text).toContain('18,600원 / 70,000원')
     expect(text).toContain('전자영수증')
-    // 실적이 없는 항목도 빈칸이 아니라 문장이다 (C-2-03)
-    expect(text).toContain('아직 실천하지 않았어요')
+    // 행에 뜨는 것은 건수가 아니라 이번 달 금액이다 (핵심 규칙 1 — 원화 우선)
+    expect(text).toContain('240원')
+    // 실적이 없어도 17개를 전부 내려준다. 빈칸이 아니라 0원이다 (C-2-03)
+    expect(text).toContain('친환경제품 구매')
+    expect(text).toContain('0원')
     wrapper.unmount()
   })
 
