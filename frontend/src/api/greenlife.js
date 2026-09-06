@@ -2,7 +2,8 @@
  * 녹색생활실천 API — api-spec.md 12절. 화면 BN-01 · BN-02 · BN-03.
  *
  * ── 픽스처가 없다 ────────────────────────────────────────────────────────
- * `api/eco.js` · `api/onboarding.js` 와 달리 **`USE_FIXTURES` 가 없다.** 백엔드 4개가 이미
+ * `api/eco.js` · `api/onboarding.js` 와 달리 **데이터 소스 스위치가 없다**(`api/dataSource.js`
+ * 를 보지 않는다). 항상 실 호출이다. 백엔드 4개가 이미
  * 다 구현돼 있고(`GreenlifeController`) DTO 필드가 api-spec 12절과 1:1이며, 응답 수치까지
  * 스펙 예시와 일치한다 — 8월 44건 · 적립 예정 5,540원 · 7월 지급 3,140원 · 연간 18,600원.
  * 17개 항목 시드도 `GreenlifeItemSeedInitializer` 가 부팅마다 멱등하게 넣는다.
@@ -40,7 +41,7 @@ export function linkGreenlife() {
 /**
  * GET /greenlife/items — 실천 항목 17개 (C-1-03 · C-2-03)
  *
- * 실적이 없어도 17개를 전부 준다. `monthCount: 0` 은 빈 목록이 아니라 "아직 실천하지 않았어요" 다.
+ * 실적이 없어도 17개를 전부 준다. `monthAmount: 0` 은 빈 목록이 아니라 아직 실천하지 않은 항목이다.
  * 정렬은 서버의 `displayOrder` 고정이라 화면에서 다시 정렬하지 않는다.
  */
 export function getGreenlifeItems(params = {}) {

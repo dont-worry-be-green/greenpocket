@@ -5,13 +5,15 @@
  * 그 한 틱 동안 `sidos` 가 빈 배열인 채로 본문이 그려지므로, 목록이 있다고 가정한 템플릿은
  * 여기서 잡힌다(What-if 에서 흰 화면을 두 번 낸 원인).
  *
- * ⚠️ `api/onboarding.js` 의 `USE_FIXTURES` 가 true 인 것을 전제한다. 플래그를 끌 때 함께 손봐야 한다.
+ * ⚠️ **목데이터 모드를 명시적으로 세우고 돈다.** 기본값은 실 API 라 그대로 두면 서버가 없는
+ * 이 환경에서 화면이 에러만 그린다. 모드 스위치는 `api/dataSource.js` 하나다.
  */
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRouter, createWebHistory } from 'vue-router'
 
+import { DATA_SOURCE, setDataSource } from '@/api/dataSource'
 import { isOnboarded } from '@/router/guards'
 import routes from '@/router/routes/onboarding'
 import { useOnboardingStore } from '@/stores/onboarding'
@@ -55,7 +57,7 @@ async function mountView(component, path, setup) {
   return { wrapper, router, errors: errors.filter((message) => !HARNESS_NOISE.test(message)) }
 }
 
-/** 시·도 / 시·군·구 모달은 `<Teleport to="body">` 라 wrapper 밖에 그려진다 */
+/** 시·군·구 모달은 `<Teleport to="body">` 라 wrapper 밖에 그려진다 */
 async function pickFromModal(name) {
   const option = [...document.querySelectorAll('[role="option"]')].find(
     (element) => element.textContent.trim() === name,
@@ -65,8 +67,14 @@ async function pickFromModal(name) {
   await settle()
 }
 
+/** `localStorage.clear()` 가 데이터 소스 키까지 지우므로 지운 **뒤에** 세운다 */
+function resetStorage() {
+  localStorage.clear()
+  setDataSource(DATA_SOURCE.FIXTURE)
+}
+
 describe('StartView (ONB-01)', () => {
-  beforeEach(() => localStorage.clear())
+  beforeEach(resetStorage)
 
   it('첫 렌더에서 터지지 않고 시안 문구와 CTA 가 보인다', async () => {
     const { wrapper, errors } = await mountView(StartView, '/onboarding/start')
@@ -106,7 +114,7 @@ describe('ProfileView (ONB-02)', () => {
     store.user = { userId: 1, name: '김수현', onboardingCompleted: false, nextScreen: 'ONB-02' }
   }
 
-  beforeEach(() => localStorage.clear())
+  beforeEach(resetStorage)
 
   it('첫 렌더에서 터지지 않고 목록을 부르기 전에도 그려진다', async () => {
     const { wrapper, errors } = await mountView(ProfileView, '/onboarding/profile', withUser)
@@ -152,10 +160,10 @@ describe('ProfileView (ONB-02)', () => {
     expect(cta().text()).toBe('다음')
     expect(cta().attributes('disabled')).toBeDefined()
 
-    const [sidoButton, sigunguButton] = wrapper.findAll('[aria-haspopup="listbox"]')
-    await sidoButton.trigger('click')
-    await pickFromModal('서울특별시')
-    await sigunguButton.trigger('click')
+    // 시·도는 고르지 않는다 — 서버가 1건만 주고 뷰가 자동으로 세운다(결정 C-15)
+    expect(wrapper.text()).toContain('서울특별시')
+
+    await wrapper.get('[aria-haspopup="listbox"]').trigger('click')
     await pickFromModal('관악구')
 
     await wrapper.get('[aria-label="주거 형태"] [role="radio"]').trigger('click')

@@ -51,13 +51,20 @@ const canSubmit = computed(
     Boolean(sido.value && sigungu.value && housingType.value && areaBand.value) && !store.isLoading,
 )
 
-onMounted(() => {
+onMounted(async () => {
   // 이름을 저장하지 않고 주소창으로 들어온 경우다. 새로고침하면 store.user 가 null 이다
   if (!store.user) {
     router.replace('/onboarding/start')
     return
   }
-  store.fetchSidos()
+
+  await store.fetchSidos()
+  /*
+   * 시·도는 고르게 하지 않는다 — MVP 서비스 지역이 서울뿐이라 서버가 1건만 준다(결정 C-15).
+   * **코드('11')를 여기 박지 않는다.** 서버가 준 값을 그대로 써야 지역이 늘 때 화면이 따라간다.
+   */
+  const [only] = store.sidos
+  if (only) selectSido(only)
 })
 
 function selectSido(item) {
@@ -96,12 +103,10 @@ async function submit() {
       </div>
 
       <OnbRegionPicker
-        :sidos="store.sidos"
-        :sigungus="store.sigungus"
         :sido="sido"
+        :sigungus="store.sigungus"
         :sigungu="sigungu"
         :sigungus-loading="store.sigungusLoading"
-        @update:sido="selectSido"
         @update:sigungu="sigungu = $event"
       />
 

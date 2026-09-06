@@ -1,8 +1,8 @@
 /*
  * 픽스처 격리 가드.
  *
- * 화면이 `src/fixtures/` 를 직접 import 하기 시작하면 연동 시점에 뷰를 전부 고쳐야 한다.
- * **픽스처를 아는 것은 `src/api/` 계층뿐이다** — 거기 `USE_FIXTURES` 한 줄만 뒤집으면
+ * 화면이 `src/fixtures/` 를 직접 import 하기 시작하면 모드를 바꿀 때 뷰를 전부 고쳐야 한다.
+ * **픽스처를 아는 것은 `src/api/` 계층뿐이다** — `api/dataSource.js` 한 곳만 뒤집으면
  * 스토어와 뷰는 그대로 산다.
  *
  * 이 테스트가 깨지면 import 를 지우는 게 정답이지, 예외를 더하는 게 아니다.
@@ -14,8 +14,9 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, resolve, sep } from 'node:path'
 import process from 'node:process'
 
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { DATA_SOURCE, setDataSource } from '../dataSource'
 import * as ecoApi from '../eco'
 
 // jsdom 환경에서는 import.meta.url 이 file: 스킴이 아니다. vitest 의 root 가 frontend/ 다
@@ -51,9 +52,10 @@ describe('픽스처 격리', () => {
     expect(importsFixtures(join(SRC, 'api/eco.js'))).toBe(true)
   })
 
-  it('연동 스위치는 한 곳에만 있다', () => {
+  it('연동 스위치를 자체적으로 들고 있지 않다 — 판정은 dataSource 하나가 한다', () => {
     const source = readFileSync(join(SRC, 'api/eco.js'), 'utf8')
-    expect(source.match(/const USE_FIXTURES/g)).toHaveLength(1)
+    expect(source).not.toMatch(/const\s+USE_FIXTURES/)
+    expect(source).toMatch(/from '\.\/dataSource'/)
   })
 })
 
@@ -103,6 +105,13 @@ describe('api/eco.js — 엔드포인트 함수', () => {
 })
 
 describe('픽스처 shim 동작', () => {
+  /*
+   * **기본값은 실 API 다.** 이 블록만 목데이터로 돌린다.
+   * 아래 테스트들은 모듈 메모리(`demoState`)를 공유하므로 모드도 블록 내내 유지해야 한다.
+   */
+  beforeEach(() => setDataSource(DATA_SOURCE.FIXTURE))
+  afterEach(() => setDataSource(DATA_SOURCE.API))
+
   it('goal-form 은 세 요금 세그먼트를 준다', async () => {
     const goalForm = await ecoApi.getGoalForm(7)
     expect(goalForm.segments.map((segment) => segment.utilityType)).toEqual([

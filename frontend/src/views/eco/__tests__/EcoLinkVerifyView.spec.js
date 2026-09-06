@@ -7,14 +7,16 @@
  *   2. 인증이 끝나면 연동까지 걸고 홈으로 넘긴다 — 폴링은 홈이 받는다
  *   3. 미가입 분기는 서버 판정이 아니라 사용자가 누른 결과다
  *
- * ⚠️ `api/eco.js` 의 `USE_FIXTURES` 가 true 인 것을 전제한다. 인증 모의가 1.5초라
+ * ⚠️ **목데이터 모드를 세우고 돈다.** 기본값은 실 API 라 그대로 두면 서버가 없는 이 환경에서
+ * 화면이 에러만 그린다. 인증 모의가 1.5초라
  * 실제 타이머로 돌린다 — 여기서 시간을 가짜로 만들면 검사할 것이 사라진다.
  */
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRouter, createWebHistory } from 'vue-router'
 
+import { DATA_SOURCE, setDataSource } from '@/api/dataSource'
 import routes from '@/router/routes/eco'
 import EcoLinkVerifyView from '@/views/eco/EcoLinkVerifyView.vue'
 
@@ -48,7 +50,10 @@ async function fillForm(wrapper, { agree = true } = {}) {
 describe('EcoLinkVerifyView', () => {
   beforeEach(() => {
     localStorage.clear()
+    // clear() 가 데이터 소스 키까지 지운다. 지운 뒤에 세운다
+    setDataSource(DATA_SOURCE.FIXTURE)
   })
+  afterEach(() => setDataSource(DATA_SOURCE.API))
 
   it('동의하지 않으면 CTA 가 열리지 않는다 — 입력을 다 채워도 마찬가지다', async () => {
     const { wrapper } = await mountView()

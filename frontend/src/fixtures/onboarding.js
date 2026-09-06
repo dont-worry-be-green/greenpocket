@@ -6,36 +6,25 @@
  *   SIDOS · SEOUL_SIGUNGUS ← GET /meta/regions 4.3 (A-1-01)
  *   buildProfileResult  ← POST /profile      5.1 (A-1-05)
  *
- * 백엔드 대조(origin/main 8654695 기준):
- *   POST /users        구현되어 있다 — `api/onboarding.js` 가 픽스처 모드에서도 실제로 부른다
- *   GET  /meta/regions 컨트롤러 없음
- *   POST /profile      profile 패키지 없음
+ * 백엔드 대조(커밋 4a4b3ee 기준): **셋 다 구현되어 있다.** 기본 동작은 실 호출이고
+ * 이 파일은 데모 도구로 목데이터 모드를 골랐을 때만 쓰인다(`api/dataSource.js`).
  *
  * **값이나 필드를 임의로 만들지 않는다.** 새 필드가 필요하면 api-spec.md 를 먼저 고친다
  * (frontend/AGENTS.md 9절). 여기의 `SIDO_SHORT_NAMES` 와 라벨 맵은 응답 필드가 아니라
  * `profileSummary` 문자열을 서버처럼 조립하기 위한 재료다.
  */
 
-/** GET /meta/regions (sidoCode 없음) — level: 'SIDO'. 행정표준코드 17개 */
-export const SIDOS = [
-  { code: '11', name: '서울특별시' },
-  { code: '26', name: '부산광역시' },
-  { code: '27', name: '대구광역시' },
-  { code: '28', name: '인천광역시' },
-  { code: '29', name: '광주광역시' },
-  { code: '30', name: '대전광역시' },
-  { code: '31', name: '울산광역시' },
-  { code: '36', name: '세종특별자치시' },
-  { code: '41', name: '경기도' },
-  { code: '43', name: '충청북도' },
-  { code: '44', name: '충청남도' },
-  { code: '46', name: '전라남도' },
-  { code: '47', name: '경상북도' },
-  { code: '48', name: '경상남도' },
-  { code: '50', name: '제주특별자치도' },
-  { code: '51', name: '강원특별자치도' },
-  { code: '52', name: '전북특별자치도' },
-]
+/*
+ * GET /meta/regions (sidoCode 없음) — level: 'SIDO'.
+ *
+ * ⚠️ **서울특별시 1건이다.** MVP 서비스 지역이 서울로 한정돼(결정 C-15) 서버도 1건만 준다
+ * (api-spec.md 4.3 · `SeoulRegionCatalog`). 시·도 17개를 흉내 내면 목데이터 모드에서만
+ * 고를 수 있는 지역이 생기고, 그 코드가 그대로 진단 기준선 조회 키가 된다.
+ *
+ * `hasRegionAverage` 는 시·군·구 표본이 부족할 때 대체로 쓰는 시도 평균의 존재 여부다
+ * (api-spec.md 7절 `fallbackApplied`). 화면은 시·군·구 값만 보므로 표시에 쓰이지 않는다.
+ */
+export const SIDOS = [{ code: '11', name: '서울특별시', sidoCode: '11', hasRegionAverage: true }]
 
 /*
  * GET /meta/regions?sidoCode=11 — level: 'SIGUNGU'. 서울 25개 자치구.
