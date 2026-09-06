@@ -14,20 +14,44 @@
  * ── 진행률을 여기서 계산하지 않는다 ──────────────────────────────────────
  * `progressPercent` 는 서버가 준다. 한도 도달이면 서버가 100 으로 고정해 내려주므로
  * 바 너비만 0~100 으로 자른다 — 음수·초과가 와도 레이아웃이 깨지지 않게 하는 방어다.
+ *
+ * ── 월 이동은 신호만 낸다 ────────────────────────────────────────────────
+ * 어느 달까지 갈 수 있는지(`canPrev` · `canNext`)는 **뷰가 정해서 내려준다.** 이 카드가
+ * 오늘 날짜나 기준 연도를 직접 보면 판정이 두 벌이 되고, 목록(`GET /greenlife/items`)이
+ * 따라오지 않는 달로 혼자 넘어갈 수 있다.
+ *
+ * 제목은 연도를 접는다(`8월 실천 현황`). 화살표 둘과 건수 배지가 같은 줄에 서서
+ * `2026년 8월 실천 현황` 은 393px 에서 넘친다. 연도는 아래 「올해 받은 금액」이 말한다.
+ *
+ * ⚠️ `GpCard` 의 `title` 을 쓰지 않고 헤더를 직접 그린다 — 제목 **양옆**에 버튼이 와야 하는데
+ * `GpCard` 는 제목을 통째로 그리고 오른쪽 `action` 슬롯만 연다. 화면 하나 때문에 공용
+ * 컴포넌트에 슬롯을 늘리지 않는다(`EcoSettlementCard` 와 같은 판단).
+ *
+ * ⚠️ **화살표 둘은 같은 아이콘을 뒤집어 쓴다.** `IconChevronRight` 는 Phosphor 에서 뽑은
+ * **채운 캐럿**이고 `IconChevronLeft` 는 손으로 그린 **선 꺾쇠**라, 나란히 두면 좌우 모양이
+ * 다르다. 목록 행의 `›` 는 채운 캐럿이 맞으므로 그쪽을 바꾸지 않고 여기서만 맞춘다.
+ *
+ * 건수 배지는 `absolute` 로 오른쪽에 붙인다. 흐름 안에 두면 제목 블록이 남은 폭의 가운데로
+ * 밀려 카드 기준으로는 왼쪽으로 치우친다.
  */
 import { computed } from 'vue'
 
 import GpCard from '@/components/ui/GpCard.vue'
 import GpTag from '@/components/ui/GpTag.vue'
-import { formatMonth, formatWon } from '@/utils/format'
+import IconChevronLeft from '@/components/ui/icons/IconChevronLeft.vue'
+import { formatMonthOnly, formatWon } from '@/utils/format'
 
 const props = defineProps({
   month: { type: String, default: '' },
   monthSummary: { type: Object, default: null },
   annual: { type: Object, default: null },
+  /** 이동 가능 범위는 뷰가 정한다. 위 주석 참고 */
+  canPrev: { type: Boolean, default: false },
+  canNext: { type: Boolean, default: false },
 })
+defineEmits(['prev', 'next'])
 
-const title = computed(() => `${formatMonth(props.month)} 실천 현황`)
+const title = computed(() => `${formatMonthOnly(props.month)} 실천 현황`)
 
 const barWidth = computed(() => {
   const percent = Number(props.annual?.progressPercent ?? 0)
@@ -37,10 +61,35 @@ const barWidth = computed(() => {
 </script>
 
 <template>
-  <GpCard v-if="monthSummary" :title="title">
-    <template #action>
-      <GpTag tone="primary">{{ monthSummary.activityCount }}건</GpTag>
-    </template>
+  <GpCard v-if="monthSummary">
+    <header class="relative mb-3 flex min-h-7 items-center justify-center">
+      <div class="flex items-center gap-1">
+        <button
+          type="button"
+          class="text-ink disabled:text-disabled-text flex size-7 flex-none cursor-pointer items-center justify-center rounded-full border-0 bg-transparent disabled:cursor-not-allowed"
+          :disabled="!canPrev"
+          aria-label="이전 달"
+          @click="$emit('prev')"
+        >
+          <IconChevronLeft :size="18" />
+        </button>
+
+        <h2 class="text-section tracking-display m-0 truncate">{{ title }}</h2>
+
+        <button
+          type="button"
+          class="text-ink disabled:text-disabled-text flex size-7 flex-none cursor-pointer items-center justify-center rounded-full border-0 bg-transparent disabled:cursor-not-allowed"
+          :disabled="!canNext"
+          aria-label="다음 달"
+          @click="$emit('next')"
+        >
+          <!-- 같은 꺾쇠를 뒤집는다. 좌우가 거울처럼 맞아야 한다 -->
+          <IconChevronLeft :size="18" class="rotate-180" />
+        </button>
+      </div>
+
+      <GpTag tone="primary" class="absolute right-0">{{ monthSummary.activityCount }}건</GpTag>
+    </header>
 
     <div class="grid grid-cols-2 gap-3">
       <!-- 아직 현금이 아니다. 회색 + 아웃라인으로 확정과 구분한다 -->
