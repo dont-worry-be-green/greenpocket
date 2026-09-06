@@ -68,12 +68,6 @@ public interface PocketTransactionRepository extends JpaRepository<PocketTransac
 		Pageable pageable
 	);
 
-	List<PocketTransaction> findTop2ByUserIdAndDirectionAndTransactionStatusOrderByCompletedAtDescIdDesc(
-		Long userId,
-		TransactionDirection direction,
-		TransactionStatus transactionStatus
-	);
-
 	List<PocketTransaction> findTop3ByUserIdAndTransactionTypeOrderByRequestedAtDescIdDesc(
 		Long userId,
 		TransactionType transactionType

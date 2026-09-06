@@ -91,14 +91,30 @@ class PocketQueryServiceTest {
 	}
 
 	@Test
-	void returnsPocketMainWithLedgerBalanceAndRecentCredits() {
+	void returnsPocketMainWithLatestFourTransactionsRegardlessOfDirection() {
 		PocketTransaction recentCredit = transaction(
 			91L, TransactionDirection.CREDIT, TransactionType.GREENLIFE,
 			TransactionStatus.COMPLETED, 3_200L, LocalDateTime.of(2026, 9, 4, 9, 0)
 		);
-		when(pocketTransactionRepository.findTop2ByUserIdAndDirectionAndTransactionStatusOrderByCompletedAtDescIdDesc(
-			USER_ID, TransactionDirection.CREDIT, TransactionStatus.COMPLETED
-		)).thenReturn(List.of(recentCredit));
+		PocketTransaction recentWithdrawal = transaction(
+			92L, TransactionDirection.DEBIT, TransactionType.WITHDRAWAL,
+			TransactionStatus.COMPLETED, 10_000L, LocalDateTime.of(2026, 9, 3, 9, 0)
+		);
+		PocketTransaction requestedWithdrawal = transaction(
+			93L, TransactionDirection.DEBIT, TransactionType.WITHDRAWAL,
+			TransactionStatus.REQUESTED, 5_000L, LocalDateTime.of(2026, 9, 2, 9, 0)
+		);
+		PocketTransaction olderCredit = transaction(
+			94L, TransactionDirection.CREDIT, TransactionType.ECO_MILEAGE,
+			TransactionStatus.COMPLETED, 30_000L, LocalDateTime.of(2026, 9, 1, 9, 0)
+		);
+		PageRequest recentPage = PageRequest.of(0, 4);
+		when(pocketTransactionRepository.findTransactions(USER_ID, null, null, recentPage))
+			.thenReturn(new PageImpl<>(
+				List.of(recentCredit, recentWithdrawal, requestedWithdrawal, olderCredit),
+				recentPage,
+				5
+			));
 		when(pocketTransactionRepository.existsByUserId(USER_ID)).thenReturn(true);
 
 		PocketMainResponse response = pocketQueryService.getPocket(USER_ID);
@@ -110,8 +126,17 @@ class PocketQueryServiceTest {
 		assertThat(response.convertibleMileage()).isEqualTo(30_000L);
 		assertThat(response.convertibleSource().roundId()).isEqualTo(7L);
 		assertThat(response.defaultAccount().accountId()).isEqualTo(3L);
-		assertThat(response.recentTransactions()).singleElement()
-			.satisfies(item -> assertThat(item.sourceLabel()).isEqualTo("자동 입금"));
+		verify(pocketTransactionRepository).findTransactions(USER_ID, null, null, recentPage);
+		assertThat(response.recentTransactions()).hasSize(4);
+		assertThat(response.recentTransactions())
+			.extracting(item -> item.direction())
+			.containsExactly(
+				TransactionDirection.CREDIT,
+				TransactionDirection.DEBIT,
+				TransactionDirection.DEBIT,
+				TransactionDirection.CREDIT
+			);
+		assertThat(response.recentTransactions().getFirst().sourceLabel()).isEqualTo("자동 입금");
 		assertThat(response.empty().noAccount()).isFalse();
 		assertThat(response.empty().noTransaction()).isFalse();
 		assertThat(response.notices()).hasSize(3);
@@ -122,9 +147,9 @@ class PocketQueryServiceTest {
 		when(withdrawalAccountService.findAccounts(USER_ID))
 			.thenReturn(new WithdrawalAccountListResponse(List.of()));
 		when(ecoMileageQueryService.findConfirmedMileageRounds(USER_ID)).thenReturn(List.of());
-		when(pocketTransactionRepository.findTop2ByUserIdAndDirectionAndTransactionStatusOrderByCompletedAtDescIdDesc(
-			USER_ID, TransactionDirection.CREDIT, TransactionStatus.COMPLETED
-		)).thenReturn(List.of());
+		PageRequest recentPage = PageRequest.of(0, 4);
+		when(pocketTransactionRepository.findTransactions(USER_ID, null, null, recentPage))
+			.thenReturn(new PageImpl<>(List.of(), recentPage, 0));
 		when(pocketTransactionRepository.existsByUserId(USER_ID)).thenReturn(false);
 
 		PocketMainResponse response = pocketQueryService.getPocket(USER_ID);

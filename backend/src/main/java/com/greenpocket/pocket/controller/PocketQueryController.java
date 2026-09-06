@@ -32,7 +32,7 @@ public class PocketQueryController {
 
 	private final PocketQueryService pocketQueryService;
 
-	@Operation(summary = "포켓 메인 조회", description = "잔액, 적립 구분, 전환 가능 마일리지와 최근 적립 내역을 조회합니다.")
+	@Operation(summary = "포켓 메인 조회", description = "잔액, 적립 구분, 전환 가능 마일리지와 적립·출금 통합 최근 내역 4건을 조회합니다.")
 	@ApiResponses({
 		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
 		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Demo Key 인증 실패")
