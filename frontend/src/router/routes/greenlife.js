@@ -11,10 +11,16 @@
  */
 export default [
   {
+    // BN-01·BN-02 는 라우트가 아니라 한 화면의 두 상태다. GET /greenlife/status 의 screen 이 정한다
     path: '/benefit',
     name: 'bn-home',
-    // TODO: BN-01 을 붙이면서 이 줄의 component 를 실제 화면으로 바꾼다
-    component: () => import('@/views/ComingSoonView.vue'),
+    component: () => import('@/views/greenlife/BenefitHomeView.vue'),
     meta: { tab: 'benefit', title: '혜택' },
+  },
+  {
+    path: '/benefit/items/:itemId',
+    name: 'bn-item-detail',
+    component: () => import('@/views/greenlife/BenefitItemDetailView.vue'),
+    meta: { tab: 'benefit', title: '실천항목 상세' },
   },
 ]
