@@ -3,9 +3,9 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AppSubLayout from '@/components/layout/AppSubLayout.vue'
+import BankLogo from '@/components/pocket/BankLogo.vue'
 import PocketState from '@/components/pocket/PocketState.vue'
 import GpTag from '@/components/ui/GpTag.vue'
-import IconPocket from '@/components/ui/icons/IconPocket.vue'
 import { usePocketStore } from '@/stores/pocket'
 import { formatWon } from '@/utils/format'
 
@@ -128,10 +128,7 @@ async function saveDefaultAccount() {
                   class="bg-primary size-2.5 rounded-full"
                 ></span>
               </button>
-              <span
-                class="bg-primary-bg text-primary flex size-9 items-center justify-center rounded-md"
-                ><IconPocket :size="20"
-              /></span>
+              <BankLogo :bank-code="account.bankCode" :bank-name="account.bankName" :size="36" />
               <p class="text-body-strong m-0 flex-1">
                 {{ account.bankName }} {{ account.accountNo }}
               </p>
