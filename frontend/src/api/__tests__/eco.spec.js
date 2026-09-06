@@ -83,10 +83,13 @@ describe('api/eco.js — 엔드포인트 함수', () => {
   ]
 
   /*
-   * 명세에 대응하는 엔드포인트가 없는 FE 전용 모의다(WF-01a 본인확인).
+   * 명세에 대응하는 엔드포인트가 없는 FE 전용 모의다(WF-01a 본인확인 · 문자인증).
    * 위 목록과 섞으면 「api-spec 에 있는 것」과 「우리가 만든 것」의 경계가 사라진다.
+   *
+   * **실제 문자를 보내지 않는다.** 외부 SMS 는 MVP 제외 범위이고 `app_user` 에 전화번호
+   * 컬럼도 없다. 백엔드에 본인확인이 생기면 이 둘을 지운다(`api/eco.js` 주석).
    */
-  const FRONTEND_ONLY = ['verifyEcoIdentity']
+  const FRONTEND_ONLY = ['requestSmsCode', 'verifySmsCode']
 
   it('api-spec.md 8~11절의 19개가 모두 있다', () => {
     const fromSpec = Object.keys(ecoApi)
@@ -96,7 +99,7 @@ describe('api/eco.js — 엔드포인트 함수', () => {
   })
 
   // 명세에 없는 함수가 조용히 늘어나면 여기서 걸린다
-  it('명세 밖 함수는 FE 전용 모의 하나뿐이다', () => {
+  it('명세 밖 함수는 FE 전용 모의(문자인증 2개)뿐이다', () => {
     const extra = Object.keys(ecoApi)
       .filter((name) => !EXPECTED.includes(name))
       .sort()

@@ -8,6 +8,14 @@
  * 두었고, 화면 캡션에도 모의라고 그대로 밝힌다 — 발표에서 실제로 인증한 것처럼 보이면 안 된다.
  *
  * ⚠️ **동의 없이는 CTA 를 열지 않는다**(핵심 비즈니스 규칙 4). 조회에 동의를 받는 자리다.
+ *
+ * ── 여기서 인증도, 연동도 끝나지 않는다 ─────────────────────────────────
+ * 이 화면은 **인증번호 발송 요청까지**다. 확인은 다음 단계(`EcoSmsCodeForm`), 연동은
+ * 그다음(`EcoLinkReadyPanel`)이 맡는다 — 한 번의 누름에 여러 개를 묶으면 사용자가 무엇에
+ * 동의해 무엇이 일어났는지 구분할 수 없다.
+ *
+ * 미가입 안내도 여기 없다. 서버가 가입 여부를 알려주지 않으므로 화면을 가르지 않고
+ * 마지막 단계 하단에 길만 열어 둔다(그쪽 주석 참고).
  */
 import { computed, ref } from 'vue'
 
@@ -21,7 +29,7 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
   errorMessage: { type: String, default: '' },
 })
-const emit = defineEmits(['verify', 'notMember'])
+const emit = defineEmits(['request'])
 
 /* 통신사는 응답 필드가 아니라 화면 선택지다. ENUM 을 만들지 않는다 */
 const CARRIERS = ['SKT', 'KT', 'LG U+', '알뜰폰']
@@ -122,22 +130,17 @@ const canSubmit = computed(
     <p v-if="errorMessage" class="text-body-sm text-negative m-0">{{ errorMessage }}</p>
 
     <div>
-      <GpButton :disabled="!canSubmit" @click="emit('verify')">
-        {{ loading ? '확인하는 중...' : '인증하고 사용량 불러오기' }}
+      <GpButton
+        :disabled="!canSubmit"
+        @click="emit('request', { name: name.trim(), phone: phoneDigits })"
+      >
+        {{ loading ? '보내는 중...' : '인증번호 받기' }}
       </GpButton>
 
       <p class="text-caption text-muted bg-surface-sub mt-3 mb-0 flex gap-2 rounded-md p-3">
         <IconInfo :size="16" class="text-icon-off mt-0.5 shrink-0" aria-hidden="true" />
-        <span>발표용 데모라 실제 본인확인은 하지 않아요. 입력한 값은 서버로 보내지 않아요.</span>
+        <span>발표용 데모라 실제 문자는 보내지 않아요. 입력한 값은 서버로 보내지 않아요.</span>
       </p>
     </div>
-
-    <button
-      type="button"
-      class="text-body-sm text-muted mx-auto block cursor-pointer border-0 bg-transparent underline"
-      @click="emit('notMember')"
-    >
-      아직 에코마일리지 회원이 아니에요
-    </button>
   </div>
 </template>

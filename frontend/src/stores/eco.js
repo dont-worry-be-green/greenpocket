@@ -36,7 +36,8 @@ import {
   saveMissionLog,
   updateGoal,
   updateMissions,
-  verifyEcoIdentity,
+  requestSmsCode as requestSmsCodeApi,
+  verifySmsCode as verifySmsCodeApi,
 } from '@/api/eco'
 
 export const useEcoStore = defineStore('eco', () => {
@@ -125,12 +126,28 @@ export const useEcoStore = defineStore('eco', () => {
     if (data) status.value = data
   }
 
-  /**
-   * WF-01a 본인확인. 서버 계약이 아니라 화면만 있는 단계라 결과를 저장하지 않는다 —
-   * 성공하면 곧바로 `startLink()` 로 이어진다. 자세한 사정은 `api/eco.js` 주석.
+  /*
+   * WF-01a 본인확인 (문자인증). **서버 계약이 아니라 화면만 있는 단계다** — 자세한 사정은
+   * `api/eco.js` 주석에 있다. 인증이 끝나도 연동을 시작하지 않는다(그건 `startLink()` 다).
+   *
+   * 만료 시간과 데모 코드만 들고 있는다. 입력한 번호·인증번호는 화면에만 두고 저장하지 않는다.
    */
-  async function verifyIdentity() {
-    return run(verifyEcoIdentity)
+  const smsExpiresInSeconds = ref(0)
+  const smsDemoCode = ref('')
+
+  async function requestSmsCode() {
+    const data = await run(requestSmsCodeApi)
+    if (data) {
+      smsExpiresInSeconds.value = data.expiresInSeconds ?? 0
+      // 실제 엔드포인트가 생기면 이 필드가 사라지고 캡션도 함께 사라진다
+      smsDemoCode.value = data.demoCode ?? ''
+    }
+    return data
+  }
+
+  /** 틀린 인증번호는 에러가 아니라 `verified: false` 다. 문구는 화면이 만든다 */
+  async function verifySmsCode(code) {
+    return run(() => verifySmsCodeApi(code))
   }
 
   /** 202 지만 인터셉터가 `data` 만 준다. `linkJobId` 존재로 판단한다 */
@@ -400,7 +417,10 @@ export const useEcoStore = defineStore('eco', () => {
     showResultModal,
     fetchHome,
     fetchStatus,
-    verifyIdentity,
+    smsExpiresInSeconds,
+    smsDemoCode,
+    requestSmsCode,
+    verifySmsCode,
     startLink,
     pollLinkJob,
     fetchCurrentRound,
