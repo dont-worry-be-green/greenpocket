@@ -39,6 +39,28 @@ export function formatMileage(mileage) {
 }
 
 /**
+ * 화면에 쓸 비율 자릿수. **소수 한 자리까지만 보여준다.**
+ *
+ * 서버는 `DECIMAL(7,3)` 으로 세 자리를 준다(api-spec.md 1.4). 그건 저장·계산 정밀도이고
+ * 표시 자릿수를 정한 규칙은 명세에 없다(COM-06 은 "공통 포맷터로 구현한다" 까지다).
+ * 11.322% 처럼 세 자리를 그대로 늘어놓으면 정작 읽어야 할 앞자리가 묻힌다.
+ *
+ * ⚠️ 결정 C-13 과 어긋나지 않는다. 그 결정은 **값의 출처**(시안 10.5% 가 아니라 계산값)에
+ * 대한 것이고, 11.3% 는 여전히 시안 값이 아니라 계산값이다.
+ *
+ * ⚠️ **0 이 아닌 값을 0 으로 만들지 않는다.** 0.02 를 한 자리로 깎으면 0 이 되어
+ * "0% 줄었어요" 나 "0%p만 더 줄이면" 처럼 뜻이 뒤집힌 문장이 나간다. 그럴 때만
+ * 유효숫자 한 자리로 되돌려 0 이 아니라는 사실을 지킨다.
+ *   11.322 → 11.3  ·  12.000 → 12  ·  1.039 → 1  ·  0.02 → 0.02
+ */
+function roundRate(rate) {
+  const value = Number(rate)
+  if (value === 0) return 0
+  const rounded = Number(value.toFixed(1))
+  return rounded === 0 ? Number(value.toPrecision(1)) : rounded
+}
+
+/**
  * 증감을 방향·숫자·말 세 조각으로 나눈다.
  * 화살표를 SVG 아이콘으로 그리는 컴포넌트(GpDelta)가 조각을 따로 써야 하기 때문이다.
  * 문자열이 필요하면 아래 formatChangeRate 를 쓴다. 계산 규칙은 여기 한 곳에만 있다.
@@ -49,8 +71,8 @@ export function formatMileage(mileage) {
 export function changeRateParts(rate) {
   if (isBlank(rate)) return { direction: 'none', value: EMPTY, word: '' }
   if (rate === 0) return { direction: 'same', value: '0', word: '지난달과 같아요' }
-  // 서버는 소수 3자리로 준다. 12.000 은 '12' 로 보이되 11.322 의 자릿수는 지킨다 (결정 C-13)
-  const value = String(Number(Math.abs(rate).toFixed(3)))
+  // 서버는 소수 3자리로 준다. 화면은 한 자리까지다 — roundRate 주석 참고
+  const value = String(roundRate(Math.abs(rate)))
   return rate > 0
     ? { direction: 'down', value, word: '줄었어요' }
     : { direction: 'up', value, word: '늘었어요' }
@@ -81,11 +103,11 @@ export function formatDifficulty(difficulty) {
 /**
  * 방향이 없는 비율. 비중(shareRate)·목표 절감률처럼 그 자체가 값인 퍼센트에 쓴다.
  * 증감(늘었다/줄었다)에는 쓰지 않는다 — 그건 formatChangeRate 다.
- *   64.000 → '64%'  ·  11.322 → '11.322%'
+ *   64.000 → '64%'  ·  11.322 → '11.3%'
  */
 export function formatPercent(rate) {
   if (isBlank(rate)) return EMPTY
-  return `${Number(Number(rate).toFixed(3))}%`
+  return `${roundRate(rate)}%`
 }
 
 /**
@@ -93,11 +115,11 @@ export function formatPercent(rate) {
  * `gapToNextTierPoint`(다음 구간까지 남은 %p) · `shortfallPoint`(미션 합계 부족분)에 쓴다.
  *
  * **GpDelta 에 넘기지 않는다.** 그러면 "1.678% 줄었어요"가 되어 뜻이 뒤집힌다.
- *   1.678 → '1.678%p'  ·  2.000 → '2%p'
+ *   1.678 → '1.7%p'  ·  2.000 → '2%p'
  */
 export function formatPoint(value) {
   if (isBlank(value)) return EMPTY
-  return `${Number(Number(value).toFixed(3))}%p`
+  return `${roundRate(value)}%p`
 }
 
 /**
@@ -235,6 +257,44 @@ export function formatShortDate(dateTime) {
     .format(date)
     .replace(/\.\s*$/, '')
     .replace(/\.\s*/g, '.')
+}
+
+/**
+ * ISO-8601 일시 → '2026-12-05'. 시각을 뗀 날짜만.
+ *
+ * WF-10 헤더의 "2026-12-05 확정" 자리다. **`formatDateTime` 의 치환 사슬을 쓰지 않는다** —
+ * 거기서 구분자를 문자열로 바꾸다 날짜·시각 사이까지 하이픈이 되는 버그가 났다(이슈 #83).
+ * 여기서는 조각을 직접 받아 조립한다.
+ */
+export function formatDate(dateTime) {
+  if (!dateTime) return EMPTY
+  const date = new Date(dateTime)
+  if (Number.isNaN(date.getTime())) return EMPTY
+  const parts = new Intl.DateTimeFormat('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+  const pick = (type) => parts.find((part) => part.type === type)?.value ?? ''
+  return `${pick('year')}-${pick('month')}-${pick('day')}`
+}
+
+/**
+ * ISO-8601 일시 → '8월 3일'. 연·시각을 접은 짧은 날짜다.
+ *
+ * WF-06 전달 리포트가 「7월 고지서 · 8월 3일 등록」 한 줄에 쓴다(B-4-04). 같은 자리에
+ * `formatDateTime` 을 쓰면 연도와 시각까지 붙어 한 줄이 두 줄로 넘어간다.
+ */
+export function formatMonthDay(dateTime) {
+  if (!dateTime) return EMPTY
+  const date = new Date(dateTime)
+  if (Number.isNaN(date.getTime())) return EMPTY
+  return new Intl.DateTimeFormat('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    month: 'long',
+    day: 'numeric',
+  }).format(date)
 }
 
 /**

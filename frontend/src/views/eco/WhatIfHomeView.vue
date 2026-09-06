@@ -86,6 +86,12 @@ const goalUtilities = computed(() => store.goal?.utilities ?? null)
 const isBootstrapping = computed(() => !store.home && !store.error)
 const hasFatalError = computed(() => !store.home && Boolean(store.error))
 
+/** 진행 카드 헤더 배지(시안 WF-06). 부제와 같은 기간이지만 카드 안에서 한 번 더 못 박는다 */
+const periodLabel = computed(() => {
+  const header = store.home?.header
+  return header ? formatRoundPeriod(header.periodStart, header.periodEnd) : ''
+})
+
 const subtitle = computed(() => {
   if (screen.value === 'WF_02_LINKING') return '작년 사용량을 불러오는 중이에요'
 
@@ -113,22 +119,6 @@ onMounted(() => {
   store.fetchHome()
   store.fetchStatus()
 })
-
-/*
- * 화면이 정해진 뒤에 그 화면이 쓰는 것만 더 받는다.
- * roundId 는 홈이 와야 생기므로 함께 지켜본다 — ?preview 로 바로 들어오면 순서가 뒤집힌다.
- */
-watch(
-  [screen, () => store.roundId],
-  ([value, roundId]) => {
-    if (value === 'WF_02_LINKING') ensurePolling()
-    if (value === 'WF_03_NO_GOAL' && !store.currentRound) store.fetchCurrentRound()
-    if (!IN_PROGRESS_SCREENS.includes(value) || !roundId) return
-    if (!store.todayMissions) store.fetchTodayMissions(roundId)
-    if (!store.goal) store.fetchGoal(roundId)
-  },
-  { immediate: true },
-)
 
 // ── 연동 (B-1-02 · B-1-03) ────────────────────────────────────────────
 
@@ -171,6 +161,27 @@ async function pollOnce() {
   stopPolling()
   await store.fetchHome()
 }
+
+/*
+ * ⚠️ **폴링 선언 아래에 둔다.** `immediate: true` 라 setup 도중에 한 번 돈다. 위로 올리면
+ * `?preview=WF_02_LINKING` 으로 바로 들어왔을 때 `ensurePolling()` 이 아직 초기화되지 않은
+ * `polling`(let) 을 읽어 ReferenceError 로 첫 렌더가 통째로 죽는다. 함수 선언은 끌어올려지지만
+ * `let` 은 아니다.
+ *
+ * 화면이 정해진 뒤에 그 화면이 쓰는 것만 더 받는다.
+ * roundId 는 홈이 와야 생기므로 함께 지켜본다 — ?preview 로 바로 들어오면 순서가 뒤집힌다.
+ */
+watch(
+  [screen, () => store.roundId],
+  ([value, roundId]) => {
+    if (value === 'WF_02_LINKING') ensurePolling()
+    if (value === 'WF_03_NO_GOAL' && !store.currentRound) store.fetchCurrentRound()
+    if (!IN_PROGRESS_SCREENS.includes(value) || !roundId) return
+    if (!store.todayMissions) store.fetchTodayMissions(roundId)
+    if (!store.goal) store.fetchGoal(roundId)
+  },
+  { immediate: true },
+)
 
 // ── 사용자 동작 ───────────────────────────────────────────────────────
 
@@ -250,7 +261,7 @@ function retry() {
 
     <!-- WF-06 · WF-09. 본문은 같고 WF-09 만 아래 결산 모달이 위에 얹힌다 -->
     <div v-else-if="isInProgress" class="space-y-5">
-      <EcoProgressPanel :progress="store.home.progress" />
+      <EcoProgressPanel :progress="store.home.progress" :period="periodLabel" />
 
       <EcoLatestReportCard :report="store.home.latestReport" @detail="goToReport" />
 
@@ -261,11 +272,7 @@ function retry() {
         @apply="onApply"
       />
 
-      <EcoGoalCard
-        :goal="store.home.goal"
-        :utilities="goalUtilities"
-        @edit="goToGoalSetting"
-      />
+      <EcoGoalCard :goal="store.home.goal" :utilities="goalUtilities" @edit="goToGoalSetting" />
 
       <EcoTodayMissions
         :data="store.todayMissions"

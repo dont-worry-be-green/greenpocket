@@ -9,6 +9,10 @@
  * (`missionId` `title` `utilityType` `difficulty` `completed`). 억지로 끼우면 근거 자리가 빈다.
  * 그래서 여기서 간단한 행을 직접 그리고 **components/ui/ 에는 추가하지 않는다.**
  *
+ * ⚠️ **난이도 배지를 달지 않는다.** 오늘 할지 말지는 이미 목표를 정할 때(WF-04) 고른 결과라
+ * 여기서 다시 난이도를 보여줘도 행동이 바뀌지 않는다. 다섯 줄에 배지가 둘씩 붙으면
+ * 정작 눌러야 할 체크박스와 제목이 묻힌다. 요금 칩만 남긴다(시안 WF-06).
+ *
  * ⚠️ 체크는 토글 1건이 아니라 **하루치 전량**을 올린다(PUT mission-logs/{date}).
  * 그래서 `change` 로 완료 목록 전체를 넘긴다.
  *
@@ -19,8 +23,7 @@
 import { computed } from 'vue'
 
 import GpCard from '@/components/ui/GpCard.vue'
-import GpTag from '@/components/ui/GpTag.vue'
-import { formatDifficulty, formatUtilityType } from '@/utils/format'
+import { formatUtilityType } from '@/utils/format'
 
 const props = defineProps({
   data: { type: Object, default: null },
@@ -84,21 +87,13 @@ function toggle(mission) {
             :disabled="saving"
             @change="toggle(mission)"
           />
+          <span class="text-body-strong text-ink min-w-0 flex-1">{{ mission.title }}</span>
+          <!-- 요금 색은 GpTag 의 tone 에 없다. 같은 모양의 칩을 여기서 그린다 -->
           <span
-            class="text-body-strong min-w-0 flex-1"
-            :class="mission.completed ? 'text-muted line-through' : 'text-ink'"
+            class="text-caption-sm inline-flex h-(--gp-tag-sm-h) shrink-0 items-center rounded-xs px-1.5 font-semibold"
+            :class="UTILITY_TONE[mission.utilityType]"
           >
-            {{ mission.title }}
-          </span>
-          <span class="flex shrink-0 items-center gap-1">
-            <!-- 요금 색은 GpTag 의 tone 에 없다. 같은 모양의 칩을 여기서 그린다 -->
-            <span
-              class="text-caption-sm inline-flex h-(--gp-tag-sm-h) items-center rounded-xs px-1.5 font-semibold"
-              :class="UTILITY_TONE[mission.utilityType]"
-            >
-              {{ formatUtilityType(mission.utilityType) }}
-            </span>
-            <GpTag small>{{ formatDifficulty(mission.difficulty) }}</GpTag>
+            {{ formatUtilityType(mission.utilityType) }}
           </span>
         </label>
       </li>

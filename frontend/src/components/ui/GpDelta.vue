@@ -14,14 +14,14 @@ import { changeRateParts } from '@/utils/format'
 
 const props = defineProps({
   value: { type: Number, default: null },
-  size: { type: String, default: 'md' }, // sm(14) | md(17) | lg(24)
+  size: { type: String, default: 'md' }, // sm(14) | md(17) | lg(24) | xl(화면 주인공)
   word: { type: String, default: '' }, // '줄여야 해요' 처럼 문구를 갈아끼울 때
   showWord: { type: Boolean, default: true },
 })
 
 const parts = computed(() => changeRateParts(props.value))
 
-const SIZE = { sm: 'text-label', md: 'text-list-title', lg: 'text-amount' }
+const SIZE = { sm: 'text-label', md: 'text-list-title', lg: 'text-amount', xl: 'text-amount-hero' }
 const sizeClass = computed(() => SIZE[props.size] ?? SIZE.md)
 </script>
 
