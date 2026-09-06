@@ -1527,7 +1527,7 @@ requiredRate   = (targetRate × 6 − Σ monthlyRate) / remainingMonths
   "roundId": 7,
   "utilityType": "ELECTRICITY",
   "reportMonth": "2026-07",
-  "requiredRate": 11.000,
+  "requiredRate": 33.000,
   "requiredAssumption": "도시가스 16%, 수도 11% 감축을 지금처럼 유지할 때예요",
   "carbonSharePercent": 83.0,
 
@@ -1539,9 +1539,9 @@ requiredRate   = (targetRate × 6 − Σ monthlyRate) / remainingMonths
       "deviceGroup": "냉방", "evidenceText": "월 40kWh · 4,880원",
       "calculationBasis": "15평형 2kW를 20일 기준 · 40kWh ÷ 우리 집 223kWh", "sourceOrg": "한국에너지공단",
       "selected": true, "recommended": false, "capped": false },
-    { "missionId": 15, "title": "에어컨 필터 청소하기", "computedRate": 5.000, "difficulty": "EASY",
-      "deviceGroup": "냉방", "evidenceText": "월 10.7kWh",
-      "calculationBasis": "필터를 청소하지 않으면 소비전력이 3~5% 증가", "sourceOrg": "한국에너지공단",
+    { "missionId": 14, "title": "에어컨 하루 2시간 줄이기", "computedRate": 30.000, "difficulty": "HARD",
+      "deviceGroup": "냉방", "evidenceText": "월 80kWh · 1시간 실천의 2배",
+      "calculationBasis": "공식 1시간 절감량 40kWh를 동일 조건에서 2시간으로 선형 환산", "sourceOrg": "한국에너지공단",
       "selected": false, "recommended": true, "capped": false },
     { "missionId": 16, "title": "안 쓰는 플러그 뽑기", "computedRate": 5.000, "difficulty": "EASY",
       "deviceGroup": "대기전력", "evidenceText": "가정 전력의 10% 이상",
@@ -1549,7 +1549,7 @@ requiredRate   = (targetRate × 6 − Σ monthlyRate) / remainingMonths
       "selected": false, "recommended": true, "capped": false }
   ],
 
-  "preview": { "currentRate": 18.000, "withRecommendedRate": 28.000, "coversRequired": true },
+  "preview": { "currentRate": 18.000, "withRecommendedRate": 35.000, "coversRequired": true },
 
   "tierDowngrade": { "suggest": false, "consecutiveMisses": 1,
     "message": "한 달 미끄러진 것만으로 10~15% 구간을 포기하기엔 일러요" }
@@ -1558,8 +1558,8 @@ requiredRate   = (targetRate × 6 − Σ monthlyRate) / remainingMonths
 
 | 규칙 | 내용 |
 |---|---|
-| `recommended` | 부족분을 메울 수 있고 **이미 고른 미션과 `deviceGroup` 이 겹치지 않는** 것 (B-4-09) |
-| `preview.withRecommendedRate` | 추천을 전부 반영했을 때의 미션 합계 (기기 그룹 규칙 적용 후) |
+| `recommended` | 이미 고른 `deviceGroup`에 더 높은 `computedRate` 미션이 있으면 **교체 추천을 우선**하고, 그래도 부족하면 겹치지 않는 다른 `deviceGroup` 미션을 추가 추천 (B-4-09) |
+| `preview.withRecommendedRate` | 교체 추천은 기존 그룹 최댓값과의 **증가분만**, 새 그룹 추천은 전체 `computedRate`를 반영한 미션 합계 |
 | `tierDowngrade.suggest` | **2회 연속 미달일 때만 `true`** (비즈니스 규칙 9) |
 | 자동 변경 | 없음. **앱은 제안만 하고 사용자가 저장해야 바뀝니다** |
 
