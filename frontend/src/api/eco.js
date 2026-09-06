@@ -82,36 +82,6 @@ export function getEcoStatus() {
   return client.get('/eco/status')
 }
 
-/*
- * WF-01a 본인확인 (문자인증) — **서버 엔드포인트가 없다.**
- *
- * `POST /eco/link` 는 `X-Demo-Key` 밖에 모르는데 「작년 우리 집 사용량」을 내려준다.
- * 신원을 잇는 단계가 흐름에 통째로 빠져 있어서, 발표에서 그 자리를 화면으로 채운다.
- *
- * ⚠️ **api-spec.md 에 없는 화면이다.** 그래서 `src/fixtures/` 에 두지 않았다 —
- * 그 폴더는 명세 응답을 1:1 로 옮겨 놓는 곳이고, 여기엔 옮길 원본이 없다.
- * 마찬가지 이유로 `ECO_SMS_INVALID` 같은 에러 코드를 만들지 않는다(AGENTS.md 3절).
- * 틀린 인증번호는 **에러가 아니라 `verified: false`** 로 돌려주고 문구는 화면이 만든다.
- *
- * **실제 문자를 보내지 않는다.** 외부 SMS 서비스는 MVP 제외 범위(「로그인·회원가입·소셜 인증」·
- * 「실제 외부 연동」)이고, `app_user` 에 전화번호 컬럼도 없다. 입력값은 화면에만 있다.
- *
- * 백엔드에 본인확인이 생기면 이 두 함수를 지운다. **모드와 무관하게 항상 모의다.**
- */
-
-/** 데모 인증번호. 화면이 캡션으로 밝힌다 — 발표자가 맞힐 수 있어야 하고, 틀리면 거부돼야 한다 */
-const DEMO_SMS_CODE = '000000'
-
-/** 인증번호 발송 요청. `demoCode` 는 모의 응답에만 있는 필드이고 화면 캡션이 쓴다 */
-export function requestSmsCode() {
-  return fake({ expiresInSeconds: 180, demoCode: DEMO_SMS_CODE }, 700)
-}
-
-/** 인증번호 확인. 틀려도 예외를 던지지 않는다 — 위 주석 참고 */
-export function verifySmsCode(code) {
-  return fake(() => ({ verified: String(code ?? '').trim() === DEMO_SMS_CODE }), 900)
-}
-
 /**
  * POST /eco/link — 연동 시작 (B-1-02).
  * 서버는 202 지만 인터셉터가 `data` 만 넘겨줘 status 를 볼 수 없다. `linkJobId` 로 판단한다.

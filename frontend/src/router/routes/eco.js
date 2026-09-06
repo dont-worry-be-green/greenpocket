@@ -37,20 +37,6 @@ export default [
     meta: { tab: 'whatif', title: 'Green What-if' },
   },
   {
-    path: '/whatif/link',
-    name: 'wf-01a-verify',
-    /*
-     * WF-01a 본인확인. ⚠️ **기능명세서에 없는 화면이다.**
-     *
-     * `POST /eco/link` 는 `X-Demo-Key` 밖에 모르는데 「작년 우리 집 사용량」을 내려준다.
-     * 신원을 잇는 단계가 흐름에 빠져 있어 그 자리를 화면으로 채운다. 서버 계약은 그대로다.
-     *
-     * 미가입 안내(WF-01b)는 라우트가 아니라 이 화면의 두 번째 상태다.
-     */
-    component: () => import('@/views/eco/EcoLinkVerifyView.vue'),
-    meta: { tab: 'whatif', title: '에코마일리지 본인확인' },
-  },
-  {
     path: '/whatif/goal',
     name: 'wf-goal',
     /*

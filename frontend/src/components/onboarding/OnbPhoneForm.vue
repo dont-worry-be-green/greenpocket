@@ -1,21 +1,21 @@
 <script setup>
 /*
- * WF-01a 본인확인 폼 — **기능명세서에 없는 화면이다.** 사정은 `api/eco.js` 의
- * `verifyEcoIdentity` 주석에 적어 두었다.
+ * ONB-01b 회원가입 ① 휴대폰 본인인증 — 번호 입력 (이슈 #121)
  *
  * ── 여기서 받은 값이 서버로 가지 않는다 ─────────────────────────────────
- * `POST /eco/link` 는 본문이 없다(api-spec.md 8.2). 계약을 바꾸지 않으려고 입력을 화면에만
- * 두었고, 화면 캡션에도 모의라고 그대로 밝힌다 — 발표에서 실제로 인증한 것처럼 보이면 안 된다.
+ * 실제 문자를 보내지 않는다. 외부 SMS 는 MVP 제외 범위이고 `app_user` 에 전화번호 컬럼도
+ * 없다(`api/auth.js` 주석). 화면 캡션에도 모의라고 그대로 밝힌다 — 발표에서 실제로 인증한
+ * 것처럼 보이면 안 된다.
  *
- * ⚠️ **동의 없이는 CTA 를 열지 않는다**(핵심 비즈니스 규칙 4). 조회에 동의를 받는 자리다.
+ * ⚠️ **동의 없이는 CTA 를 열지 않는다**(핵심 비즈니스 규칙 4). 본인확인에 동의를 받는 자리다.
  *
- * ── 여기서 인증도, 연동도 끝나지 않는다 ─────────────────────────────────
- * 이 화면은 **인증번호 발송 요청까지**다. 확인은 다음 단계(`EcoSmsCodeForm`), 연동은
- * 그다음(`EcoLinkReadyPanel`)이 맡는다 — 한 번의 누름에 여러 개를 묶으면 사용자가 무엇에
- * 동의해 무엇이 일어났는지 구분할 수 없다.
+ * ── 여기서 인증도, 가입도 끝나지 않는다 ─────────────────────────────────
+ * 이 화면은 **인증번호 발송 요청까지**다. 확인은 `OnbSmsCodeForm`, 계정 만들기는 그다음
+ * 단계다 — 한 번의 누름에 여러 개를 묶으면 사용자가 무엇에 동의해 무엇이 일어났는지
+ * 구분할 수 없다.
  *
- * 미가입 안내도 여기 없다. 서버가 가입 여부를 알려주지 않으므로 화면을 가르지 않고
- * 마지막 단계 하단에 길만 열어 둔다(그쪽 주석 참고).
+ * 원래 What-if 연동 앞(WF-01a)에 있던 화면이다. 서비스에 로그인이 들어오면서 본인확인의
+ * 제자리가 회원가입이 되어 옮겼다(이슈 #121).
  */
 import { computed, ref } from 'vue'
 
@@ -24,8 +24,6 @@ import GpCard from '@/components/ui/GpCard.vue'
 import IconInfo from '@/components/ui/icons/IconInfo.vue'
 
 const props = defineProps({
-  /** 온보딩에서 받은 이름. 프리필만 하고 수정은 막지 않는다 */
-  defaultName: { type: String, default: '' },
   loading: { type: Boolean, default: false },
   errorMessage: { type: String, default: '' },
 })
@@ -34,7 +32,6 @@ const emit = defineEmits(['request'])
 /* 통신사는 응답 필드가 아니라 화면 선택지다. ENUM 을 만들지 않는다 */
 const CARRIERS = ['SKT', 'KT', 'LG U+', '알뜰폰']
 
-const name = ref(props.defaultName)
 const carrier = ref(null)
 const phone = ref('')
 const agreed = ref(false)
@@ -43,7 +40,7 @@ const agreed = ref(false)
 const phoneDigits = computed(() => phone.value.replace(/\D/g, ''))
 const canSubmit = computed(
   () =>
-    Boolean(name.value.trim() && carrier.value) &&
+    Boolean(carrier.value) &&
     phoneDigits.value.length >= 10 &&
     phoneDigits.value.length <= 11 &&
     agreed.value &&
@@ -54,33 +51,21 @@ const canSubmit = computed(
 <template>
   <div class="space-y-5">
     <div>
-      <h1 class="text-title tracking-display text-ink m-0">본인확인이 필요해요</h1>
+      <h1 class="text-title tracking-display text-ink m-0">본인확인을 해주세요</h1>
       <p class="text-body text-muted mt-2 mb-0">
-        에코마일리지에 등록된 우리 집 사용량을 가져올게요
+        내 명의로 등록된 제도 실적을 불러오는 데 써요
       </p>
     </div>
 
-    <GpCard title="가져오는 정보">
+    <GpCard title="본인확인이 필요한 이유">
       <ul class="text-body-sm text-ink-soft m-0 list-none space-y-2 p-0">
-        <li>에코마일리지에 등록된 주소</li>
-        <li>최근 2년 월별 사용량</li>
-        <li>등록된 요금 종류 (전기 · 도시가스 · 수도)</li>
+        <li>에코마일리지 · 녹색생활실천은 <strong class="font-semibold">본인 명의</strong>로 참여해요</li>
+        <li>다른 기기에서도 같은 계정으로 이어 볼 수 있어요</li>
+        <li>그린포켓 계좌의 예금주가 돼요</li>
       </ul>
     </GpCard>
 
     <div class="space-y-2">
-      <label class="block">
-        <span class="text-body-strong text-muted mb-2 block">이름</span>
-        <input
-          v-model="name"
-          type="text"
-          autocomplete="name"
-          maxlength="20"
-          placeholder="이름을 입력하세요"
-          class="bg-surface border-border text-body placeholder:text-disabled-text min-h-14 w-full rounded-lg border px-4 outline-hidden"
-        />
-      </label>
-
       <div>
         <span class="text-body-strong text-muted mb-2 block" id="carrier-label">통신사</span>
         <div class="flex flex-wrap gap-2" role="radiogroup" aria-labelledby="carrier-label">
@@ -124,7 +109,7 @@ const canSubmit = computed(
         type="checkbox"
         class="accent-primary size-(--gp-checkbox) shrink-0 cursor-pointer"
       />
-      <span class="text-body text-ink-soft">에코마일리지 사용량 조회에 동의해요</span>
+      <span class="text-body text-ink-soft">본인확인과 제도 실적 조회에 동의해요</span>
     </label>
 
     <p v-if="errorMessage" class="text-body-sm text-negative m-0">{{ errorMessage }}</p>
@@ -132,7 +117,7 @@ const canSubmit = computed(
     <div>
       <GpButton
         :disabled="!canSubmit"
-        @click="emit('request', { name: name.trim(), phone: phoneDigits })"
+        @click="emit('request', { phone: phoneDigits })"
       >
         {{ loading ? '보내는 중...' : '인증번호 받기' }}
       </GpButton>
