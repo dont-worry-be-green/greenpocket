@@ -3,10 +3,16 @@
  * 하위 화면 셸 (기능명세서 COM-02)
  * 뒤로가기 헤더 + 본문. **탭바를 붙이지 않는다.**
  *
- * back 을 주지 않으면 브라우저 히스토리로 돌아간다. 새로고침 직후처럼 히스토리가 없을 때를
- * 대비해 돌아갈 곳이 정해진 화면은 back 에 경로를 명시한다.
+ * ── 뒤로가기는 히스토리가 먼저다 ─────────────────────────────────────────
+ * **`back` 은 폴백이지 덮어쓰기가 아니다.** 왔던 곳이 있으면 그리로 돌아가고, `back` 은
+ * 히스토리가 없을 때(새로고침 · 딥링크 · 데모 도구 바로가기)만 쓴다.
  *
  *   <AppSubLayout title="목표 정하기" back="/whatif"> ...본문... </AppSubLayout>
+ *
+ * ⚠️ 원래는 `back` 을 먼저 보고 있었는데, 그러면 **탭을 건너 들어온 화면이 남의 탭으로 나간다.**
+ * MY-04 리포트 보관함에서 전달 리포트(WF-07)를 열면 그 화면의 `back="/whatif"` 때문에
+ * 뒤로가기가 보관함이 아니라 What-if 탭으로 갔다. 한 탭 안에서만 오갈 때는 `back` 경로와
+ * 히스토리가 같아서 드러나지 않던 문제다.
  *
  * ── subtitle 을 주면 제목이 커진다 ────────────────────────────────────────
  * 기본은 뒤로가기 옆 작은 제목 한 줄이다. `subtitle` 을 넘기면 헤더에는 화살표만 남고
@@ -32,8 +38,10 @@ const props = defineProps({
 const router = useRouter()
 
 function onBack() {
-  if (props.back) router.push(props.back)
-  else if (window.history.state?.back) router.back()
+  // 히스토리 우선. `back` 은 돌아갈 히스토리가 없을 때의 목적지다
+  if (window.history.state?.back) router.back()
+  else if (props.back) router.push(props.back)
+  // 둘 다 없으면 홈으로. 홈은 What-if 탭이다(결정 C-1)
   else router.push('/whatif')
 }
 </script>
