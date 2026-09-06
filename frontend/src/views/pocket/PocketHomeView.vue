@@ -4,31 +4,50 @@ import { useRouter } from 'vue-router'
 
 import AppTabLayout from '@/components/layout/AppTabLayout.vue'
 import PocketState from '@/components/pocket/PocketState.vue'
+import GpButton from '@/components/ui/GpButton.vue'
+import GpModal from '@/components/ui/GpModal.vue'
+import GpTag from '@/components/ui/GpTag.vue'
+import IconBank from '@/components/ui/icons/IconBank.vue'
+import IconCoins from '@/components/ui/icons/IconCoins.vue'
 import IconLeaf from '@/components/ui/icons/IconLeaf.vue'
 import { usePocketStore } from '@/stores/pocket'
-import { formatDateTime, formatSignedWon, formatWon } from '@/utils/format'
+import { formatDateTime, formatMileage, formatSignedWon, formatWon } from '@/utils/format'
 
 const router = useRouter()
 const store = usePocketStore()
 const actionMessage = ref('')
+const isConversionNoticeOpen = ref(false)
 const pocket = computed(
-  () => store.home ?? { balance: 0, convertibleMileage: 0, recentTransactions: [] },
+  () => store.home ?? { balance: 0, convertibleMileage: 0 },
 )
+const recentTransactions = computed(() => {
+  const groups = store.transactions?.groups ?? []
+  return groups.flatMap((g) => g.items).slice(0, 3)
+})
+const withdrawalMap = computed(() => {
+  const map = {}
+  for (const w of store.withdrawals?.content ?? []) map[w.transactionId] = w
+  return map
+})
 
 onMounted(() => {
   store.fetchHome()
+  store.fetchTransactions()
+  store.fetchWithdrawals()
   window.addEventListener('focus', completeConversionOnReturn)
 })
 onBeforeUnmount(() => window.removeEventListener('focus', completeConversionOnReturn))
 
-function transactionTone(type) {
-  return type === 'GREENLIFE' ? 'bg-water-bg text-water' : 'bg-primary-bg text-primary'
+
+function openConversionNotice() {
+  if (!pocket.value.convertibleSource?.roundId) return
+  isConversionNoticeOpen.value = true
 }
 
 async function convertMileage() {
   const roundId = pocket.value.convertibleSource?.roundId
   if (!roundId) return
-  if (!window.confirm('전환 후에는 취소할 수 없어요. 마일리지를 전환할까요?')) return
+  isConversionNoticeOpen.value = false
   const externalWindow = window.open('about:blank', '_blank')
   if (externalWindow) externalWindow.opener = null
   const started = await store.startConversion(roundId)
@@ -41,6 +60,17 @@ async function convertMileage() {
     actionMessage.value = store.conversionError?.message
   }
   window.setTimeout(() => (actionMessage.value = ''), 2200)
+}
+
+const withdrawalStatusLabels = {
+  REQUESTED: '출금 요청', PROCESSING: '처리 중', COMPLETED: '출금',
+  FAILED: '출금 실패', CANCELED: '출금 취소',
+}
+
+function transactionStatusLabel(item) {
+  if (item.direction === 'DEBIT') return withdrawalStatusLabels[item.transactionStatus] ?? item.transactionStatus
+  if (item.transactionStatus !== 'COMPLETED') return item.transactionStatus
+  return item.transactionType === 'GREENLIFE' ? '지급 완료' : '입금'
 }
 
 async function completeConversionOnReturn() {
@@ -92,7 +122,7 @@ async function completeConversionOnReturn() {
           <div class="mt-6 border-t border-white/35">
             <div class="flex min-h-16 items-center gap-3 pt-2">
               <span class="flex size-9 items-center justify-center rounded-md bg-white/20">
-                <IconLeaf :size="20" />
+                <IconCoins :size="20" />
               </span>
               <div class="min-w-0 flex-1">
                 <p class="text-body-sm m-0 opacity-80">전환 가능한 마일리지</p>
@@ -104,7 +134,7 @@ async function completeConversionOnReturn() {
                 type="button"
                 class="flex min-h-11 items-center border-0 bg-transparent p-0 text-white disabled:opacity-50"
                 :disabled="pocket.convertibleMileage <= 0 || store.conversionLoading"
-                @click="convertMileage"
+                @click="openConversionNotice"
               >
                 <span class="bg-white/20 text-label rounded-md px-3 py-2">전환하기</span>
               </button>
@@ -114,7 +144,7 @@ async function completeConversionOnReturn() {
 
         <section>
           <div class="mb-3 flex items-center justify-between">
-            <h2 class="text-section m-0">최근 적립 내역</h2>
+            <h2 class="text-section m-0">최근 내역</h2>
             <button
               type="button"
               class="text-body-sm text-muted min-h-11 border-0 bg-transparent"
@@ -123,30 +153,46 @@ async function completeConversionOnReturn() {
               전체 보기 &gt;
             </button>
           </div>
-          <div v-if="pocket.recentTransactions.length" class="bg-surface rounded-lg px-4">
+          <div v-if="recentTransactions.length" class="bg-surface rounded-lg px-4">
             <div
-              v-for="(item, index) in pocket.recentTransactions"
+              v-for="(item, index) in recentTransactions"
               :key="item.transactionId"
               class="flex min-h-20 items-center gap-3"
               :class="{ 'border-divider border-t': index > 0 }"
             >
               <span
-                class="flex size-10 shrink-0 items-center justify-center rounded-full"
-                :class="transactionTone(item.transactionType)"
+                class="bg-primary-bg text-primary flex size-10 shrink-0 items-center justify-center rounded-full"
               >
-                <IconLeaf :size="20" />
+                <IconBank v-if="item.direction === 'DEBIT'" :size="20" />
+                <IconLeaf v-else :size="20" />
               </span>
               <div class="min-w-0 flex-1">
-                <p class="text-body-strong m-0 truncate">{{ item.label }}</p>
+                <p class="text-body-strong m-0 truncate">
+                  <template v-if="item.direction === 'DEBIT' && withdrawalMap[item.transactionId]?.accountSnapshot">
+                    {{ withdrawalMap[item.transactionId].accountSnapshot.bankName }}
+                    {{ withdrawalMap[item.transactionId].accountSnapshot.accountNo }}
+                  </template>
+                  <template v-else>{{ item.label }}</template>
+                </p>
                 <p class="text-caption text-muted m-0">{{ formatDateTime(item.completedAt) }}</p>
               </div>
-              <p class="text-list-title text-primary tabular-nums m-0">
-                {{ formatSignedWon(item.amount) }}
-              </p>
+              <div class="flex shrink-0 flex-col items-end gap-1">
+                <p
+                  class="text-list-title tabular-nums m-0"
+                  :class="item.direction === 'CREDIT' ? 'text-primary' : 'text-negative'"
+                >
+                  {{ formatSignedWon(item.direction === 'CREDIT' ? item.amount : -item.amount) }}
+                </p>
+                <GpTag
+                  v-if="item.transactionStatus"
+                  :tone="item.direction === 'DEBIT' ? 'negative' : 'positive'"
+                  small
+                >{{ transactionStatusLabel(item) }}</GpTag>
+              </div>
             </div>
           </div>
           <div v-else class="bg-surface rounded-lg px-5 py-8 text-center">
-            <p class="text-body-strong mt-0 mb-1">아직 적립 내역이 없어요</p>
+            <p class="text-body-strong mt-0 mb-1">아직 내역이 없어요</p>
             <p class="text-caption text-muted m-0">
               다양한 친환경 활동을 실천하고 그린포켓을 채워보세요!
             </p>
@@ -154,6 +200,42 @@ async function completeConversionOnReturn() {
         </section>
       </div>
     </PocketState>
+
+    <GpModal
+      :open="isConversionNoticeOpen"
+      align="center"
+      @close="isConversionNoticeOpen = false"
+    >
+      <div class="flex flex-col items-center px-2 pt-1 text-center">
+        <span
+          class="bg-gas-bg text-gas mb-5 flex size-16 items-center justify-center rounded-full"
+          aria-hidden="true"
+        >
+          <IconCoins :size="32" />
+        </span>
+        <h2 class="text-section tracking-display mt-0 mb-5">마일리지를 전환할까요?</h2>
+        <p class="text-body text-ink-soft m-0 break-keep">
+          {{ formatMileage(pocket.convertibleMileage) }}을 서울시 에코마일리지에서<br />
+          현금으로 전환할 수 있어요.
+        </p>
+      </div>
+
+      <template #footer>
+        <div class="mt-4 grid grid-cols-[0.85fr_1.15fr] gap-3">
+          <button
+            type="button"
+            class="bg-disabled-bg text-ink-soft h-(--gp-cta-h) rounded-md border-0 text-button"
+            @click="isConversionNoticeOpen = false"
+          >
+            취소
+          </button>
+          <GpButton :disabled="store.conversionLoading" @click="convertMileage">
+            에코마일리지로 이동
+          </GpButton>
+        </div>
+      </template>
+    </GpModal>
+
     <div
       v-if="actionMessage"
       class="bg-ink text-on-primary shadow-float fixed bottom-24 left-1/2 z-70 w-max max-w-[calc(100%-32px)] -translate-x-1/2 rounded-full px-4 py-3 text-caption"

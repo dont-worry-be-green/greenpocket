@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AppSubLayout from '@/components/layout/AppSubLayout.vue'
+import BankLogo from '@/components/pocket/BankLogo.vue'
 import GpButton from '@/components/ui/GpButton.vue'
 import IconChevronRight from '@/components/ui/icons/IconChevronRight.vue'
 import { usePocketStore } from '@/stores/pocket'
@@ -96,8 +97,13 @@ async function submit() {
           :aria-expanded="isBankPickerOpen"
           @click="isBankPickerOpen = !isBankPickerOpen"
         >
+          <BankLogo :bank-code="selectedBank.code" :size="28" class="mr-3" />
           <span class="flex-1">{{ selectedBank.name }}</span>
-          <IconChevronRight :size="18" class="text-icon-off rotate-90" />
+          <IconChevronRight
+            :size="18"
+            class="text-icon-off transition-transform duration-200"
+            :class="isBankPickerOpen ? '-rotate-90' : 'rotate-90'"
+          />
         </button>
         <div
           v-if="isBankPickerOpen"
@@ -111,10 +117,11 @@ async function submit() {
             type="button"
             role="option"
             :aria-selected="bank.code === bankCode"
-            class="text-body hover:bg-primary-bg flex min-h-12 w-full items-center rounded-md border-0 bg-transparent px-3 text-left"
+            class="text-body hover:bg-primary-bg flex min-h-12 w-full items-center gap-3 rounded-md border-0 bg-transparent px-3 text-left"
             :class="bank.code === bankCode ? 'text-primary font-semibold' : 'text-ink'"
             @click="selectBank(bank.code)"
           >
+            <BankLogo :bank-code="bank.code" :size="28" />
             {{ bank.name }}
           </button>
         </div>
