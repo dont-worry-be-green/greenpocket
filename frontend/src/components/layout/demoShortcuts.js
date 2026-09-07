@@ -25,7 +25,6 @@ export const DEMO_SHORTCUTS = [
   {
     group: '목표 · 실천',
     items: [
-      { label: 'WF-01a 본인확인', to: '/whatif/link' },
       { label: 'WF-04 목표 정하기', to: '/whatif/goal' },
       { label: 'WF-05 미등록 요금', to: '/whatif/goal?preview=WF-05' },
       { label: 'WF-08 실천 다시 고르기', to: '/whatif/missions?utility=ELECTRICITY&month=2026-07' },

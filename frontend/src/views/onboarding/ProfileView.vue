@@ -43,12 +43,11 @@ const canSubmit = computed(
 )
 
 onMounted(async () => {
-  // 이름을 저장하지 않고 주소창으로 들어온 경우다. 새로고침하면 store.user 가 null 이다
-  if (!store.user) {
-    router.replace('/onboarding/start')
-    return
-  }
-
+  /*
+   * 여기서 진입을 막지 않는다. 로그인 여부는 가드가 본다(`router/guards.js`) —
+   * 예전에는 스토어의 `user` 가 없으면 ONB-01 로 되돌려 보냈는데, 새로고침하면 그 값이
+   * 사라져서 로그인을 마친 사람까지 밀려났다.
+   */
   await store.fetchSidos()
   /*
    * 시·도는 고르게 하지 않는다 — MVP 서비스 지역이 서울뿐이라 서버가 1건만 준다(결정 C-15).

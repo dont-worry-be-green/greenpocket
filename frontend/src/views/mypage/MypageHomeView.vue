@@ -15,6 +15,14 @@
  * **시안에도 E-1-01 규칙에도 없다.** 명세에 없는 UI 를 만들지 않는 것이 규칙이고(AGENTS 3),
  * 계좌번호는 상시 노출할 이유가 없다. 필요해지면 그때 명세에 올리고 붙인다.
  *
+ * ── 로그아웃이 여기 있는 이유 ───────────────────────────────────────────
+ * E-1-01·E-1-02 에는 없는 항목이다. 그런데 로그인이 들어오면서(이슈 #121) **로그아웃 없이는
+ * 로그인 화면에 다시 닿을 수 없게 됐다** — 가드가 로그인한 사람의 온보딩 진입을 막기 때문이다.
+ * 시연에서 로그인 흐름을 보여줄 통로가 필요해 마이페이지 맨 아래에 둔다. 위치는 팀 확인 대상이다.
+ *
+ * 데모 키는 지우지 않는다. 같은 기기에서 다시 로그인하면 그대로 이어진다 —
+ * 계정까지 지우는 것은 DEV 도구의 「데모 초기화」다.
+ *
  * ── 저장하고 돌아오면 다시 받는다 ───────────────────────────────────────
  * MY-02 가 저장에 성공하면 스토어가 `mypage` 를 비운다. `<KeepAlive>` 를 쓰지 않으므로
  * 돌아올 때 이 화면이 다시 마운트되고, 그때 비어 있는 것을 보고 새로 받는다.
@@ -32,10 +40,17 @@ import MypageEcoAddressCard from '@/components/mypage/MypageEcoAddressCard.vue'
 import MypageInfoTable from '@/components/mypage/MypageInfoTable.vue'
 import MypageProfileCard from '@/components/mypage/MypageProfileCard.vue'
 import MypageState from '@/components/mypage/MypageState.vue'
+import { useAuthStore } from '@/stores/auth'
 import { useMypageStore } from '@/stores/mypage'
 
 const router = useRouter()
 const store = useMypageStore()
+const auth = useAuthStore()
+
+function logout() {
+  auth.logout()
+  router.replace('/onboarding/start')
+}
 
 const bootstrapping = computed(() => !store.mypage && !store.error)
 
@@ -66,6 +81,14 @@ onMounted(() => {
           @bills="router.push('/mypage/bills')"
           @reports="router.push('/mypage/reports')"
         />
+
+        <button
+          type="button"
+          class="text-body-sm text-muted mx-auto block cursor-pointer border-0 bg-transparent p-2 underline"
+          @click="logout"
+        >
+          로그아웃
+        </button>
       </div>
     </MypageState>
   </AppTabLayout>
