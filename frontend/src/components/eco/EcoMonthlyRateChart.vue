@@ -17,6 +17,7 @@ import { computed } from 'vue'
 
 import GpCard from '@/components/ui/GpCard.vue'
 import GpDelta from '@/components/ui/GpDelta.vue'
+import { changeRateParts } from '@/utils/format'
 
 const props = defineProps({
   rows: { type: Array, default: () => [] },
@@ -25,6 +26,7 @@ const props = defineProps({
   caption: { type: String, default: '' },
   // 계산 근거·주의사항. 그래프 아래에 온다 (핵심 규칙 7)
   footnote: { type: String, default: '' },
+  compact: { type: Boolean, default: false },
 })
 
 /** 0 선 위아래로 얼마씩 필요한지 */
@@ -47,19 +49,27 @@ const barStyle = (rate) => {
 }
 
 const monthLabel = (yearMonth) => `${Number(yearMonth.split('-')[1])}월`
+const delta = (rate) => changeRateParts(rate)
 </script>
 
 <template>
   <GpCard :title="title" :caption="caption">
     <template v-if="rows.length">
       <!-- 값은 막대 위 한 줄에 나란히 둔다. 막대 끝에 붙이면 짧은 달에서 겹친다 -->
-      <div class="flex gap-2">
-        <div v-for="row in rows" :key="row.yearMonth" class="flex flex-1 justify-center">
-          <GpDelta :value="row.rate" size="sm" :show-word="false" />
+      <div class="grid grid-cols-6" :class="compact ? 'gap-1' : 'gap-2'">
+        <div v-for="row in rows" :key="row.yearMonth" class="min-w-0 text-center">
+          <span
+            v-if="compact"
+            class="text-caption-sm inline-block whitespace-nowrap font-semibold tabular-nums"
+            :class="delta(row.rate).direction === 'up' ? 'text-increase' : 'text-decrease'"
+          >
+            {{ delta(row.rate).direction === 'up' ? '↑' : '↓' }} {{ delta(row.rate).value }}%
+          </span>
+          <GpDelta v-else :value="row.rate" size="sm" :show-word="false" />
         </div>
       </div>
 
-      <div class="relative mt-2 h-30">
+      <div class="relative mt-2" :class="compact ? 'h-24' : 'h-30'">
         <!-- 0 선. 음수 막대가 어디서부터 내려간 것인지 보여준다 -->
         <div
           class="bg-divider absolute inset-x-0 h-px"
@@ -67,7 +77,10 @@ const monthLabel = (yearMonth) => `${Number(yearMonth.split('-')[1])}월`
           aria-hidden="true"
         />
 
-        <div class="absolute inset-0 flex items-stretch gap-2">
+        <div
+          class="absolute inset-0 grid grid-cols-6 items-stretch"
+          :class="compact ? 'gap-1.5' : 'gap-2'"
+        >
           <div v-for="row in rows" :key="row.yearMonth" class="relative flex-1">
             <div
               class="absolute inset-x-0 rounded-xs"
@@ -78,8 +91,13 @@ const monthLabel = (yearMonth) => `${Number(yearMonth.split('-')[1])}월`
         </div>
       </div>
 
-      <div class="mt-2 flex gap-2">
-        <div v-for="row in rows" :key="row.yearMonth" class="text-caption text-muted flex-1 text-center">
+      <div class="mt-2 grid grid-cols-6" :class="compact ? 'gap-1' : 'gap-2'">
+        <div
+          v-for="row in rows"
+          :key="row.yearMonth"
+          class="text-muted min-w-0 text-center"
+          :class="compact ? 'text-caption-sm' : 'text-caption'"
+        >
           {{ monthLabel(row.yearMonth) }}
         </div>
       </div>

@@ -28,7 +28,6 @@ import { useRouter } from 'vue-router'
 
 import AppTabLayout from '@/components/layout/AppTabLayout.vue'
 import MypageArchiveLinks from '@/components/mypage/MypageArchiveLinks.vue'
-import MypageEcoAddressCard from '@/components/mypage/MypageEcoAddressCard.vue'
 import MypageInfoTable from '@/components/mypage/MypageInfoTable.vue'
 import MypageProfileCard from '@/components/mypage/MypageProfileCard.vue'
 import MypageState from '@/components/mypage/MypageState.vue'
@@ -54,17 +53,11 @@ onMounted(() => {
       <div v-if="store.mypage" class="space-y-5">
         <MypageProfileCard :profile="store.mypage.profile" />
 
-        <MypageInfoTable
-          :profile="store.mypage.profile"
-          @edit="router.push('/mypage/profile')"
-        />
-
-        <!-- 미연동이면 ecoAddress 가 null 이다. 없는 주소를 지어내지 않는다 -->
-        <MypageEcoAddressCard v-if="store.ecoAddress" :eco-address="store.ecoAddress" />
+        <MypageInfoTable :profile="store.mypage.profile" />
 
         <MypageArchiveLinks
-          @bills="router.push('/mypage/bills')"
-          @reports="router.push('/mypage/reports')"
+          @monthly="router.push({ path: '/mypage/reports', query: { tab: 'MONTHLY' } })"
+          @eco="router.push({ path: '/mypage/reports', query: { tab: 'ECO' } })"
         />
       </div>
     </MypageState>

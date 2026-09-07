@@ -9,13 +9,11 @@
  * 주거 형태와 평수는 시안대로 **한 행**이다('원룸 · 10평 이하'). 조립은 `formatHousing` 이 한다.
  */
 import GpCard from '@/components/ui/GpCard.vue'
-import IconPencil from '@/components/ui/icons/IconPencil.vue'
 import { formatHousing } from '@/utils/format'
 
 const props = defineProps({
   profile: { type: Object, required: true },
 })
-defineEmits(['edit'])
 
 const rows = () => [
   { label: '이름', value: props.profile.name },
@@ -28,14 +26,6 @@ const rows = () => [
   <section>
     <header class="mb-2 flex items-center justify-between px-1">
       <h2 class="text-body-strong text-muted m-0">기본 정보</h2>
-      <button
-        type="button"
-        class="text-body-strong text-primary-on-soft flex cursor-pointer items-center gap-1 border-0 bg-transparent p-1"
-        @click="$emit('edit')"
-      >
-        <IconPencil :size="16" />
-        수정
-      </button>
     </header>
 
     <GpCard>

@@ -29,6 +29,7 @@ import { formatPercent, formatTier, formatMileage, formatWon } from '@/utils/for
 
 const props = defineProps({
   result: { type: Object, required: true },
+  reportMode: { type: Boolean, default: false },
 })
 
 /** 서버가 `tierLabel` 을 주면 그쪽이 우선이다. `formatTier` 는 없을 때의 대체재다 */
@@ -41,16 +42,31 @@ const goalBadge = computed(() => {
   const target = formatPercent(props.result.targetRate)
   return props.result.achieved ? `목표 ${target} 달성` : `목표 ${target} 미달`
 })
+
+const tierLabel = computed(() => props.result.tierLabel || formatTier(props.result.tier))
 </script>
 
 <template>
   <GpCard>
-    <p class="text-caption text-muted mt-0 mb-1">기준 사용량보다</p>
-    <GpDelta :value="result.finalRate" size="xl" />
+    <p class="text-caption text-muted mt-0 mb-1">직전 2년 같은 기간 평균보다</p>
+    <div v-if="reportMode" class="flex flex-wrap items-center justify-between gap-3">
+      <GpDelta :value="result.finalRate" size="xl" />
+      <GpTag :tone="result.achieved ? 'positive' : 'sub'">{{ goalBadge }}</GpTag>
+    </div>
+    <GpDelta v-else :value="result.finalRate" size="xl" />
 
-    <div class="mt-3 flex flex-wrap items-center gap-1.5">
+    <div v-if="!reportMode" class="mt-3 flex flex-wrap items-center gap-1.5">
       <GpTag :tone="result.achieved ? 'positive' : 'sub'">{{ goalBadge }}</GpTag>
       <GpTag tone="confirmed">{{ tierBadge }}</GpTag>
+    </div>
+
+    <div v-else class="mt-4 flex flex-wrap items-center gap-2">
+      <span class="bg-confirmed-bg text-on-confirmed rounded-full px-3 py-2 text-label font-semibold">
+        {{ tierLabel }}
+      </span>
+      <span class="text-body-strong text-ink">
+        {{ formatMileage(result.confirmedMileage) }}가 적립되었어요
+      </span>
     </div>
 
     <div class="border-divider mt-4 flex flex-wrap items-baseline justify-between gap-2 border-t pt-3">
@@ -58,8 +74,11 @@ const goalBadge = computed(() => {
         {{ formatWon(result.amount.baselineTotal) }} →
         <strong class="text-ink font-semibold">{{ formatWon(result.amount.actualTotal) }}</strong>
       </span>
-      <strong class="text-body-strong text-decrease tabular-nums">
-        {{ formatWon(result.amount.savedAmount) }} 덜 냄
+      <strong
+        class="text-body-strong text-decrease tabular-nums"
+        :class="reportMode ? 'bg-positive-bg rounded-md px-2.5 py-2' : ''"
+      >
+        {{ formatWon(result.amount.savedAmount) }} {{ reportMode ? '절약' : '덜 냄' }}
       </strong>
     </div>
   </GpCard>
