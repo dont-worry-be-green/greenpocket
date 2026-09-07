@@ -16,10 +16,11 @@
 | --- | --- | --- |
 | **1 (최상위)** | `docs/feature-spec/기능명세서.md` | 기능 ID, 규칙·데이터·예외, 완료 조건, 우선순위(P0/P1/P2) |
 | 2 | `docs/database/schema.sql` | 스키마 기준 원본. 테이블·컬럼·ENUM·제약 |
-| 3 | `docs/api/api-spec.md` | 공통 규약, 엔드포인트 60개, 매핑표, 검증 체크리스트 |
+| 3 | `docs/api/api-spec.md` | 공통 규약, 엔드포인트 64개, 매핑표, 검증 체크리스트 |
+| 4 | `docs/auth/jwt-auth.md` | JWT 토큰·쿠키·보안·데모 인증 전환 규칙 |
 | 참고 | `docs/개발기획서.md` | 배경·목표·데이터 출처. 구현 세부의 근거로 삼지 않는다 |
 
-`docs/feature-spec/기능명세서.xlsx`가 기능명세의 **원본**이다. `.md`는 읽기용 사본이라 두 파일이 다르면 엑셀이 기준이며, 「결정 사항」·「확인 필요 사항」 시트는 엑셀에만 있다.
+`docs/feature-spec/기능명세서.xlsx`가 기능명세의 **원본**이다. 원칙적으로 `.md`와 다르면 엑셀이 기준이다. 단, **2026-09-07 JWT 결정(COM-13~16)은 문서 작업을 먼저 진행했으므로 XLSX 동기화 전까지 해당 기능에 한해 `.md`와 `docs/auth/jwt-auth.md`가 기준**이다.
 
 > ⚠️ **`schema.sql`을 DB에 직접 실행하지 않는다.** 맨 앞에 `DROP TABLE` 13개가 있어 기존 데이터가 전부 사라진다.
 > 이 파일은 스키마를 읽고 맞추는 **기준 문서**이고, DB에 적용되는 것은 `backend/src/main/resources/db/migration/`의 Flyway 마이그레이션이다.
@@ -30,7 +31,7 @@
 
 | 담당 영역 | `기능명세서.md` 섹션 | `api-spec.md` 절 |
 | --- | --- | --- |
-| 공통·데모·내비게이션 | `### 0. 공통 기반` | `# 4. 공통·데모 API (COM)` |
+| 공통·인증·데모·내비게이션 | `### 0. 공통 기반` | `# 4. 공통·인증·데모 API (COM)` |
 | 프로필 | `#### A-1. 주거 프로필` | `# 5. 프로필 API` |
 | 고지서·OCR | `#### A-2. 고지서 데이터화` | `# 6. 고지서 API` |
 | 진단 | `#### A-3. 비교 진단` | `# 7. 진단 API` |
@@ -66,8 +67,8 @@
 | 종류 | 접두사 | 뜻 |
 | --- | --- | --- |
 | 화면 ID | `ONB` 온보딩 · `AN` 진단 · `BN` 혜택 · `WF` What-if · `PK` 포켓 · `MY` 마이페이지 | 시안 화면 단위. 목록은 기능명세서 `## 화면 목록` |
-| 기능 ID | `COM` 공통 · `A` 생활비 진단 · `B` Green What-if · `C` 혜택 · `D` 자립 저축 · `E` 마이페이지 | 기능명세 105건의 단위. 예 `A-2-03` |
-| 결정 ID | `A-1~B-4` (1차) · `C-1~C-13` (2026-09-03 확정) | 기능명세서 `## 팀 결정 사항` |
+| 기능 ID | `COM` 공통 · `A` 생활비 진단 · `B` Green What-if · `C` 혜택 · `D` 자립 저축 · `E` 마이페이지 | 기능명세 Markdown 109건의 단위. 예 `A-2-03` |
+| 결정 ID | `A-1~B-4` (1차) · `C-1~C-17` (2026-09-07 현재) | 기능명세서 `## 팀 결정 사항` |
 
 > 기능 ID `A-1`(주거 프로필)과 결정 ID `A-1`(마일리지 전환 UX)은 **서로 다른 체계다.** 문맥으로 구분한다.
 
@@ -76,11 +77,12 @@
 | 항목 | 값 |
 | --- | --- |
 | Base URL | `/api/v1` |
-| 인증 | `X-Demo-Key: <UUID v4>` 헤더. 로그인 없음(결정 A-4) |
-| 인증 예외 | `POST /users` · `GET /meta/**` · `POST /demo/reset` |
-| 사용자 식별 | 헤더 → `app_user.id`. **요청 본문·경로에 `userId`를 받지 않는다** |
+| 인증 | `Authorization: Bearer <Access Token>` · JWT 30분. Refresh Token은 14일 HttpOnly 쿠키 |
+| 인증 예외 | `POST /auth/signup` · `/auth/login` · `/auth/refresh` · `/auth/logout` · `GET /meta/**` |
+| 데모 호환 | `X-Demo-Key`와 `POST /users`·`POST /demo/reset`은 `dev`·`demo` 프로필에서만 허용 |
+| 사용자 식별 | 인증 계층 → `app_user.id`. **요청 본문·경로에 `userId`를 받지 않는다** |
 | 멱등 | `Idempotency-Key` 헤더 — 출금 신청, 전환 완료 처리 |
-| 로깅 | `demo_key`는 앞 8자만. **계좌번호 원문은 어떤 로그에도 남기지 않는다** |
+| 로깅 | 비밀번호·토큰 원문·Authorization 헤더를 남기지 않는다. **계좌번호 원문도 어떤 로그에도 남기지 않는다** |
 
 모든 응답은 아래 래퍼로 감싼다. 각 절의 Response 예시는 **`data` 안에 들어가는 부분만** 적혀 있다.
 
@@ -90,7 +92,7 @@
 ```
 
 - `error.message`는 **화면에 그대로 띄울 한국어 문장**이다. 개발자용 문구를 넣지 않는다.
-- 공통 에러 코드: `INVALID_REQUEST` 400 · `UNAUTHENTICATED_DEMO_KEY` 401 · `NOT_FOUND` 404 · `CONFLICT` 409 · `TOO_MANY_REQUESTS` 429 · `INTERNAL_ERROR` 500 · `EXTERNAL_TIMEOUT` 504. **도메인별 코드는 2.2절에 있고, 새로 만들지 않는다.**
+- 공통 에러 코드: `INVALID_REQUEST` 400 · `UNAUTHENTICATED` 401 · `ACCESS_TOKEN_EXPIRED` 401 · `NOT_FOUND` 404 · `CONFLICT` 409 · `TOO_MANY_REQUESTS` 429 · `INTERNAL_ERROR` 500 · `EXTERNAL_TIMEOUT` 504. 데모 프로필만 `UNAUTHENTICATED_DEMO_KEY`를 쓴다. **도메인별 코드는 2.2절에 있고, 새로 만들지 않는다.**
 
 ### 데이터 타입 (`api-spec.md` 1.4절)
 
@@ -182,7 +184,8 @@ greenpocket/
 │   ├── 개발기획서.md       배경·목표·MVP 범위·역할 분담
 │   ├── feature-spec/      기능명세서.xlsx (원본) · 기능명세서.md (사본)
 │   ├── database/          schema.sql — 스키마 기준 원본 (실제 적용은 Flyway)
-│   ├── api/               api-spec.md — 엔드포인트 60개
+│   ├── api/               api-spec.md — 엔드포인트 64개
+│   ├── auth/              jwt-auth.md — JWT 회원 인증 설계
 │   └── design/            design-system.md · tokens.css (작성 예정)
 └── infra/
 ```
@@ -216,7 +219,7 @@ greenpocket/
 
 | 구분 | 기술 |
 | --- | --- |
-| Backend | Spring Boot 4.1.1, Java 21, Spring Data JPA, Flyway, MySQL 8.4 |
+| Backend | Spring Boot 4.1.1, Java 21, Spring Data JPA, Spring Security, JWT, Flyway, MySQL 8.4 |
 | Frontend | Vue 3, Vite, JavaScript, Pinia, Vue Router, Tailwind CSS v4 |
 | OCR | 외부 OCR API |
 | 빌드 | Gradle (backend), npm (frontend) |
@@ -227,10 +230,11 @@ greenpocket/
 
 ## 7. 작업 범위와 소유권
 
-기능 영역은 `api-spec.md` 15.1 「API 60개 한눈에 보기」의 구분을 그대로 쓴다.
+기능 영역은 `api-spec.md` 15.1 「API 64개 한눈에 보기」의 구분을 그대로 쓴다.
 
 | 영역 | 백엔드 패키지 | API 수 | 대표 화면 |
 | --- | --- | --- | --- |
+| 공통 인증 | `auth/` | 4 | ONB-01 |
 | 공통 (사용자·지역·데모 초기화) | `user/` | 4 | ONB-01 |
 | 프로필 | `profile/` | 3 | ONB-02 · MY-02 |
 | 고지서·OCR | `bill/` | 9 | AN-02 ~ AN-06 · AN-08 |

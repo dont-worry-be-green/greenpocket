@@ -69,10 +69,11 @@ cd backend
 
 ## 4. 패키지 구조와 레이어
 
-도메인 구분은 `docs/api/api-spec.md` 15.1 「API 60개 한눈에 보기」의 영역과 1:1이다.
+도메인 구분은 `docs/api/api-spec.md` 15.1 「API 64개 한눈에 보기」의 영역과 1:1이다.
 
 ```
 com.greenpocket
+├── auth/         회원가입·로그인·토큰 재발급·로그아웃      API 4  · 4.5~4.8절
 ├── user/         데모 사용자, 지역 메타, 데모 초기화        API 4  · 4절
 ├── profile/      주거 프로필                              API 3  · 5절
 ├── bill/         관리비·전기·수도·가스 고지서, OCR (ocr/)   API 9  · 6절
@@ -116,8 +117,12 @@ com.greenpocket
 - 요청 검증은 `jakarta.validation` 어노테이션 + `@Valid`로 처리한다.
 - 성공 응답은 `ApiResponse.success(data)`로 반환한다. 실패 응답을 컨트롤러에서 직접 조립하지 않는다.
 - 인증이 필요한 컨트롤러는 헤더를 직접 읽지 않고 `@CurrentUserId Long userId`로 현재 사용자 ID를 받는다.
-- `X-Demo-Key` 누락·빈 값·UUID v4 형식 오류·미등록 키는 모두 `401 UNAUTHENTICATED_DEMO_KEY`로 처리한다.
-- 인증 제외 경로는 `POST /api/v1/users`, `GET /api/v1/meta/**`, `POST /api/v1/demo/reset`이다. Swagger/OpenAPI 경로는 `/api/v1/**` 밖이라 인터셉터 대상이 아니다.
+- 운영 인증은 `Authorization: Bearer <Access Token>`이다. JWT 파싱은 공통 인증 필터 한 곳에서만 하고, 도메인 컨트롤러가 헤더나 Claim을 직접 해석하지 않는다.
+- Access Token 누락·형식 오류·서명 오류는 `401 UNAUTHENTICATED`, 만료는 `401 ACCESS_TOKEN_EXPIRED`로 처리한다.
+- 인증 제외 경로는 `POST /api/v1/auth/signup`, `/login`, `/refresh`, `/logout`, `GET /api/v1/meta/**`다. Swagger/OpenAPI 경로는 `/api/v1/**` 밖이라 인증 대상이 아니다.
+- `X-Demo-Key`, `POST /api/v1/users`, `POST /api/v1/demo/reset`은 `dev`·`demo` 프로필에서만 활성화한다. 운영 프로필에서 Bearer 인증을 우회할 수 없어야 한다.
+- Refresh Token은 HttpOnly 쿠키로만 받고 원문 대신 SHA-256 해시를 저장한다. 재발급 때마다 기존 토큰을 폐기하고 새 토큰으로 교체한다.
+- 비밀번호는 BCrypt로 해시한다. 비밀번호 원문, JWT 전체 문자열, Refresh Token 원문, Authorization 헤더를 로그에 남기지 않는다.
 - API를 구현하거나 응답 계약을 바꾸면 같은 작업에서 Swagger의 `@Tag`·`@Operation`·파라미터 설명·성공/오류 응답 코드를 함께 갱신한다.
 - Swagger 문서와 실제 DTO가 어긋나지 않도록 응답 스키마는 컨트롤러의 `ApiResponse<응답DTO>` 시그니처에서 생성되게 한다. 별도 수동 스키마를 중복 정의하지 않는다.
 

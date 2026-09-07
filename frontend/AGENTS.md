@@ -156,8 +156,12 @@ frontend/src/
 
 - **컴포넌트에서 axios를 직접 호출하지 않는다.** `api/` 함수 → `stores/` → 컴포넌트 순서를 지킨다.
 - 공통 인스턴스는 **`api/client.js`** 하나다. 새 axios 인스턴스를 만들지 않는다.
-  `X-Demo-Key` 첨부, 공통 응답 래퍼(`data`) 언래핑, 에러 정규화(`ApiError`)가 이미 들어 있다.
+  JWT Access Token 첨부, 공통 응답 래퍼(`data`) 언래핑, 에러 정규화(`ApiError`)를 이곳에서 처리한다.
   **컴포넌트에서 `res.data.data`를 파싱하지 않는다.**
+- Access Token은 메모리에만 보관하고 `localStorage`에 저장하지 않는다. Refresh Token은 HttpOnly 쿠키이므로 JavaScript에서 읽거나 저장하지 않는다.
+- 앱 새로고침 시 `POST /auth/refresh`로 세션을 복구한다. 동시 401은 재발급 요청 하나만 보내고 대기 중인 요청을 한 번만 재시도한다. 재발급까지 실패하면 인증 상태를 비우고 ONB-01로 이동한다.
+- 쿠키 전송이 필요한 `/auth/refresh`·`/auth/logout`에는 공통 클라이언트의 `withCredentials` 설정을 사용한다.
+- `X-Demo-Key` 첨부는 `dev`·`demo` 모드에서만 허용한다. 운영 빌드에는 데모 키를 저장하거나 전송하지 않는다.
 - **`docs/api/api-spec.md`에 정의된 필드명만 사용한다.**
   백엔드를 다른 사람이 개발 중이라, 상상해서 만든 필드는 통합 시점에 반드시 깨진다. 명세에 없으면 **먼저 질문한다.**
 - 화면별 호출 목록은 `api-spec.md` **15.3 「화면 → API」** 표에 있다. 화면 작업 전에 이 표를 먼저 본다.
