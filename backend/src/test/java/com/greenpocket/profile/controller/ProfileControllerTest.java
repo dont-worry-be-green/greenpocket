@@ -78,7 +78,7 @@ class ProfileControllerTest {
 
 		mockMvc.perform(get("/api/v1/profile"))
 			.andExpect(status().isUnauthorized())
-			.andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED_DEMO_KEY"));
+			.andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
 	}
 
 	@Test

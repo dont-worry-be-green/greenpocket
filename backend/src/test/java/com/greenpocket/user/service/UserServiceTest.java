@@ -149,7 +149,7 @@ class UserServiceTest {
 
 		assertThat(response.hasBill()).isFalse();
 		assertThat(response.currentRoundId()).isNull();
-		assertThat(response.entryScreen()).isEqualTo("ONB-01");
+		assertThat(response.entryScreen()).isEqualTo("ONB-02");
 	}
 
 	private void assertNameInvalid(String name) {

@@ -2,16 +2,16 @@
 
 | 항목 | 내용 |
 |---|---|
-| 문서 기준일 | 2026-09-03 (ver2 — 팀 결정 13건 반영, 16절) |
+| 문서 기준일 | 2026-09-07 (ver3 — JWT 인증 결정 반영, 17절) |
 | 참가팀 | 돈워리, 비그린 (Don't worry, be green) |
-| 기준 문서 | `docs/feature-spec/기능명세서.xlsx` (105건) · `docs/database/schema.sql` (13테이블) |
-| 대상 범위 | **P0 78건 + P1 24건**. P2 3건(D-3-06 · D-4-01 · E-2-02)은 15절에 자리만 표기 |
-| API 수 | **60개** (P0 43 · P1 17) |
-| 인증 | 로그인 없음. `X-Demo-Key` 헤더로 데모 사용자 식별 (결정 A-4) |
+| 기준 문서 | `docs/feature-spec/기능명세서.md` (109건) · `docs/database/schema.sql` (15테이블) |
+| 대상 범위 | **P0 82건 + P1 24건**. P2 3건(D-3-06 · D-4-01 · E-2-02)은 15절에 자리만 표기 |
+| API 수 | **64개** (P0 47 · P1 17) |
+| 인증 | 이메일·비밀번호 로그인 + JWT Access Token. Refresh Token은 HttpOnly 쿠키 (결정 C-17) |
 | 서버 | Spring Boot · MySQL 8.4 · Base URL `/api/v1` |
 | 스키마 기준 | `docs/database/schema.sql` — FK·UNIQUE·CHECK 포함본. **DB 적용은 `backend/src/main/resources/db/migration/`의 Flyway 마이그레이션으로 한다** |
 
-> **우선순위 규칙** — 두 기준 문서가 어긋나면 **기능은 엑셀, 데이터는 `schema.sql`**이 이깁니다.
+> **우선순위 규칙** — 기능은 원칙적으로 엑셀, 데이터는 `schema.sql`이 기준입니다. 단, JWT 기능 COM-13~16은 원본 XLSX·DDL 동기화 전까지 이 문서와 `docs/auth/jwt-auth.md`를 따릅니다.
 > 이전 버전에서 열어 두었던 결정 13건은 2026-09-03에 전부 확정됐고 이 문서에 반영돼 있습니다. 무엇을 어떻게 정했는지는 **16절**을 보세요.
 
 ---
@@ -23,7 +23,7 @@
 | 1 | 공통 규칙 (인증 · 응답 래퍼 · 타입 · 페이징 · 멱등성) |
 | 2 | 공통 에러 코드 |
 | 3 | 열거형(ENUM) 사전 |
-| 4 | 공통·데모 API (COM) |
+| 4 | 공통·인증·데모 API (COM) |
 | 5 | 프로필 API (A-1) |
 | 6 | 고지서 API (A-2) |
 | 7 | 진단 API (A-3) |
@@ -36,6 +36,7 @@
 | 14 | 마이페이지·보관함 API (E) |
 | 15 | 매핑표 (화면 ↔ API · 기능 ID ↔ API · DB ↔ API) |
 | 16 | 2026-09-03 결정 기록 |
+| 17 | 2026-09-07 JWT 인증 결정 |
 
 ---
 
@@ -47,21 +48,30 @@
 https://{host}/api/v1
 ```
 
-## 1.2 인증 — `X-Demo-Key`
+## 1.2 인증 — JWT Bearer
 
-로그인·회원가입이 없습니다(결정 A-4). 앱이 최초 실행 시 기기에서 UUID를 만들어 보관하고, **모든 요청에 헤더로 붙입니다.**
+운영 사용자는 이메일·비밀번호로 로그인하고, 인증이 필요한 요청에 JWT Access Token을 붙입니다(결정 C-17).
 
 ```http
-X-Demo-Key: 9f2c1a7e-4b30-4c88-9a11-6d0e5b7c2f41
+Authorization: Bearer eyJ...
 ```
 
 | 규칙 | 내용 |
 |---|---|
-| 발급 | FE가 생성한 UUID v4. `POST /users` 로 서버에 등록되면 `app_user.demo_key`(UNIQUE)에 저장 |
-| 예외 | `POST /users`, `GET /meta/**`, `POST /demo/reset` 은 헤더 없이도 호출 가능 |
-| 인증 실패 | 헤더 누락·빈 값·UUID v4 형식 오류·미등록 키를 모두 `401 UNAUTHENTICATED_DEMO_KEY` 로 처리 — FE는 온보딩(ONB-01)으로 보냄 |
-| 서버 동작 | 헤더 → `app_user.id` 해석. **요청 본문·경로에 `userId`를 받지 않습니다.** 데모에서 남의 데이터를 건드릴 경로 자체를 없앱니다 |
-| 로깅 | demo_key는 앞 8자만 로그. 계좌번호 원문은 어떤 로그에도 남기지 않습니다(COM-11 · 결정 A-6) |
+| Access Token | JWT HS256, 30분. `sub`에는 문자열 형태의 `app_user.id`만 저장 |
+| Refresh Token | 14일, HttpOnly 쿠키 `refreshToken`. 서버에는 SHA-256 해시만 저장하고 재발급 때마다 회전 |
+| 공개 경로 | `POST /auth/signup` · `/auth/login` · `/auth/refresh` · `/auth/logout`, `GET /meta/**` |
+| 인증 실패 | 누락·형식/서명 오류는 `401 UNAUTHENTICATED`, 만료는 `401 ACCESS_TOKEN_EXPIRED`. FE는 재발급을 한 번 시도하고 실패하면 ONB-01로 이동 |
+| 서버 동작 | JWT `sub` → `app_user.id` 해석. **요청 본문·경로에 `userId`를 받지 않습니다.** 도메인 컨트롤러에는 `@CurrentUserId`로 전달 |
+| 로깅 | 비밀번호, Authorization 헤더, JWT 전체 문자열, Refresh Token 원문을 로그에 남기지 않습니다. 계좌번호 원문도 남기지 않습니다(COM-11 · 결정 A-6) |
+
+### 개발·시연용 데모 인증
+
+`X-Demo-Key`, `POST /users`, `POST /demo/reset`은 `dev`·`demo` 프로필에서만 호환용으로 허용합니다. 운영 프로필에서는 비활성화하며 Bearer 인증을 우회할 수 없습니다.
+
+```http
+X-Demo-Key: 9f2c1a7e-4b30-4c88-9a11-6d0e5b7c2f41
+```
 
 ## 1.3 공통 응답 래퍼
 
@@ -187,7 +197,9 @@ GET   /bills/ocr/{jobId}   200           → { status, progress, result | error 
 | code | HTTP | 화면 문구(예) |
 |---|---|---|
 | `INVALID_REQUEST` | 400 | 입력값을 다시 확인해 주세요. |
-| `UNAUTHENTICATED_DEMO_KEY` | 401 | 데모 사용자를 찾을 수 없어요. 처음부터 시작해 주세요. |
+| `UNAUTHENTICATED` | 401 | 로그인이 필요해요. |
+| `ACCESS_TOKEN_EXPIRED` | 401 | 로그인 시간이 만료됐어요. 다시 연결할게요. |
+| `UNAUTHENTICATED_DEMO_KEY` | 401 | 데모 사용자를 찾을 수 없어요. 처음부터 시작해 주세요. (`dev`·`demo` 전용) |
 | `NOT_FOUND` | 404 | 요청한 정보를 찾을 수 없어요. |
 | `CONFLICT` | 409 | 이미 처리된 요청이에요. |
 | `TOO_MANY_REQUESTS` | 429 | 잠시 후 다시 시도해 주세요. |
@@ -198,6 +210,12 @@ GET   /bills/ocr/{jobId}   200           → { status, progress, result | error 
 
 | 도메인 | code | HTTP | 조건 | 기능 ID |
 |---|---|---|---|---|
+| 인증 | `EMAIL_INVALID` | 400 | 이메일 형식 오류 | COM-13 |
+| | `PASSWORD_INVALID` | 400 | 비밀번호 8자 미만 또는 UTF-8 기준 72바이트 초과 | COM-13 |
+| | `EMAIL_ALREADY_USED` | 409 | 정규화한 이메일 중복 | COM-13 |
+| | `AUTH_CREDENTIALS_INVALID` | 401 | 미가입 이메일 또는 비밀번호 불일치 | COM-14 |
+| | `REFRESH_TOKEN_INVALID` | 401 | Refresh Token 누락·형식 오류·폐기·재사용 | COM-15 |
+| | `REFRESH_TOKEN_EXPIRED` | 401 | Refresh Token 만료 | COM-15 |
 | 프로필 | `NAME_INVALID` | 400 | 공백 제거 후 1~20자 아님 / 특수문자만 | COM-01 |
 | | `PROFILE_INCOMPLETE` | 409 | 지역·주거형태·평수 중 미입력 | A-1-05 |
 | | `REGION_NOT_FOUND` | 404 | 없는 행정구역 코드 | A-1-01 |
@@ -271,11 +289,13 @@ GET   /bills/ocr/{jobId}   200           → { status, progress, result | error 
 
 ---
 
-# 4. 공통·데모 API (COM)
+# 4. 공통·인증·데모 API (COM)
 
-## 4.1 데모 사용자 시작
+## 4.1 데모 사용자 시작 (개발·시연 전용)
 
 `POST /users` · **P0** · COM-01 · ONB-01
+
+> `dev`·`demo` 프로필에서만 활성화합니다. 운영 회원가입은 4.5절을 사용합니다.
 
 **Request** (헤더 불필요)
 
@@ -311,9 +331,11 @@ GET   /bills/ocr/{jobId}   200           → { status, progress, result | error 
 
 ## 4.2 앱 부트스트랩 (내 상태)
 
-`GET /users/me` · **P0** · COM-01 · COM-02 · COM-12 · 전 화면
+`GET /users/me` · **P0** · COM-01 · COM-02 · COM-12 · COM-13~15 · 전 화면
 
 앱 진입 시 **한 번 호출해서 어느 화면으로 보낼지 결정**합니다.
+
+운영에서는 Bearer Access Token이 필요합니다. `dev`·`demo` 프로필에서는 기존 `X-Demo-Key`도 사용할 수 있습니다.
 
 **Response 200**
 
@@ -372,6 +394,8 @@ MVP 서비스 지역은 서울특별시로 한정합니다(결정 C-15). `sidoCo
 
 `POST /demo/reset` · **P0** · COM-10 · MY-01
 
+> `dev`·`demo` 프로필에서만 활성화합니다. 운영 프로필에서는 노출하지 않습니다.
+
 **Request**
 
 ```json
@@ -387,6 +411,129 @@ MVP 서비스 지역은 서울특별시로 한정합니다(결정 C-15). `sidoCo
 - 서버 동작: `DELETE FROM app_user WHERE id = :uid` **한 줄.** FK CASCADE로 사용자 데이터 8개 테이블이 전부 정리되고 마스터(`mission_catalog` · `greenlife_item` · `region_utility_snapshot`)만 남습니다.
 - 스키마 기준(`docs/database/schema.sql`)에 FK 16개를 복원해 두었고, 위 동작을 MariaDB에서 실제로 확인했습니다(결정 4·9).
 - 유효한 UUID v4를 다시 요청해 대상 사용자가 이미 없어도 초기화 완료 상태이므로 `200`을 반환합니다. UUID v4 형식이 아니면 `400 INVALID_REQUEST`입니다.
+
+---
+
+## 4.5 이메일 회원가입
+
+`POST /auth/signup` · **P0** · COM-13 · ONB-01
+
+**Request** (인증 불필요)
+
+```json
+{
+  "email": "user@example.com",
+  "password": "green1234",
+  "name": "김수현"
+}
+```
+
+| 필드 | 타입 | 필수 | 규칙 |
+|---|---|---|---|
+| `email` | string(255) | ✔ | `trim` 후 소문자 저장, 표준 이메일 형식, UNIQUE |
+| `password` | string | ✔ | 8자 이상·UTF-8 기준 72바이트 이하. 원문은 저장·응답·로그 금지 |
+| `name` | string(20) | ✔ | `trim` 후 1~20자. 공백·특수문자만이면 `NAME_INVALID` |
+
+**Response 201**
+
+```json
+{
+  "userId": 1,
+  "email": "user@example.com",
+  "name": "김수현",
+  "onboardingCompleted": false,
+  "nextScreen": "ONB-02",
+  "accessToken": "eyJ...",
+  "tokenType": "Bearer",
+  "expiresIn": 1800
+}
+```
+
+```http
+Set-Cookie: refreshToken=<opaque>; HttpOnly; SameSite=Lax; Path=/api/v1/auth; Max-Age=1209600
+```
+
+- `app_user`와 `auth_account`는 한 트랜잭션에서 생성합니다.
+- 그린포켓 계좌번호와 예금주는 4.1절과 같은 규칙으로 생성합니다.
+- 운영 HTTPS에서는 Refresh 쿠키에 `Secure`를 반드시 붙입니다.
+
+**Errors** `EMAIL_INVALID(400)` · `PASSWORD_INVALID(400)` · `NAME_INVALID(400)` · `EMAIL_ALREADY_USED(409)`
+
+---
+
+## 4.6 이메일 로그인
+
+`POST /auth/login` · **P0** · COM-14 · ONB-01
+
+**Request** (인증 불필요)
+
+```json
+{ "email": "user@example.com", "password": "green1234" }
+```
+
+**Response 200**
+
+```json
+{
+  "userId": 1,
+  "name": "김수현",
+  "onboardingCompleted": true,
+  "entryScreen": "WF-06",
+  "accessToken": "eyJ...",
+  "tokenType": "Bearer",
+  "expiresIn": 1800
+}
+```
+
+응답 시 4.5절과 같은 속성의 `refreshToken` 쿠키를 설정합니다. `onboardingCompleted=false`면 `entryScreen`은 `ONB-02`, 완료면 `WF-06`입니다.
+
+가입 여부 노출을 막기 위해 미가입 이메일과 비밀번호 불일치는 모두 아래 오류로 응답합니다.
+
+**Errors** `EMAIL_INVALID(400)` · `AUTH_CREDENTIALS_INVALID(401)`
+
+---
+
+## 4.7 Access Token 재발급
+
+`POST /auth/refresh` · **P0** · COM-15 · 전 화면
+
+**Request**
+
+- 본문 없음
+- 브라우저가 HttpOnly `refreshToken` 쿠키를 전송
+
+**Response 200**
+
+```json
+{
+  "accessToken": "eyJ...",
+  "tokenType": "Bearer",
+  "expiresIn": 1800
+}
+```
+
+- 성공하면 기존 Refresh Token을 폐기하고 새 토큰을 발급해 쿠키를 교체합니다.
+- 폐기된 토큰의 재사용이 감지되면 해당 사용자의 활성 Refresh Token을 모두 폐기합니다.
+- FE는 동시 401 요청을 하나의 재발급 요청으로 합치고, 성공 후 원 요청을 최대 한 번 재시도합니다.
+
+**Errors** `REFRESH_TOKEN_INVALID(401)` · `REFRESH_TOKEN_EXPIRED(401)`
+
+---
+
+## 4.8 로그아웃
+
+`POST /auth/logout` · **P0** · COM-16 · MY-01
+
+**Request**
+
+- 본문 없음
+- Refresh Token 쿠키가 있으면 함께 전송
+
+**Response 204 No Content**
+
+- 현재 Refresh Token을 폐기하고 동일 이름·경로의 쿠키를 `Max-Age=0`으로 삭제합니다.
+- 이미 만료·폐기됐거나 쿠키가 없어도 멱등하게 204를 반환합니다.
+- FE는 메모리의 Access Token과 사용자 상태를 즉시 지우고 ONB-01로 이동합니다.
 
 ---
 
@@ -2265,13 +2412,13 @@ requiredRate   = (targetRate × 6 − Σ monthlyRate) / remainingMonths
 
 # 15. 매핑표
 
-## 15.1 API 60개 한눈에 보기
+## 15.1 API 64개 한눈에 보기
 
 P1만 표시하고 나머지는 P0입니다. 뒤 숫자는 이 문서의 절 번호. 표 형태 목록은 노션 「API 기본 명세서」 DB에도 있습니다.
 
 | 영역 | 엔드포인트 |
 |---|---|
-| 공통 (4) | `POST /users` 4.1 · `GET /users/me` 4.2 · `GET /meta/regions` 4.3 · `POST /demo/reset` 4.4 |
+| 공통·인증 (8) | `POST /users` 4.1 (dev/demo) · `GET /users/me` 4.2 · `GET /meta/regions` 4.3 · `POST /demo/reset` 4.4 (dev/demo) · `POST /auth/signup` 4.5 · `POST /auth/login` 4.6 · `POST /auth/refresh` 4.7 · `POST /auth/logout` 4.8 |
 | 프로필 (3) | `POST /profile` 5.1 · `GET /profile` 5.2 · `PUT /profile` 5.3 |
 | 고지서 (9) | `GET /bills/target-month` 6.1 · `POST /bills/ocr` 6.2 · `GET /bills/ocr/{jobId}` 6.3 · `GET /bills/duplicate-check` 6.4 · `POST /bills` 6.5 · `GET /bills` 6.6 (P1) · `GET /bills/{recordId}` 6.7 (P1) · `PUT /bills/{recordId}` 6.8 (P1) · `DELETE /bills/{recordId}` 6.9 (P1) |
 | 진단 (3) | `GET /diagnosis/months` 7.1 (P1) · `GET /diagnosis` 7.2 · `GET /diagnosis/baseline` 7.3 |
@@ -2287,7 +2434,7 @@ P1만 표시하고 나머지는 P0입니다. 뒤 숫자는 이 문서의 절 번
 
 ## 15.2 API가 없는 기능 (FE 단독 · 비개발)
 
-P0·P1 102건 중 아래 12건은 서버 호출이 없습니다. 나머지 90건은 위 60개 API로 덮습니다.
+P0·P1 106건 중 아래 12건은 서버 호출이 없습니다. 나머지 94건은 위 64개 API로 덮습니다.
 
 | 기능 ID | 내용 | 왜 API가 없나 |
 |---|---|---|
@@ -2308,7 +2455,7 @@ P0·P1 102건 중 아래 12건은 서버 호출이 없습니다. 나머지 90건
 
 | 화면 ID | 화면명 | 진입 시 호출 |
 |---|---|---|
-| ONB-01 | 시작·이름 등록 | `POST /users` |
+| ONB-01 | 회원가입·로그인 | `POST /auth/signup` · `POST /auth/login` (`dev`·`demo`는 `POST /users` 사용 가능) |
 | ONB-02 | 주거 프로필 | `GET /meta/regions` → `POST /profile` |
 | AN-01 | 고지서 미등록 메인 | `GET /diagnosis` (`empty:true`) · `GET /bills/target-month` |
 | AN-02 | 사진·직접 입력 선택 | `GET /bills/target-month` |
@@ -2349,7 +2496,9 @@ P0·P1 102건 중 아래 12건은 서버 호출이 없습니다. 나머지 90건
 
 | 테이블 | 읽는 API | 쓰는 API |
 |---|---|---|
-| `app_user` | `GET /users/me` · `/profile` · `/mypage` · `/eco/status` · `/greenlife/status` · `/pocket` | `POST /users` · `POST/PUT /profile` · `POST /eco/link`(연동 상태·등록 주소) · `POST /greenlife/link` · `POST /demo/reset` |
+| `app_user` | `GET /users/me` · `/profile` · `/mypage` · `/eco/status` · `/greenlife/status` · `/pocket` | `POST /auth/signup` · `POST /users`(dev/demo) · `POST/PUT /profile` · `POST /eco/link`(연동 상태·등록 주소) · `POST /greenlife/link` · `POST /demo/reset`(dev/demo) |
+| `auth_account` | `POST /auth/login` | `POST /auth/signup` · `POST /auth/login`(last_login_at) |
+| `auth_refresh_token` | `POST /auth/refresh` · `/auth/logout` | `POST /auth/signup` · `/auth/login` · `/auth/refresh` · `/auth/logout` |
 | `utility_monthly_record` | `GET /diagnosis` · `/bills` · `/eco/monthly-report` · `/reports` | `POST/PUT/DELETE /bills` · `POST /eco/link`(ECO_BASELINE) |
 | `region_utility_snapshot` | `GET /diagnosis` · `/diagnosis/baseline` · `/meta/regions` | 시드만 (COM-09) |
 | `eco_round` | `GET /eco/rounds*` · `/eco/home` · `/pocket/convertible-mileage` | `POST /eco/link` · `POST/PUT .../goal` · `POST .../application` · `POST .../result/view` |
@@ -2423,14 +2572,30 @@ FROM eco_round_utility WHERE eco_round_id = :rid AND is_registered = 1;
 | 에코마일리지 시드(2024·2025년 4~9월) | 민철 | `utility_monthly_record(record_source='ECO_BASELINE')` |
 | OCR 샘플·인식률 | 준수 | — |
 
+# 17. 2026-09-07 JWT 인증 결정
+
+기존 서비스 API의 URL과 요청·응답 DTO는 유지하고 사용자 식별 계층만 데모 키에서 JWT로 전환합니다. 상세 보안·쿠키·스키마 설계는 `docs/auth/jwt-auth.md`를 따릅니다.
+
+| 항목 | 결정 |
+|---|---|
+| 기능 | COM-13 회원가입 · COM-14 로그인 · COM-15 재발급 · COM-16 로그아웃을 P0으로 추가 |
+| Access | JWT HS256, 30분, `sub=userId`, Bearer 헤더 |
+| Refresh | 14일 HttpOnly 쿠키, DB에는 SHA-256 해시만 저장, 재발급 시 회전 |
+| 비밀번호 | BCrypt, 8자 이상·UTF-8 기준 72바이트 이하, 원문 저장·응답·로그 금지 |
+| DB | `app_user.demo_key` NULL 허용 + `auth_account`·`auth_refresh_token` 추가. Flyway V3 적용 |
+| 데모 | `X-Demo-Key`, `POST /users`, `POST /demo/reset`은 `dev`·`demo` 프로필에서만 유지 |
+| 제외 | 이메일 인증, 비밀번호 재설정, 소셜 로그인, MFA, 역할 권한, Access 블랙리스트 |
+
+> 원본 XLSX 동기화와 프론트엔드 구현은 별도 작업입니다. 백엔드는 인증 API·Bearer 공통 인증·Refresh 회전까지 구현했습니다.
+
 # 부록 A. 시연 흐름 API 호출 순서
 
 핵심 시연 흐름(개요 시트)을 그대로 API로 옮긴 것입니다. 발표 리허설·통합 테스트 체크리스트로 쓰세요.
 
 ```
- 1. POST /users                                  이름 입력
- 2. GET  /meta/regions          → POST /profile  주거 프로필
- 3. GET  /users/me                               → entryScreen: WF-06(여기선 WF-01)
+ 1. POST /auth/signup 또는 /auth/login            Access + Refresh 발급
+ 2. GET  /meta/regions          → POST /profile  신규 가입자 주거 프로필
+ 3. GET  /users/me              (Bearer)          → entryScreen: WF-06(여기선 WF-01)
  4. GET  /eco/home                               WF_01_UNLINKED
  5. POST /eco/link              → GET /eco/link/{id} 폴링   WF-02
  6. GET  /eco/rounds/current                     WF-03 기준 사용량·비중
@@ -2451,13 +2616,17 @@ FROM eco_round_utility WHERE eco_round_id = :rid AND is_registered = 1;
 21. GET  /pocket                 → POST /pocket/withdrawals                PK-02~04
 22. GET  /pocket/transactions                    PK-05
 23. GET  /mypage                 → GET /reports                            MY-01·MY-04
-24. POST /demo/reset                             다음 리허설
+24. POST /auth/logout                            Refresh 폐기
+
+개발·시연 프로필에서는 1번을 `POST /users`, 24번을 `POST /demo/reset`으로 대체할 수 있습니다.
 ```
 
 # 부록 B. 검증 체크리스트 (완료 조건 → 테스트)
 
 | 검증 | 기준 | 근거 |
 |---|---|---|
+| 회원 인증 | 가입 → Bearer 보호 API → Access 만료 후 회전 재발급 → 로그아웃 후 재발급 401 | COM-13~16 |
+| 로그인 오류 | 미가입 이메일과 비밀번호 불일치가 모두 `AUTH_CREDENTIALS_INVALID` | COM-14 |
 | 구간 경계 | `combinedRate` = 4.999 / 5.000 / 9.999 / 10.000 / 14.999 / 15.000 → 0 / 10,000 / 10,000 / 30,000 / 30,000 / 50,000 M | B-2-07 |
 | 목표 사용량 | 1,340 × 0.9 = **1,206 kWh** | B-2-04 |
 | 합산 감축률 | 전기 10%·가스 15%·수도 5% → **11.322%** (아래 ⚠︎) | 계산식 6 |
