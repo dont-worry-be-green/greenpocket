@@ -88,7 +88,7 @@ public class AuthService {
 
 	@Transactional
 	public AuthSession<LoginResponse> login(LoginRequest request) {
-		String email = normalizeEmail(request.email());
+		String email = normalizeAndValidateEmail(request.email());
 		AuthAccountSnapshot account = authRepository.findAccountByEmail(email)
 			.orElseThrow(AuthService::invalidCredentials);
 		if (!StringUtils.hasText(request.password())

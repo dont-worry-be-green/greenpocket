@@ -99,6 +99,26 @@ class AuthServiceTest {
 	}
 
 	@Test
+	void rejectsMalformedSignupEmailWithDomainCode() {
+		BusinessException exception = assertThrows(
+			BusinessException.class,
+			() -> authService.signup(new SignupRequest("not-an-email", "password123", "김그린"))
+		);
+
+		assertEquals(AuthErrorCode.EMAIL_INVALID, exception.getErrorCode());
+	}
+
+	@Test
+	void rejectsShortSignupPasswordWithDomainCode() {
+		BusinessException exception = assertThrows(
+			BusinessException.class,
+			() -> authService.signup(new SignupRequest("green@example.com", "short", "김그린"))
+		);
+
+		assertEquals(AuthErrorCode.PASSWORD_INVALID, exception.getErrorCode());
+	}
+
+	@Test
 	void loginDoesNotRevealWhetherEmailOrPasswordWasWrong() {
 		when(authRepository.findAccountByEmail("green@example.com")).thenReturn(Optional.of(
 			new AuthAccountSnapshot(USER_ID, "green@example.com", "bcrypt-hash", "김그린", true)

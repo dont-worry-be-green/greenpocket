@@ -143,7 +143,7 @@ class WithdrawalAccountControllerTest {
 	void rejectsMissingAuthentication() throws Exception {
 		mockMvc.perform(get("/api/v1/pocket/accounts"))
 			.andExpect(status().isUnauthorized())
-			.andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED_DEMO_KEY"));
+			.andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
 	}
 
 	@Test
