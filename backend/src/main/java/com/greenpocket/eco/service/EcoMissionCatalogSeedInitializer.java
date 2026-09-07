@@ -2,6 +2,8 @@ package com.greenpocket.eco.service;
 
 import javax.sql.DataSource;
 
+import java.nio.charset.StandardCharsets;
+
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.boot.ApplicationArguments;
@@ -23,6 +25,7 @@ public class EcoMissionCatalogSeedInitializer implements ApplicationRunner {
 		ResourceDatabasePopulator populator = new ResourceDatabasePopulator(
 			new ClassPathResource(SEED_PATH)
 		);
+		populator.setSqlScriptEncoding(StandardCharsets.UTF_8.name());
 		populator.execute(dataSource);
 	}
 }
