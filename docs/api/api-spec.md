@@ -1291,7 +1291,7 @@ CLOVA Template OCR의 고정 데모 템플릿은 관리비 통합(43341)·개별
 | 규칙 | 내용 |
 |---|---|
 | 미션 노출 | `evidence_amount` · `calculation_basis` · `source_org` **셋 다 있는 것만.** DB가 NOT NULL로 강제 (B-3-01) |
-| 카탈로그·화면 수 | API는 요금별 활성 미션 9~12개를 반환. FE는 현재 계절·목표·추천 맥락에 맞는 6~9개만 노출 (C-19) |
+| 카탈로그·화면 수 | API는 요금별 활성 미션 9~12개를 `display_order` 순으로 반환. FE는 **선택 미션 유지 → 현재 계절 → 서로 다른 `deviceGroup` → 서버 반환 순서**로 6~9개를 고르고, 다시 고르기에서는 `recommended: true`를 먼저 노출 (C-19) |
 | 난이도 | `EASY`·`NORMAL`·`HARD`는 한 달 동안 지속할 습관 변화 강도. 공사·설비 교체·전문업체 작업은 카탈로그에서 제외 (C-19) |
 | `computedRate` | `evidenceAmount ÷ (baselineUsage ÷ 6) × 100`, 상한 전기 30% · 수도 20% 적용 (B-3-02 · 계산식 11) |
 | `monthlyBaselineUsage` | `baselineUsage ÷ 6`. 환산 근거를 FE가 그대로 보여줄 수 있게 함 |
@@ -1625,7 +1625,7 @@ Request 본문은 9.2 미리보기와 **동일**합니다.
     "requiredRate": 11.981,
     "achievable": true,
     "requiredByUtility": [
-      { "utilityType": "ELECTRICITY", "requiredRate": 11.000, "assumption": "도시가스 16%, 수도 11% 감축을 지금처럼 유지할 때" }
+      { "utilityType": "ELECTRICITY", "requiredRate": 11.374, "assumption": "도시가스 16%, 수도 11% 감축을 지금처럼 유지할 때" }
     ],
     "selectedMissionRate": 18.000,
     "adjustTargetUtility": "ELECTRICITY"
@@ -1649,6 +1649,11 @@ monthlyRate    = (E_base,m − E_m) / E_base,m × 100
 cumulativeRate = (Σ E_base,m − Σ E_m) / Σ E_base,m × 100        # 등록된 달만
 requiredRate   = (targetRate × 6 − Σ monthlyRate) / remainingMonths
 recoveryBurden = requiredRate / targetRate
+requiredUtilityCarbonSaving
+               = 전체 기준 탄소량 × requiredRate / 100
+                 − Σ(다른 요금 기준 탄소량 × 해당 요금 현재 감축률 / 100)
+requiredByUtility
+               = requiredUtilityCarbonSaving / 해당 요금 기준 탄소량 × 100
 ```
 
 | 규칙 | 내용 |
@@ -1674,11 +1679,13 @@ recoveryBurden = requiredRate / targetRate
 
 **Response 200**
 
+아래 응답은 10.3의 정상 회복 예시와 다른 **독립된 하향 제안 시나리오**입니다. 남은 기간의 전기 필요 감축률이 33%까지 높아진 별도 회차·월을 가정합니다.
+
 ```json
 {
-  "roundId": 7,
+  "roundId": 8,
   "utilityType": "ELECTRICITY",
-  "reportMonth": "2026-07",
+  "reportMonth": "2026-08",
   "requiredRate": 33.000,
   "requiredAssumption": "도시가스 16%, 수도 11% 감축을 지금처럼 유지할 때예요",
   "carbonSharePercent": 83.0,
@@ -1694,7 +1701,7 @@ recoveryBurden = requiredRate / targetRate
     { "missionId": 14, "title": "에어컨 하루 2시간 줄이기", "computedRate": 30.000, "difficulty": "HARD",
       "deviceGroup": "냉방", "evidenceText": "월 80kWh · 1시간 실천의 2배",
       "calculationBasis": "공식 1시간 절감량 40kWh를 동일 조건에서 2시간으로 선형 환산", "sourceOrg": "한국에너지공단",
-      "selected": false, "recommended": true, "capped": false },
+      "selected": false, "recommended": true, "capped": true },
     { "missionId": 16, "title": "안 쓰는 플러그 뽑기", "computedRate": 5.000, "difficulty": "EASY",
       "deviceGroup": "대기전력", "evidenceText": "가정 전력의 10% 이상",
       "calculationBasis": "대기전력이 가정·상업 전력사용량의 10%가 넘음 · 절반을 줄인다고 보수 적용", "sourceOrg": "한국에너지공단",
@@ -1714,7 +1721,7 @@ recoveryBurden = requiredRate / targetRate
 | `preview.withRecommendedRate` | 교체 추천은 기존 그룹 최댓값과의 **증가분만**, 새 그룹 추천은 전체 `computedRate`를 반영한 미션 합계 |
 | 회복 부담 배수 | `requiredRate ÷ 현재 목표 구간 하한`. 낮출 구간이 있고 **1.5 이상이면** `tierDowngrade.suggest: true` (C-20) |
 | 추천 미션 부족 | `preview.coversRequired: false`이고 낮출 구간이 있으면 미달 횟수와 관계없이 `tierDowngrade.suggest: true` (C-20) |
-| `consecutiveMisses` | 연속 미달 횟수는 응답 설명용이며 하향 여부를 직접 결정하지 않음 |
+| `consecutiveMisses` | 선택 요금 단독 실적이 아닌 **회차 전체 합산 월 감축률**의 연속 미달 횟수. 응답 설명용이며 하향 여부를 직접 결정하지 않음 |
 | 최저 구간 | 현재 목표가 `TIER_5`이면 더 낮은 지급 구간을 만들지 않고 `suggest: false` |
 | 자동 변경 | 없음. **앱은 제안만 하고 사용자가 저장해야 바뀝니다** |
 
