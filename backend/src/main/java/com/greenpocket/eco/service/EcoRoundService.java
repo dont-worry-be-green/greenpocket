@@ -52,7 +52,7 @@ public class EcoRoundService {
 
 	public EcoCurrentRoundResponse getCurrentRound(Long userId) {
 		EcoUserSnapshot user = ecoRepository.findUser(userId)
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.UNAUTHENTICATED_DEMO_KEY));
+			.orElseThrow(() -> new BusinessException(CommonErrorCode.UNAUTHENTICATED));
 		if (user.linkStatus() != EcoLinkStatus.LINKED) {
 			throw new BusinessException(EcoErrorCode.ECO_NOT_LINKED);
 		}

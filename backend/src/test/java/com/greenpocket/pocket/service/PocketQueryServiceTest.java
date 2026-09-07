@@ -261,7 +261,7 @@ class PocketQueryServiceTest {
 
 		assertThatThrownBy(() -> pocketQueryService.getBalance(USER_ID))
 			.isInstanceOfSatisfying(BusinessException.class, exception ->
-				assertThat(exception.getErrorCode()).isEqualTo(CommonErrorCode.UNAUTHENTICATED_DEMO_KEY));
+				assertThat(exception.getErrorCode()).isEqualTo(CommonErrorCode.UNAUTHENTICATED));
 	}
 
 	@Test

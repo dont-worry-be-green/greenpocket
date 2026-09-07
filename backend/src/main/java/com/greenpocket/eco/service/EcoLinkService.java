@@ -198,7 +198,7 @@ public class EcoLinkService {
 
 	private EcoUserSnapshot findUser(Long userId) {
 		return ecoRepository.findUser(userId)
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.UNAUTHENTICATED_DEMO_KEY));
+			.orElseThrow(() -> new BusinessException(CommonErrorCode.UNAUTHENTICATED));
 	}
 
 	private static OffsetDateTime toOffsetDateTime(java.time.LocalDateTime value) {

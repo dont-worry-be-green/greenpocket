@@ -41,7 +41,7 @@ public class MypageService {
 
 	public MypageResponse getMypage(Long userId) {
 		UserMypageSnapshot user = userMypageQueryService.findMypageUser(userId)
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.UNAUTHENTICATED_DEMO_KEY));
+			.orElseThrow(() -> new BusinessException(CommonErrorCode.UNAUTHENTICATED));
 		EcoStatusResponse ecoStatus = ecoLinkService.getStatus(userId);
 		long reportCount = billReportQueryService.findMonthlyDiagnosisReports(userId).size()
 			+ ecoReportQueryService.findMonthlyReports(userId).size()

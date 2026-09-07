@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -28,6 +29,10 @@ public class ApiAuthenticationInterceptor implements HandlerInterceptor {
 
 	@Override
 	public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+		if (properties.demoEnabled() && isPublicDemoRequest(request)) {
+			return true;
+		}
+
 		String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
 		if (StringUtils.hasText(authorization)) {
 			if (!authorization.startsWith(BEARER_PREFIX)) {
@@ -52,6 +57,14 @@ public class ApiAuthenticationInterceptor implements HandlerInterceptor {
 		}
 
 		throw unauthenticated();
+	}
+
+	private static boolean isPublicDemoRequest(HttpServletRequest request) {
+		if (!HttpMethod.POST.matches(request.getMethod())) {
+			return false;
+		}
+		String path = request.getRequestURI().substring(request.getContextPath().length());
+		return "/api/v1/users".equals(path) || "/api/v1/demo/reset".equals(path);
 	}
 
 	private static boolean isUuidV4(String value) {

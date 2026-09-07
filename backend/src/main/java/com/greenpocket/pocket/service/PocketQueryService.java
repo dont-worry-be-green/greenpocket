@@ -220,7 +220,7 @@ public class PocketQueryService {
 
 	private UserPocketSnapshot findPocket(Long userId) {
 		return userPocketQueryService.findPocket(userId)
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.UNAUTHENTICATED_DEMO_KEY));
+			.orElseThrow(() -> new BusinessException(CommonErrorCode.UNAUTHENTICATED));
 	}
 
 	private List<ConvertibleMileageResponse.Round> findConvertibleRounds(Long userId) {
