@@ -19,7 +19,7 @@ INSERT INTO mission_catalog (
     evidence_amount, evidence_unit, evidence_text, calculation_basis,
     source_org, device_group, season_tags, rate_cap, display_order, is_active
 ) VALUES
--- 전기 9개
+-- 전기 12개
 ('ELEC_AC_TEMP_26', 'ELECTRICITY', '냉방 온도 26℃로 맞추기',
  '실내 적정온도를 지키면서 냉방 전력을 줄여요', 'EASY',
  12.300, 'kWh', '1℃당 냉방 전력 7% · 하루 0.41kWh',
@@ -65,6 +65,21 @@ INSERT INTO mission_catalog (
  1.800, 'kWh', '하루 환산 0.06kWh · 월 1.8kWh',
  '전기밥솥 보온시간을 줄일 때 하루 환산 0.06kWh 절감 · 0.06kWh × 30일 = 월 1.8kWh',
  '산업통상자원부·한국에너지공단', '밥솥', 'SPRING,SUMMER,AUTUMN,WINTER', 30.000, 90, 1),
+('ELEC_MICROWAVE_NATURAL_THAW', 'ELECTRICITY', '전자레인지 쓰기 전 자연해동하기',
+ '냉동식품을 미리 냉장실로 옮겨 해동 시간을 줄여요', 'NORMAL',
+ 5.700, 'kWh', '자연해동 후 전자레인지 사용 시 하루 0.19kWh 절감',
+ '공식 하루 절감량 0.19kWh × 30일 = 월 5.7kWh · 미리 옮겨 두는 준비가 필요한 반복 습관',
+ '산업통상자원부·한국에너지공단', '전자레인지', 'SPRING,SUMMER,AUTUMN,WINTER', 30.000, 100, 1),
+('ELEC_BIDET_HEAT_OFF', 'ELECTRICITY', '비데 온열 기능 끄기',
+ '따뜻한 계절에는 변좌와 온수 기능을 꺼둬요', 'EASY',
+ 3.000, 'kWh', '비데 온열 기능을 끄면 하루 0.1kWh 절감',
+ '공식 하루 절감량 0.1kWh × 30일 = 월 3.0kWh · 비데가 있는 집에서만 선택',
+ '산업통상자원부·한국에너지공단', '비데', 'SPRING,SUMMER,AUTUMN', 30.000, 110, 1),
+('ELEC_HEATER_HOUR_1', 'ELECTRICITY', '전기난방기 하루 1시간 줄이기',
+ '전기장판과 온풍기는 꼭 필요한 시간만 사용해요', 'HARD',
+ 20.000, 'kWh', '1kW 난방기 사용을 하루 1시간씩 월 20일 단축하면 20kWh 절감',
+ '공식 1kW 전기난방기 하루 4시간 × 월 20일 조건을 하루 1시간 단축으로 선형 환산 · 1kW × 1시간 × 20일 = 월 20kWh · 데모 환산 추정',
+ '한국에너지공단', '전기난방', 'WINTER', 30.000, 120, 1),
 
 -- 도시가스 10개
 ('GAS_HEATING_20', 'GAS', '실내 난방 20℃ 유지하기',

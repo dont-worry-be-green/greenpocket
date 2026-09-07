@@ -39,12 +39,17 @@ class EcoMissionCatalogSeedTest {
 			}
 		}
 
-		assertThat(electricityCount).isBetween(9, 12);
-		assertThat(gasCount).isBetween(9, 12);
-		assertThat(waterCount).isBetween(9, 12);
+		assertThat(electricityCount).isEqualTo(12);
+		assertThat(gasCount).isEqualTo(10);
+		assertThat(waterCount).isEqualTo(12);
 		assertThat(codes).hasSize(electricityCount + gasCount + waterCount);
 		assertThat(sql).contains("ON DUPLICATE KEY UPDATE");
 		assertThat(sql).contains("난이도는 비용이나 주거 설비 변경이 아니라");
+		assertThat(sql).contains(
+			"전자레인지 쓰기 전 자연해동하기",
+			"비데 온열 기능 끄기",
+			"전기난방기 하루 1시간 줄이기"
+		);
 		assertThat(sql).doesNotContain(
 			"노후 난방배관 청소하기",
 			"고효율 보일러로 교체하기",
