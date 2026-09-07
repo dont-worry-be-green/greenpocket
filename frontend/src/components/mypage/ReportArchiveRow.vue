@@ -29,7 +29,7 @@ defineEmits(['open'])
     </span>
 
     <div class="min-w-0 flex-1">
-      <p class="text-body-strong text-ink m-0 truncate">{{ report.title }}</p>
+      <p class="text-body-strong text-ink m-0 truncate">{{ report.type === 'MONTHLY_DIAGNOSIS' ? `${formatMonthOnly(report.yearMonth)} 월간 리포트` : report.title }}</p>
       <p class="text-caption text-muted mt-0.5 mb-0 tabular-nums">
         {{ formatDotDate(report.createdAt) }} 생성
       </p>

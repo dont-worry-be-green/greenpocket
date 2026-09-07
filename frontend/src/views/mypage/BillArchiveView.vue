@@ -27,8 +27,9 @@ import BillYearSelect from '@/components/mypage/BillYearSelect.vue'
 import MypageSegments from '@/components/mypage/MypageSegments.vue'
 import MypageState from '@/components/mypage/MypageState.vue'
 import GpButton from '@/components/ui/GpButton.vue'
+import IconChevronDown from '@/components/ui/icons/IconChevronDown.vue'
 import { useMypageStore } from '@/stores/mypage'
-import { formatUtilityType } from '@/utils/format'
+import { formatMonth, formatUtilityType } from '@/utils/format'
 
 /** 시안 순서. 'ALL' 은 쿼리에 싣지 않는다 — 서버는 `utility` 를 생략하면 전체를 준다 */
 const TABS = ['ALL', 'ELECTRICITY', 'WATER', 'GAS']
@@ -56,6 +57,24 @@ const tabs = computed(() =>
 )
 
 const bills = computed(() => store.bills?.content ?? [])
+const expandedMonths = ref(new Set())
+
+/** 같은 청구 월의 고지서를 한 카드에 모은다. 서버의 최신순은 그대로 유지한다. */
+const billGroups = computed(() => {
+  const byMonth = new Map()
+  bills.value.forEach((bill) => {
+    if (!byMonth.has(bill.billingMonth)) byMonth.set(bill.billingMonth, [])
+    byMonth.get(bill.billingMonth).push(bill)
+  })
+  return [...byMonth.entries()].map(([month, items]) => ({ month, items }))
+})
+
+function toggleMonth(month) {
+  const next = new Set(expandedMonths.value)
+  if (next.has(month)) next.delete(month)
+  else next.add(month)
+  expandedMonths.value = next
+}
 
 /** 첫 응답 전. `billsLoading` 만 보면 첫 렌더 한 틱에 빈 목록이 스친다 */
 const bootstrapping = computed(() => !store.bills && !store.billsError)
@@ -109,9 +128,38 @@ watch(
         empty-message="이 조건에 맞는 고지서가 없어요."
         @retry="store.fetchBills(params)"
       >
-        <ul class="bg-surface divide-divider m-0 list-none divide-y rounded-lg px-4 py-1">
-          <BillArchiveRow v-for="bill in bills" :key="bill.recordId" :bill="bill" />
-        </ul>
+        <div class="space-y-4">
+          <section
+            v-for="group in billGroups"
+            :key="group.month"
+            :data-billing-month="group.month"
+            class="bg-surface rounded-lg px-4"
+          >
+            <h2 class="m-0">
+              <button
+                type="button"
+                class="text-section text-ink flex min-h-16 w-full cursor-pointer items-center justify-between border-0 bg-transparent p-0 text-left"
+                :aria-expanded="expandedMonths.has(group.month)"
+                :aria-controls="`bills-${group.month}`"
+                @click="toggleMonth(group.month)"
+              >
+                <span>{{ formatMonth(group.month) }}</span>
+                <IconChevronDown
+                  :size="18"
+                  class="text-icon-off transition-transform"
+                  :class="expandedMonths.has(group.month) ? 'rotate-180' : ''"
+                />
+              </button>
+            </h2>
+            <ul
+              v-show="expandedMonths.has(group.month)"
+              :id="`bills-${group.month}`"
+              class="divide-divider border-divider m-0 list-none divide-y border-t p-0"
+            >
+              <BillArchiveRow v-for="bill in group.items" :key="bill.recordId" :bill="bill" />
+            </ul>
+          </section>
+        </div>
 
         <div v-if="store.bills?.hasNext" class="mt-3 flex justify-center">
           <GpButton

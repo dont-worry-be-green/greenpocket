@@ -16,9 +16,8 @@
  * 월 페이스는 진단 탭 고지서로 재지만 **최종 확정은 누리집 기준**이라, 다른 화면 숫자와
  * 다를 수 있다는 것을 여기서 밝히지 않으면 어느 쪽이 맞는지 알 수 없다.
  *
- * ── 하단 CTA 는 「다음 회차 목표」다 (시안 WF-10) ──────────────────────────
- * 적립 화면(WF-11)으로 가는 길은 마일리지 카드가 맡는다. 결과를 다 본 사람이 다음에 할 일은
- * 적립 확인이 아니라 **다음 평가 기간 목표 정하기**라, 화면에 하나뿐인 큰 버튼을 그쪽에 준다.
+ * 리포트 화면이므로 다음 회차 목표 CTA 는 두지 않는다. 적립 화면(WF-11)으로 가는 길은
+ * 마일리지 카드가 맡는다.
  */
 import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -28,6 +27,7 @@ import EcoResultMileageCard from '@/components/eco/EcoResultMileageCard.vue'
 import EcoResultSummary from '@/components/eco/EcoResultSummary.vue'
 import EcoUtilityResultTable from '@/components/eco/EcoUtilityResultTable.vue'
 import AppSubLayout from '@/components/layout/AppSubLayout.vue'
+import ReportDialogLayout from '@/components/layout/ReportDialogLayout.vue'
 import GpButton from '@/components/ui/GpButton.vue'
 import { useEcoStore } from '@/stores/eco'
 import { formatDate, formatPercent, formatRoundPeriod } from '@/utils/format'
@@ -36,8 +36,15 @@ const route = useRoute()
 const router = useRouter()
 const store = useEcoStore()
 
-const roundId = computed(() => route.params.roundId)
+const props = defineProps({
+  embedded: { type: Boolean, default: false },
+  reportRoundId: { type: [String, Number], default: null },
+})
+const emit = defineEmits(['close'])
+
+const roundId = computed(() => props.reportRoundId ?? route.params.roundId)
 const result = computed(() => store.result)
+const layout = computed(() => (props.embedded ? ReportDialogLayout : AppSubLayout))
 
 function load() {
   store.fetchRoundResult(roundId.value)
@@ -53,8 +60,10 @@ const subtitle = computed(() => {
   if (data.confirmedSource) parts.push(data.confirmedSource)
   return parts.join(' · ')
 })
-
-const nextRound = computed(() => result.value?.nextRound ?? null)
+const dialogSubtitle = computed(() => {
+  const data = result.value
+  return data ? `평가 기간: ${formatRoundPeriod(data.periodStart, data.periodEnd)}` : ''
+})
 
 const chartCaption = computed(() =>
   result.value ? `목표 ${formatPercent(result.value.targetRate)}를 넘긴 달은 진한 초록이에요` : '',
@@ -64,7 +73,13 @@ const goSettlement = () => router.push(`/whatif/rounds/${roundId.value}/settleme
 </script>
 
 <template>
-  <AppSubLayout title="평가 결과" :subtitle="subtitle" back="/whatif" has-footer>
+  <component
+    :is="layout"
+    :title="embedded ? 'ECO 리포트' : '평가 결과'"
+    :subtitle="embedded ? dialogSubtitle : subtitle"
+    back="/whatif"
+    @close="emit('close')"
+  >
     <!-- 로딩·실패를 남기지 않는다 (COM-08) -->
     <p v-if="store.isLoading && !result" class="text-caption text-muted py-10 text-center">
       평가 결과를 불러오는 중이에요
@@ -78,33 +93,26 @@ const goSettlement = () => router.push(`/whatif/rounds/${roundId.value}/settleme
     </div>
 
     <div v-else class="space-y-4 pt-1">
-      <EcoResultSummary :result="result" />
+      <EcoResultSummary :result="result" :report-mode="embedded" />
 
       <!-- 적립 화면(WF-11)으로 가는 통로. 여기서 전환을 실행하지 않는다 (핵심 규칙 4) -->
-      <EcoResultMileageCard :mileage="result.confirmedMileage" @open="goSettlement" />
+      <EcoResultMileageCard
+        v-if="!embedded"
+        :mileage="result.confirmedMileage"
+        :interactive="!embedded"
+        @open="goSettlement"
+      />
 
-      <EcoUtilityResultTable :rows="result.utilityResults" />
+      <EcoUtilityResultTable :rows="result.utilityResults" :report-mode="embedded" />
 
       <EcoMonthlyRateChart
         :rows="result.monthlyRates"
+        :compact="embedded"
         title="달마다 얼마나 줄였나"
         :caption="chartCaption"
         footnote="검침 주기가 요금마다 달라 월 구분은 검침 반영 시점 기준이에요"
       />
     </div>
 
-    <template #footer>
-      <div
-        class="bg-canvas border-divider fixed inset-x-0 bottom-0 z-20 mx-auto max-w-(--gp-viewport-w) border-t px-(--gp-gutter) pt-3 pb-[max(12px,env(safe-area-inset-bottom))]"
-      >
-        <GpButton :disabled="!result" @click="router.push('/whatif/goal')">
-          다음 평가 기간 목표 정하기
-        </GpButton>
-        <p v-if="nextRound" class="text-caption text-muted mt-2 mb-0 text-center">
-          다음 평가 기간
-          {{ formatRoundPeriod(nextRound.periodStart, nextRound.periodEnd) }}
-        </p>
-      </div>
-    </template>
-  </AppSubLayout>
+  </component>
 </template>

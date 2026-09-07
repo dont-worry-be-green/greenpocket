@@ -13,6 +13,7 @@
  * 여기서 숫자를 만들면 서버와 두 벌이 되어 조용히 어긋난다.
  */
 
+import { getBills } from '@/api/mypage'
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
@@ -280,7 +281,20 @@ export const useEcoStore = defineStore('eco', () => {
    * 그 달 고지서가 없으면 `result` 가 null 이고 `emptyReason` 만 온다. **에러가 아니다**(핵심 규칙 8).
    * 그래서 여기서 실패로 돌리지 않고 응답을 그대로 담는다 — 판정은 화면이 `result` 로 한다.
    */
+  async function fetchMonthlyBills(month) {
+    const records = []
+    let page = 0
+    let data
+    do {
+      data = await getBills({ year: month.slice(0, 4), page, size: 100 })
+      records.push(...data.content.filter((bill) => bill.billingMonth === month))
+      page += 1
+    } while (data.hasNext)
+    return records
+  }
+
   async function fetchMonthlyReport(params = {}) {
+    monthlyReport.value = null
     const data = await run(() => getMonthlyReport(params))
     if (data) monthlyReport.value = data
     return data
@@ -402,6 +416,7 @@ export const useEcoStore = defineStore('eco', () => {
     saveTodayMissionLog,
     applyForRound,
     fetchMonthlyReport,
+    fetchMonthlyBills,
     fetchMissionAdjust,
     saveSelectedMissions,
     fetchRoundResult,
