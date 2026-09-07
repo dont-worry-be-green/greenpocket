@@ -3,7 +3,7 @@
 | 항목 | 내용 |
 |---|---|
 | 문서 기준일 | 2026-09-07 |
-| 상태 | 백엔드 구현·단위 테스트 완료 · DB/Swagger 스모크 및 FE 연동 대기 |
+| 상태 | 백엔드 구현·단위/회귀/Swagger 스모크 테스트 완료 · FE 연동 대기 |
 | 관련 기능 | COM-13 회원가입 · COM-14 로그인 · COM-15 토큰 재발급 · COM-16 로그아웃 |
 | 관련 API | `POST /api/v1/auth/signup` · `/login` · `/refresh` · `/logout` |
 
@@ -179,6 +179,15 @@ FE는 Refresh Token을 읽거나 로컬 스토리지에 저장하지 않습니�
 4. `[완료]` JWT 발급·검증과 `@CurrentUserId` 연동
 5. `[완료]` 인증 Controller 및 Swagger Bearer 설정
 6. `[대기]` FE 인증 Store·API·401 single-flight 재발급 처리
-7. `[부분 완료]` 백엔드 단위·회귀 테스트 완료, 로컬 DB 마이그레이션·Swagger 스모크 테스트 대기
+7. `[완료]` 백엔드 단위·회귀 테스트와 로컬 DB 마이그레이션·Swagger 스모크 테스트
+
+### 백엔드 검증 결과 (2026-09-07)
+
+- Flyway V2·V3 적용 후 스키마 버전 3 확인
+- 회원가입 `201` → Bearer `GET /users/me` `200` 확인
+- Refresh Token 회전 재발급 `200` 및 새 Access Token 호출 `200` 확인
+- 로그아웃 `204` 후 재발급 `401 REFRESH_TOKEN_INVALID` 확인
+- 로그인 `200`, 잘못된 비밀번호 `401 AUTH_CREDENTIALS_INVALID` 확인
+- 중복 이메일 `409 EMAIL_ALREADY_USED` 확인
 
 완료 조건은 회원가입 → 프로필 입력 → 기존 기능 호출 → Access 만료 후 자동 재발급 → 로그아웃 → 보호 API 401 흐름이 자동 테스트와 Swagger에서 모두 확인되는 것입니다.
