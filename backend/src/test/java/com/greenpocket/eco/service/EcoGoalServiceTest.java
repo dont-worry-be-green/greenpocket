@@ -75,6 +75,19 @@ class EcoGoalServiceTest {
 	}
 
 	@Test
+	void capsMissionRateAndExposesAppliedCap() {
+		when(ecoGoalRepository.findActiveMissions()).thenReturn(List.of(
+			mission(14L, "ELEC_AC_HOUR_2", "에어컨 하루 2시간 줄이기", "80.000")
+		));
+
+		EcoGoalFormResponse response = ecoGoalService.getGoalForm(USER_ID, ROUND_ID);
+		EcoGoalFormResponse.Mission mission = response.segments().getFirst().missions().getFirst();
+
+		assertThat(mission.computedRate()).isEqualByComparingTo("30.000");
+		assertThat(mission.capped()).isTrue();
+	}
+
+	@Test
 	void calculatesExactPreviewForThreeTargetTiers() {
 		EcoGoalPreviewResponse response = ecoGoalService.preview(USER_ID, ROUND_ID, standardRequest());
 
