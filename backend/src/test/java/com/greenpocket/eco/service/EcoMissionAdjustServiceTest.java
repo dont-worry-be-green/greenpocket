@@ -85,7 +85,7 @@ class EcoMissionAdjustServiceTest {
 	}
 
 	@Test
-	void suggestsTierDowngradeOnlyAfterTwoConsecutiveMisses() {
+	void doesNotSuggestTierDowngradeWhenRecoveryIsFeasibleDespiteTwoConsecutiveMisses() {
 		EcoMissionAdjustResponse response = service.getMissionAdjust(
 			USER_ID,
 			ROUND_ID,
@@ -93,9 +93,102 @@ class EcoMissionAdjustServiceTest {
 			"2026-08"
 		);
 
-		assertThat(response.tierDowngrade().suggest()).isTrue();
+		assertThat(response.tierDowngrade().suggest()).isFalse();
 		assertThat(response.tierDowngrade().consecutiveMisses()).isEqualTo(2);
-		assertThat(response.tierDowngrade().message()).contains("2개월 연속");
+		assertThat(response.tierDowngrade().message()).contains("2개월 연속", "회복 가능한 범위");
+	}
+
+	@Test
+	void suggestsTierDowngradeAtOnePointFiveTimesRecoveryBurdenRegardlessOfMissCount() {
+		when(ecoProgressService.getMonthlyReport(USER_ID, "2026-08")).thenReturn(monthlyReport(
+			ROUND_ID,
+			"15.000",
+			List.of(new EcoMonthlyReportResponse.MonthlyRate("2026-08", BigDecimal.ZERO, false))
+		));
+
+		EcoMissionAdjustResponse response = service.getMissionAdjust(
+			USER_ID,
+			ROUND_ID,
+			"ELECTRICITY",
+			"2026-08"
+		);
+
+		assertThat(response.tierDowngrade().suggest()).isTrue();
+		assertThat(response.tierDowngrade().consecutiveMisses()).isEqualTo(1);
+		assertThat(response.tierDowngrade().message()).contains("매달 15%", "5~10% 구간");
+	}
+
+	@Test
+	void doesNotSuggestTierDowngradeBelowRecoveryBurdenBoundaryWhenMissionPlanCoversRequiredRate() {
+		when(ecoProgressService.getMonthlyReport(USER_ID, "2026-08")).thenReturn(monthlyReport(
+			ROUND_ID,
+			"14.999",
+			List.of(new EcoMonthlyReportResponse.MonthlyRate("2026-08", BigDecimal.ZERO, false))
+		));
+
+		EcoMissionAdjustResponse response = service.getMissionAdjust(
+			USER_ID,
+			ROUND_ID,
+			"ELECTRICITY",
+			"2026-08"
+		);
+
+		assertThat(response.preview().coversRequired()).isTrue();
+		assertThat(response.tierDowngrade().suggest()).isFalse();
+	}
+
+	@Test
+	void suggestsTierDowngradeWhenAvailableMissionPlanCannotCoverRequiredRate() {
+		when(ecoGoalService.getGoalForm(USER_ID, ROUND_ID)).thenReturn(goalForm(
+			TargetTier.TIER_10,
+			List.of(
+				mission(12L, "냉방 온도 조절", "3.000", "냉방", true),
+				mission(13L, "에어컨 사용 줄이기", "8.000", "냉방", false)
+			)
+		));
+		when(ecoProgressService.getMonthlyReport(USER_ID, "2026-08")).thenReturn(monthlyReport(
+			ROUND_ID,
+			"14.000",
+			List.of(new EcoMonthlyReportResponse.MonthlyRate("2026-08", BigDecimal.ZERO, false))
+		));
+
+		EcoMissionAdjustResponse response = service.getMissionAdjust(
+			USER_ID,
+			ROUND_ID,
+			"ELECTRICITY",
+			"2026-08"
+		);
+
+		assertThat(response.preview().withRecommendedRate()).isEqualByComparingTo("8.000");
+		assertThat(response.preview().coversRequired()).isFalse();
+		assertThat(response.tierDowngrade().suggest()).isTrue();
+		assertThat(response.tierDowngrade().message()).contains("추천 가능한 실천", "5~10% 구간");
+	}
+
+	@Test
+	void doesNotSuggestTierBelowLowestTierEvenWhenRecoveryBurdenIsHigh() {
+		when(ecoGoalService.getGoalForm(USER_ID, ROUND_ID)).thenReturn(goalForm(
+			TargetTier.TIER_5,
+			List.of(
+				mission(12L, "냉방 온도 조절", "3.000", "냉방", true),
+				mission(13L, "에어컨 사용 줄이기", "8.000", "냉방", false)
+			)
+		));
+		when(ecoProgressService.getMonthlyReport(USER_ID, "2026-08")).thenReturn(monthlyReport(
+			ROUND_ID,
+			"8.000",
+			List.of(new EcoMonthlyReportResponse.MonthlyRate("2026-08", BigDecimal.ZERO, false))
+		));
+
+		EcoMissionAdjustResponse response = service.getMissionAdjust(
+			USER_ID,
+			ROUND_ID,
+			"ELECTRICITY",
+			"2026-08"
+		);
+
+		assertThat(response.tierDowngrade().suggest()).isFalse();
+		assertThat(response.tierDowngrade().message()).contains("가장 낮은 5~10% 구간");
 	}
 
 	@Test
@@ -156,6 +249,21 @@ class EcoMissionAdjustServiceTest {
 	}
 
 	private EcoGoalFormResponse goalForm() {
+		return goalForm(
+			TargetTier.TIER_10,
+			List.of(
+				mission(12L, "냉방 온도 조절", "3.000", "냉방", true),
+				mission(13L, "에어컨 사용 줄이기", "18.000", "냉방", false),
+				mission(14L, "조명 끄기", "6.000", "조명", false),
+				mission(15L, "대기전력 줄이기", "5.000", "대기전력", false)
+			)
+		);
+	}
+
+	private EcoGoalFormResponse goalForm(
+		TargetTier selectedTier,
+		List<EcoGoalFormResponse.Mission> missions
+	) {
 		return new EcoGoalFormResponse(
 			ROUND_ID,
 			"2026-04",
@@ -171,15 +279,10 @@ class EcoMissionAdjustServiceTest {
 					new BigDecimal("223.333"),
 					UsageUnit.kWh,
 					new BigDecimal("30.000"),
-					TargetTier.TIER_10,
+					selectedTier,
 					null,
 					false,
-					List.of(
-						mission(12L, "냉방 온도 조절", "3.000", "냉방", true),
-						mission(13L, "에어컨 사용 줄이기", "18.000", "냉방", false),
-						mission(14L, "조명 끄기", "6.000", "조명", false),
-						mission(15L, "대기전력 줄이기", "5.000", "대기전력", false)
-					)
+					missions
 				),
 				emptySegment(UtilityType.GAS, UsageUnit.m3),
 				emptySegment(UtilityType.WATER, UsageUnit.m3)
@@ -213,6 +316,21 @@ class EcoMissionAdjustServiceTest {
 	}
 
 	private EcoMonthlyReportResponse monthlyReport(Long roundId, String requiredRate) {
+		return monthlyReport(
+			roundId,
+			requiredRate,
+			List.of(
+				new EcoMonthlyReportResponse.MonthlyRate("2026-07", new BigDecimal("8.000"), false),
+				new EcoMonthlyReportResponse.MonthlyRate("2026-08", new BigDecimal("7.000"), false)
+			)
+		);
+	}
+
+	private EcoMonthlyReportResponse monthlyReport(
+		Long roundId,
+		String requiredRate,
+		List<EcoMonthlyReportResponse.MonthlyRate> monthlyRates
+	) {
 		return new EcoMonthlyReportResponse(
 			"2026-08",
 			roundId,
@@ -252,10 +370,7 @@ class EcoMissionAdjustServiceTest {
 				new BigDecimal("3.000"),
 				UtilityType.ELECTRICITY
 			),
-			List.of(
-				new EcoMonthlyReportResponse.MonthlyRate("2026-07", new BigDecimal("8.000"), false),
-				new EcoMonthlyReportResponse.MonthlyRate("2026-08", new BigDecimal("7.000"), false)
-			),
+			monthlyRates,
 			null
 		);
 	}

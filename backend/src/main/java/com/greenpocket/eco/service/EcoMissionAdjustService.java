@@ -31,6 +31,7 @@ import com.greenpocket.global.type.UtilityType;
 public class EcoMissionAdjustService {
 
 	private static final BigDecimal ZERO_RATE = new BigDecimal("0.000");
+	private static final BigDecimal RECOVERY_BURDEN_MULTIPLIER = new BigDecimal("1.500");
 
 	private final EcoGoalService ecoGoalService;
 	private final EcoProgressService ecoProgressService;
@@ -98,7 +99,12 @@ public class EcoMissionAdjustService {
 				reportValues.requiredRate() != null
 					&& withRecommendedRate.compareTo(reportValues.requiredRate()) >= 0
 			),
-			tierDowngrade(consecutiveMisses, segment.selectedTier())
+			tierDowngrade(
+				consecutiveMisses,
+				segment.selectedTier(),
+				reportValues.requiredRate(),
+				withRecommendedRate
+			)
 		);
 	}
 
@@ -233,20 +239,57 @@ public class EcoMissionAdjustService {
 
 	private EcoMissionAdjustResponse.TierDowngrade tierDowngrade(
 		int consecutiveMisses,
-		TargetTier selectedTier
+		TargetTier selectedTier,
+		BigDecimal requiredRate,
+		BigDecimal withRecommendedRate
 	) {
-		boolean suggest = consecutiveMisses >= 2;
-		String message;
-		if (suggest) {
-			message = "%d개월 연속 목표에 못 미쳤어요. 목표 구간 조정을 검토해 보세요".formatted(consecutiveMisses);
+		if (selectedTier == null || requiredRate == null) {
+			return new EcoMissionAdjustResponse.TierDowngrade(
+				false,
+				consecutiveMisses,
+				"목표 조정에 필요한 월별 데이터가 아직 부족해요"
+			);
 		}
-		else if (consecutiveMisses == 1 && selectedTier != null) {
-			message = "한 달 미끄러진 것만으로 %s 구간을 포기하기엔 일러요".formatted(selectedTier.label());
+
+		TargetTier suggestedTier = lowerTier(selectedTier);
+		BigDecimal burdenThreshold = selectedTier.targetRate().multiply(RECOVERY_BURDEN_MULTIPLIER);
+		boolean recoveryBurdenHigh = requiredRate.compareTo(burdenThreshold) >= 0;
+		boolean missionPlanInsufficient = withRecommendedRate.compareTo(requiredRate) < 0;
+		boolean suggest = suggestedTier != null && (recoveryBurdenHigh || missionPlanInsufficient);
+		String message;
+		if (suggest && missionPlanInsufficient) {
+			message = "추천 가능한 실천을 모두 반영해도 필요한 %s%%에 미치지 못해요. %s 구간으로 조정을 검토해 보세요"
+				.formatted(rateText(requiredRate), suggestedTier.label());
+		}
+		else if (suggest) {
+			message = "남은 기간에는 매달 %s%% 감축이 필요해 처음 목표보다 실천 부담이 커졌어요. %s 구간으로 조정을 검토해 보세요"
+				.formatted(rateText(requiredRate), suggestedTier.label());
+		}
+		else if (suggestedTier == null && (recoveryBurdenHigh || missionPlanInsufficient)) {
+			message = "현재는 가장 낮은 %s 구간이에요. 목표 하향 대신 실천 강도를 조정해 보세요"
+				.formatted(selectedTier.label());
+		}
+		else if (consecutiveMisses > 0) {
+			message = "%d개월 연속 목표에 못 미쳤지만 필요한 월 감축률 %s%%는 회복 가능한 범위예요. 현재 %s 구간을 유지해 보세요"
+				.formatted(consecutiveMisses, rateText(requiredRate), selectedTier.label());
 		}
 		else {
-			message = "현재 목표 구간을 유지해도 좋아요";
+			message = "필요한 월 감축률 %s%%는 현재 목표에서 회복 가능한 범위예요"
+				.formatted(rateText(requiredRate));
 		}
 		return new EcoMissionAdjustResponse.TierDowngrade(suggest, consecutiveMisses, message);
+	}
+
+	private TargetTier lowerTier(TargetTier selectedTier) {
+		return switch (selectedTier) {
+			case TIER_15 -> TargetTier.TIER_10;
+			case TIER_10 -> TargetTier.TIER_5;
+			case TIER_5 -> null;
+		};
+	}
+
+	private String rateText(BigDecimal rate) {
+		return scale(rate).stripTrailingZeros().toPlainString();
 	}
 
 	private UtilityType parseUtility(String value) {
