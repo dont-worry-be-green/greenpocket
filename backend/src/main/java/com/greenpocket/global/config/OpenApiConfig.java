@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class OpenApiConfig {
 
-	private static final String DEMO_KEY_SCHEME = "demoKey";
+	private static final String BEARER_AUTH_SCHEME = "bearerAuth";
 
 	@Bean
 	public OpenAPI greenPocketOpenApi() {
@@ -21,11 +21,11 @@ public class OpenApiConfig {
 				.description("GreenPocket 백엔드 API 명세")
 				.version("v1"))
 			.components(new Components()
-				.addSecuritySchemes(DEMO_KEY_SCHEME, new SecurityScheme()
-					.type(SecurityScheme.Type.APIKEY)
-					.in(SecurityScheme.In.HEADER)
-					.name("X-Demo-Key")
-					.description("데모 사용자를 식별하는 UUID v4 키")))
-			.addSecurityItem(new SecurityRequirement().addList(DEMO_KEY_SCHEME));
+				.addSecuritySchemes(BEARER_AUTH_SCHEME, new SecurityScheme()
+					.type(SecurityScheme.Type.HTTP)
+					.scheme("bearer")
+					.bearerFormat("JWT")
+					.description("로그인 또는 회원가입 응답의 Access Token")))
+			.addSecurityItem(new SecurityRequirement().addList(BEARER_AUTH_SCHEME));
 	}
 }

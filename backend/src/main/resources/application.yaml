@@ -33,6 +33,14 @@ clova:
     water-template-id: ${CLOVA_OCR_WATER_TEMPLATE_ID:}
     gas-template-id: ${CLOVA_OCR_GAS_TEMPLATE_ID:}
 
+greenpocket:
+  auth:
+    jwt-secret-base64: ${JWT_SECRET_BASE64:}
+    access-expiration-seconds: ${JWT_ACCESS_EXPIRATION_SECONDS:1800}
+    refresh-expiration-seconds: ${JWT_REFRESH_EXPIRATION_SECONDS:1209600}
+    refresh-cookie-secure: ${JWT_REFRESH_COOKIE_SECURE:false}
+    demo-enabled: ${DEMO_AUTH_ENABLED:false}
+
 server:
   port: ${SERVER_PORT:8080}
 

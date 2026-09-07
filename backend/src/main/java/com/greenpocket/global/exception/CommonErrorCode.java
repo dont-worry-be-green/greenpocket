@@ -5,6 +5,8 @@ import org.springframework.http.HttpStatus;
 public enum CommonErrorCode implements ErrorCode {
 
 	INVALID_REQUEST(HttpStatus.BAD_REQUEST, "입력값을 다시 확인해 주세요."),
+	UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "로그인이 필요해요."),
+	ACCESS_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "로그인 시간이 만료됐어요. 다시 연결할게요."),
 	UNAUTHENTICATED_DEMO_KEY(HttpStatus.UNAUTHORIZED, "데모 사용자를 찾을 수 없어요. 처음부터 시작해 주세요."),
 	NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 정보를 찾을 수 없어요."),
 	CONFLICT(HttpStatus.CONFLICT, "이미 처리된 요청이에요."),

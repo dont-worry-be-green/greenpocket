@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,6 +21,7 @@ import com.greenpocket.user.dto.DemoResetResponse;
 import com.greenpocket.user.service.DemoResetService;
 
 @Tag(name = "Common Demo", description = "해커톤 시연 상태 초기화 API")
+@Profile({"dev", "demo"})
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/demo")

@@ -9,20 +9,26 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import com.greenpocket.global.auth.ApiAuthenticationInterceptor;
 import com.greenpocket.global.auth.CurrentUserIdArgumentResolver;
-import com.greenpocket.global.auth.DemoKeyAuthenticationInterceptor;
 
 @Configuration
 @RequiredArgsConstructor
 public class WebMvcConfig implements WebMvcConfigurer {
 
-	private final DemoKeyAuthenticationInterceptor demoKeyAuthenticationInterceptor;
+	private final ApiAuthenticationInterceptor apiAuthenticationInterceptor;
 	private final CurrentUserIdArgumentResolver currentUserIdArgumentResolver;
 
 	@Override
 	public void addInterceptors(InterceptorRegistry registry) {
-		registry.addInterceptor(demoKeyAuthenticationInterceptor)
-			.addPathPatterns("/api/v1/**");
+		registry.addInterceptor(apiAuthenticationInterceptor)
+			.addPathPatterns("/api/v1/**")
+			.excludePathPatterns(
+				"/api/v1/auth/**",
+				"/api/v1/meta/**",
+				"/api/v1/users",
+				"/api/v1/demo/reset"
+			);
 	}
 
 	@Override
