@@ -30,7 +30,7 @@
 | `feature-spec/기능명세서.xlsx` | **기능명세 원본.** 집계 수식·필터·「결정 사항」·「확인 필요 사항」 시트 있음 |
 | `feature-spec/기능명세서.md` | 같은 내용 읽기용 사본. 검색·diff·AI 참조용 |
 | `api/api-spec.md` | API 명세. 공통 규약·엔드포인트 64개·매핑표·검증 체크리스트 |
-| `auth/jwt-auth.md` | JWT 회원 인증 결정, 토큰·쿠키 규격, 계획 스키마와 구현 체크리스트 |
+| `auth/jwt-auth.md` | JWT 회원 인증 결정, 토큰·쿠키 규격, 적용 스키마와 구현 상태 |
 | `database/schema.sql` | **스키마 기준 원본.** 테이블 15 · FK 18 · UNIQUE 19 · CHECK 9 |
 | `design/` | 디자인 규칙 — `design-system.md` · `tokens.css` (작성 예정, 결정 B-3) |
 

@@ -3,7 +3,7 @@
 | 항목 | 내용 |
 |---|---|
 | 문서 기준일 | 2026-09-07 |
-| 상태 | 팀 결정 완료 · 구현 중 |
+| 상태 | 백엔드 구현·단위 테스트 완료 · DB/Swagger 스모크 및 FE 연동 대기 |
 | 관련 기능 | COM-13 회원가입 · COM-14 로그인 · COM-15 토큰 재발급 · COM-16 로그아웃 |
 | 관련 API | `POST /api/v1/auth/signup` · `/login` · `/refresh` · `/logout` |
 
@@ -21,7 +21,7 @@
 | Refresh 저장 | 원문을 저장하지 않고 SHA-256 해시만 DB에 저장 |
 | 재발급 | 사용할 때마다 기존 Refresh Token을 폐기하고 새 토큰으로 교체(rotation) |
 | 로그아웃 | 현재 Refresh Token을 폐기하고 쿠키 삭제. Access Token 블랙리스트는 MVP에서 운영하지 않음 |
-| 비밀번호 | BCrypt 해시 저장, 원문 저장·응답·로그 금지, 최소 8자 |
+| 비밀번호 | BCrypt 해시 저장, 원문 저장·응답·로그 금지, 8자 이상·UTF-8 기준 72바이트 이하 |
 | JWT 식별자 | `sub`에는 `app_user.id`만 저장. 이메일·이름 등 개인정보는 넣지 않음 |
 | 기존 API | URL·요청 DTO는 유지하고, 공통 인증 계층이 해석한 `userId`를 `@CurrentUserId`로 전달 |
 | 데모 키 | `dev`·`demo` 프로필에서만 호환용으로 허용. 운영 프로필에서는 비활성화 |
@@ -53,7 +53,7 @@
 ### 회원가입
 
 1. 이메일을 `trim`하고 소문자로 정규화한다.
-2. 이메일 형식, 비밀번호 8자 이상, 이름 1~20자를 검증한다.
+2. 이메일 형식, 비밀번호 8자 이상·UTF-8 기준 72바이트 이하, 이름 1~20자를 검증한다.
 3. `app_user`와 `auth_account`를 하나의 트랜잭션에서 생성한다.
 4. 그린포켓 계좌번호를 기존 규칙대로 발급한다.
 5. Access Token과 Refresh Token을 발급한다.
@@ -116,7 +116,7 @@ FE는 Refresh Token을 읽거나 로컬 스토리지에 저장하지 않습니�
 
 상세 요청·응답과 오류 코드는 `docs/api/api-spec.md` 4.5~4.8절을 따릅니다.
 
-## 6. 계획 스키마
+## 6. 적용 스키마
 
 `docs/database/schema.sql`과 `V3__add_jwt_auth.sql`에 아래 구조를 반영했습니다.
 
@@ -157,6 +157,7 @@ FE는 Refresh Token을 읽거나 로컬 스토리지에 저장하지 않습니�
 | `JWT_SECRET_BASE64` | 최소 32바이트 난수를 Base64로 인코딩. 실제 값은 저장소·문서·로그에 기록하지 않음 |
 | `JWT_ACCESS_EXPIRATION_SECONDS` | 기본 `1800` |
 | `JWT_REFRESH_EXPIRATION_SECONDS` | 기본 `1209600` |
+| `JWT_REFRESH_COOKIE_SECURE` | 로컬 HTTP는 `false`, 운영 HTTPS는 반드시 `true` |
 | `DEMO_AUTH_ENABLED` | 기본 `false`; 개발·시연 환경에서만 `true` 허용 |
 
 실제 Secret은 `.env.example`이 아니라 실행 환경 또는 IntelliJ Run Configuration에 넣습니다. `.env.example`에는 변수명과 안전한 설명만 둡니다.
@@ -172,12 +173,12 @@ FE는 Refresh Token을 읽거나 로컬 스토리지에 저장하지 않습니�
 
 ## 9. 구현 순서와 완료 조건
 
-1. 원본 XLSX의 결정·기능 행과 `schema.sql` 동기화
-2. 새 Flyway 마이그레이션 작성
-3. 인증 엔티티·Repository·Service 구현
-4. JWT 발급·검증과 `@CurrentUserId` 연동
-5. 인증 Controller 및 Swagger Bearer 설정
-6. FE 인증 Store·API·401 재발급 처리
-7. 단위·통합 테스트와 Swagger 스모크 테스트
+1. `[완료]` Markdown 명세와 `schema.sql` 동기화
+2. `[완료]` Flyway `V3__add_jwt_auth.sql` 작성
+3. `[완료]` 인증 Repository·Service 구현
+4. `[완료]` JWT 발급·검증과 `@CurrentUserId` 연동
+5. `[완료]` 인증 Controller 및 Swagger Bearer 설정
+6. `[대기]` FE 인증 Store·API·401 single-flight 재발급 처리
+7. `[부분 완료]` 백엔드 단위·회귀 테스트 완료, 로컬 DB 마이그레이션·Swagger 스모크 테스트 대기
 
 완료 조건은 회원가입 → 프로필 입력 → 기존 기능 호출 → Access 만료 후 자동 재발급 → 로그아웃 → 보호 API 401 흐름이 자동 테스트와 Swagger에서 모두 확인되는 것입니다.

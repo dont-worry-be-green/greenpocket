@@ -122,7 +122,7 @@ com.greenpocket
 - 인증 제외 경로는 `POST /api/v1/auth/signup`, `/login`, `/refresh`, `/logout`, `GET /api/v1/meta/**`다. Swagger/OpenAPI 경로는 `/api/v1/**` 밖이라 인증 대상이 아니다.
 - `X-Demo-Key`, `POST /api/v1/users`, `POST /api/v1/demo/reset`은 `dev`·`demo` 프로필에서만 활성화한다. 운영 프로필에서 Bearer 인증을 우회할 수 없어야 한다.
 - Refresh Token은 HttpOnly 쿠키로만 받고 원문 대신 SHA-256 해시를 저장한다. 재발급 때마다 기존 토큰을 폐기하고 새 토큰으로 교체한다.
-- 비밀번호는 BCrypt로 해시한다. 비밀번호 원문, JWT 전체 문자열, Refresh Token 원문, Authorization 헤더를 로그에 남기지 않는다.
+- 비밀번호는 8자 이상·UTF-8 기준 72바이트 이하만 받고 BCrypt로 해시한다. 비밀번호 원문, JWT 전체 문자열, Refresh Token 원문, Authorization 헤더를 로그에 남기지 않는다.
 - API를 구현하거나 응답 계약을 바꾸면 같은 작업에서 Swagger의 `@Tag`·`@Operation`·파라미터 설명·성공/오류 응답 코드를 함께 갱신한다.
 - Swagger 문서와 실제 DTO가 어긋나지 않도록 응답 스키마는 컨트롤러의 `ApiResponse<응답DTO>` 시그니처에서 생성되게 한다. 별도 수동 스키마를 중복 정의하지 않는다.
 

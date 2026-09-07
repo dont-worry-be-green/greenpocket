@@ -211,7 +211,7 @@ GET   /bills/ocr/{jobId}   200           → { status, progress, result | error 
 | 도메인 | code | HTTP | 조건 | 기능 ID |
 |---|---|---|---|---|
 | 인증 | `EMAIL_INVALID` | 400 | 이메일 형식 오류 | COM-13 |
-| | `PASSWORD_INVALID` | 400 | 비밀번호 8자 미만 | COM-13 |
+| | `PASSWORD_INVALID` | 400 | 비밀번호 8자 미만 또는 UTF-8 기준 72바이트 초과 | COM-13 |
 | | `EMAIL_ALREADY_USED` | 409 | 정규화한 이메일 중복 | COM-13 |
 | | `AUTH_CREDENTIALS_INVALID` | 401 | 미가입 이메일 또는 비밀번호 불일치 | COM-14 |
 | | `REFRESH_TOKEN_INVALID` | 401 | Refresh Token 누락·형식 오류·폐기·재사용 | COM-15 |
@@ -431,7 +431,7 @@ MVP 서비스 지역은 서울특별시로 한정합니다(결정 C-15). `sidoCo
 | 필드 | 타입 | 필수 | 규칙 |
 |---|---|---|---|
 | `email` | string(255) | ✔ | `trim` 후 소문자 저장, 표준 이메일 형식, UNIQUE |
-| `password` | string | ✔ | 8자 이상. 원문은 저장·응답·로그 금지 |
+| `password` | string | ✔ | 8자 이상·UTF-8 기준 72바이트 이하. 원문은 저장·응답·로그 금지 |
 | `name` | string(20) | ✔ | `trim` 후 1~20자. 공백·특수문자만이면 `NAME_INVALID` |
 
 **Response 201**
@@ -2581,12 +2581,12 @@ FROM eco_round_utility WHERE eco_round_id = :rid AND is_registered = 1;
 | 기능 | COM-13 회원가입 · COM-14 로그인 · COM-15 재발급 · COM-16 로그아웃을 P0으로 추가 |
 | Access | JWT HS256, 30분, `sub=userId`, Bearer 헤더 |
 | Refresh | 14일 HttpOnly 쿠키, DB에는 SHA-256 해시만 저장, 재발급 시 회전 |
-| 비밀번호 | BCrypt, 최소 8자, 원문 저장·응답·로그 금지 |
+| 비밀번호 | BCrypt, 8자 이상·UTF-8 기준 72바이트 이하, 원문 저장·응답·로그 금지 |
 | DB | `app_user.demo_key` NULL 허용 + `auth_account`·`auth_refresh_token` 추가. Flyway V3 적용 |
 | 데모 | `X-Demo-Key`, `POST /users`, `POST /demo/reset`은 `dev`·`demo` 프로필에서만 유지 |
 | 제외 | 이메일 인증, 비밀번호 재설정, 소셜 로그인, MFA, 역할 권한, Access 블랙리스트 |
 
-> 원본 XLSX 동기화와 백엔드·프론트엔드 구현은 별도 커밋으로 진행합니다.
+> 원본 XLSX 동기화와 프론트엔드 구현은 별도 작업입니다. 백엔드는 인증 API·Bearer 공통 인증·Refresh 회전까지 구현했습니다.
 
 # 부록 A. 시연 흐름 API 호출 순서
 

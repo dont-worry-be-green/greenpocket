@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -81,6 +82,7 @@ public class AuthController {
 	})
 	@PostMapping("/refresh")
 	public ApiResponse<TokenRefreshResponse> refresh(
+		@Parameter(hidden = true)
 		@CookieValue(name = REFRESH_TOKEN_COOKIE, required = false) String refreshToken,
 		HttpServletResponse servletResponse
 	) {
@@ -95,6 +97,7 @@ public class AuthController {
 	})
 	@PostMapping("/logout")
 	public ResponseEntity<Void> logout(
+		@Parameter(hidden = true)
 		@CookieValue(name = REFRESH_TOKEN_COOKIE, required = false) String refreshToken
 	) {
 		authService.logout(refreshToken);
