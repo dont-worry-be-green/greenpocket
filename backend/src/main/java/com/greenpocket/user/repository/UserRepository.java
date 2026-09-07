@@ -25,6 +25,10 @@ public class UserRepository {
 		return find("id = :value", userId);
 	}
 
+	public Optional<UserSnapshot> findByPocketAccountNo(String pocketAccountNo) {
+		return find("pocket_account_no = :value", pocketAccountNo);
+	}
+
 	public boolean existsByPocketAccountNo(String pocketAccountNo) {
 		return jdbcClient.sql("SELECT COUNT(*) FROM app_user WHERE pocket_account_no = :accountNo")
 			.param("accountNo", pocketAccountNo)
@@ -38,6 +42,17 @@ public class UserRepository {
 				VALUES (:demoKey, :name, :pocketAccountNo, :pocketHolder)
 				""")
 			.param("demoKey", demoKey)
+			.param("name", name)
+			.param("pocketAccountNo", pocketAccountNo)
+			.param("pocketHolder", name)
+			.update();
+	}
+
+	public void createRegistered(String name, String pocketAccountNo) {
+		jdbcClient.sql("""
+				INSERT INTO app_user (demo_key, name, pocket_account_no, pocket_holder)
+				VALUES (NULL, :name, :pocketAccountNo, :pocketHolder)
+				""")
 			.param("name", name)
 			.param("pocketAccountNo", pocketAccountNo)
 			.param("pocketHolder", name)

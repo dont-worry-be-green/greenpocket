@@ -83,23 +83,6 @@ export function getEcoStatus() {
 }
 
 /**
- * WF-01a 본인확인 — **서버 엔드포인트가 없다.**
- *
- * `POST /eco/link` 는 `X-Demo-Key` 밖에 모르는데 「작년 우리 집 사용량」을 내려준다.
- * 신원을 잇는 단계가 흐름에 통째로 빠져 있어서, 발표에서 그 자리를 화면으로 채운다.
- *
- * ⚠️ **api-spec.md 에 없는 화면이다.** 그래서 `src/fixtures/` 에 두지 않았다 —
- * 그 폴더는 명세 응답을 1:1 로 옮겨 놓는 곳이고, 여기엔 옮길 원본이 없다.
- * 마찬가지 이유로 `ECO_NOT_MEMBER` 같은 에러 코드를 만들지 않는다(AGENTS.md 3절).
- * 미가입 분기는 서버 판정이 아니라 사용자가 직접 고르는 방식이다.
- *
- * 백엔드에 본인확인이 생기면 이 함수를 지운다. **모드와 무관하게 항상 모의다.**
- */
-export function verifyEcoIdentity() {
-  return fake({ verified: true }, 1500)
-}
-
-/**
  * POST /eco/link — 연동 시작 (B-1-02).
  * 서버는 202 지만 인터셉터가 `data` 만 넘겨줘 status 를 볼 수 없다. `linkJobId` 로 판단한다.
  *

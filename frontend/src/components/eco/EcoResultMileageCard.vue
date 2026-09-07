@@ -18,16 +18,19 @@ import { formatMileage } from '@/utils/format'
 
 defineProps({
   mileage: { type: Number, required: true },
+  interactive: { type: Boolean, default: true },
 })
 defineEmits(['open'])
 </script>
 
 <template>
   <GpCard>
-    <button
-      type="button"
-      class="flex w-full cursor-pointer items-center gap-3 border-0 bg-transparent p-0 text-left"
-      @click="$emit('open')"
+    <component
+      :is="interactive ? 'button' : 'div'"
+      :type="interactive ? 'button' : undefined"
+      class="flex w-full items-center gap-3 border-0 bg-transparent p-0 text-left"
+      :class="interactive ? 'cursor-pointer' : ''"
+      @click="interactive && $emit('open')"
     >
       <span
         class="bg-confirmed-bg text-confirmed flex size-10 flex-none items-center justify-center rounded-full"
@@ -43,12 +46,12 @@ defineEmits(['open'])
             적립된 마일리지 {{ formatMileage(mileage) }}
           </span>
         </span>
-        <span class="text-caption text-muted mt-0.5 block">
+        <span v-if="interactive" class="text-caption text-muted mt-0.5 block">
           아직 현금이 아니에요 · 전환 신청하기
         </span>
       </span>
 
-      <IconChevronRight :size="18" class="text-icon-off flex-none" />
-    </button>
+      <IconChevronRight v-if="interactive" :size="18" class="text-icon-off flex-none" />
+    </component>
   </GpCard>
 </template>

@@ -13,6 +13,7 @@
  * 여기서 숫자를 만들면 서버와 두 벌이 되어 조용히 어긋난다.
  */
 
+import { getBills } from '@/api/mypage'
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
@@ -36,7 +37,6 @@ import {
   saveMissionLog,
   updateGoal,
   updateMissions,
-  verifyEcoIdentity,
 } from '@/api/eco'
 
 export const useEcoStore = defineStore('eco', () => {
@@ -123,14 +123,6 @@ export const useEcoStore = defineStore('eco', () => {
   async function fetchStatus() {
     const data = await run(getEcoStatus)
     if (data) status.value = data
-  }
-
-  /**
-   * WF-01a 본인확인. 서버 계약이 아니라 화면만 있는 단계라 결과를 저장하지 않는다 —
-   * 성공하면 곧바로 `startLink()` 로 이어진다. 자세한 사정은 `api/eco.js` 주석.
-   */
-  async function verifyIdentity() {
-    return run(verifyEcoIdentity)
   }
 
   /** 202 지만 인터셉터가 `data` 만 준다. `linkJobId` 존재로 판단한다 */
@@ -289,7 +281,20 @@ export const useEcoStore = defineStore('eco', () => {
    * 그 달 고지서가 없으면 `result` 가 null 이고 `emptyReason` 만 온다. **에러가 아니다**(핵심 규칙 8).
    * 그래서 여기서 실패로 돌리지 않고 응답을 그대로 담는다 — 판정은 화면이 `result` 로 한다.
    */
+  async function fetchMonthlyBills(month) {
+    const records = []
+    let page = 0
+    let data
+    do {
+      data = await getBills({ year: month.slice(0, 4), page, size: 100 })
+      records.push(...data.content.filter((bill) => bill.billingMonth === month))
+      page += 1
+    } while (data.hasNext)
+    return records
+  }
+
   async function fetchMonthlyReport(params = {}) {
+    monthlyReport.value = null
     const data = await run(() => getMonthlyReport(params))
     if (data) monthlyReport.value = data
     return data
@@ -400,7 +405,6 @@ export const useEcoStore = defineStore('eco', () => {
     showResultModal,
     fetchHome,
     fetchStatus,
-    verifyIdentity,
     startLink,
     pollLinkJob,
     fetchCurrentRound,
@@ -412,6 +416,7 @@ export const useEcoStore = defineStore('eco', () => {
     saveTodayMissionLog,
     applyForRound,
     fetchMonthlyReport,
+    fetchMonthlyBills,
     fetchMissionAdjust,
     saveSelectedMissions,
     fetchRoundResult,

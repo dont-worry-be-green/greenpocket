@@ -29,7 +29,6 @@ public class UserService {
 	private static final ZoneId KOREA_ZONE_ID = ZoneId.of("Asia/Seoul");
 	private static final int MAX_ACCOUNT_NUMBER_ATTEMPTS = 20;
 	private static final String ONBOARDING_SCREEN = "ONB-02";
-	private static final String START_SCREEN = "ONB-01";
 	private static final String HOME_SCREEN = "WF-06";
 
 	private final UserRepository userRepository;
@@ -73,7 +72,7 @@ public class UserService {
 	@Transactional(readOnly = true)
 	public UserBootstrapResponse getBootstrap(Long userId) {
 		UserSnapshot user = userRepository.findById(userId)
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.UNAUTHENTICATED_DEMO_KEY));
+			.orElseThrow(() -> new BusinessException(CommonErrorCode.UNAUTHENTICATED));
 		boolean hasBill = billExistenceQueryService.existsByUserId(userId);
 		Long currentRoundId = ecoCurrentRoundQueryService.findCurrentRoundId(userId).orElse(null);
 
@@ -87,8 +86,35 @@ public class UserService {
 			toOffsetDateTime(user.greenlifeLinkedAt()),
 			hasBill,
 			currentRoundId,
-			user.onboardingCompleted() ? HOME_SCREEN : START_SCREEN
+			user.onboardingCompleted() ? HOME_SCREEN : ONBOARDING_SCREEN
 		);
+	}
+
+	@Transactional
+	public RegisteredUser createRegisteredUser(String rawName) {
+		String name = normalizeAndValidateName(rawName);
+		for (int attempt = 0; attempt < MAX_ACCOUNT_NUMBER_ATTEMPTS; attempt++) {
+			String accountNo = accountNumberGenerator.generate();
+			if (userRepository.existsByPocketAccountNo(accountNo)) {
+				continue;
+			}
+
+			try {
+				userRepository.createRegistered(name, accountNo);
+				UserSnapshot createdUser = userRepository.findByPocketAccountNo(accountNo)
+					.orElseThrow(UserService::internalError);
+				return new RegisteredUser(
+					createdUser.id(),
+					createdUser.name(),
+					createdUser.onboardingCompleted()
+				);
+			}
+			catch (DuplicateKeyException exception) {
+				// 포켓 계좌번호 충돌은 새 번호를 생성해 다시 시도한다.
+			}
+		}
+
+		throw internalError();
 	}
 
 	private void validateDemoKey(String demoKey) {
@@ -134,5 +160,8 @@ public class UserService {
 	}
 
 	public record UserStartResult(UserStartResponse response, boolean created) {
+	}
+
+	public record RegisteredUser(Long userId, String name, boolean onboardingCompleted) {
 	}
 }

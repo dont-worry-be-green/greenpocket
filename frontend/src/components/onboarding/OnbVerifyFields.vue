@@ -1,0 +1,294 @@
+<script setup>
+/*
+ * ONB-01b 회원가입 ─ 휴대폰 본인확인 블록 (이슈 #121)
+ *
+ * ── 왜 한 화면인가 ──────────────────────────────────────────────────────
+ * 예전에는 번호 입력·인증번호 확인·계정 만들기가 **한 화면 안의 세 단계**였다. 지금은 셋이
+ * 한 화면에 같이 있다. 바뀐 것은 **화면 수이지 누름 수가 아니다** — 「인증번호 받기」·「확인」·
+ * 「가입하고 시작하기」 세 버튼은 그대로 남는다. 번호만 적으면 인증이 끝나거나 가입 한 번에
+ * 인증까지 묶이면 그건 본인인증이 아니라 번호 수집이다.
+ *
+ * 본인확인이 계정 입력보다 **위**에 있다. 이 서비스가 본인확인을 받는 명분이
+ * 「본인 명의로 등록된 제도 실적을 불러온다」라, 아이디·비밀번호 밑에 묻히면 부가 절차로 보인다.
+ * (카본페이·공공/금융권이 같은 순서다)
+ *
+ * ── 인증이 끝나면 **입력칸을 접고 카드 하나만 남긴다** ──────────────────
+ * 잠긴 입력칸을 그대로 두면 끝난 일이 화면의 절반을 계속 차지한다. 그래서 이름·통신사·번호를
+ * 감추고 「본인인증 완료」 카드로 대체한다 — 인증한 값은 그 카드가 보여준다.
+ * 「번호 변경」을 누르면 입력칸이 돌아오고 **인증도 함께 풀린다**(`reset`). 한 화면이 되면서
+ * **인증한 번호와 제출되는 번호가 어긋날 수 있는 길**이 새로 생겼고, 그 길을 막는 자리다.
+ *
+ * ⚠️ **실제 문자를 보내지 않고 입력값도 서버로 가지 않는다.** 사정은 `api/auth.js` 주석에 있다.
+ * 한동안 캡션이 데모 번호를 알려 줬는데 화면이 길어 뺐다 — placeholder 가 `000000` 이다.
+ * **틀린 번호는 실제로 거부한다.** 아무 여섯 자리나 통과하면 검증이 없는 것과 같다.
+ *
+ * ── 타이머는 여기 있다 ──────────────────────────────────────────────────
+ * 남은 시간은 화면에서만 의미가 있는 값이라 스토어에 두지 않는다. 스토어가 타이머를 들면
+ * 테스트에서 시간을 흘려야 해 검증이 어려워진다(`GoalSettingView` 의 디바운스와 같은 이유).
+ */
+import { computed, onUnmounted, ref, watch } from 'vue'
+
+import IconSealCheck from '@/components/ui/icons/IconSealCheck.vue'
+
+/** 이름은 가입에도 쓰는 값이라 화면이 갖는다. 본인확인의 대상이기도 해서 여기 있다 */
+const name = defineModel('name', { type: String, default: '' })
+
+const props = defineProps({
+  /** 이름이 `api-spec.md` 4.1 규칙을 통과했나. 판정과 문구는 화면이 갖는다 */
+  nameValid: { type: Boolean, default: false },
+  /** 인증번호를 보냈나. `false` 로 돌아오면 입력을 비운다(번호 변경·재입력) */
+  sent: { type: Boolean, default: false },
+  verified: { type: Boolean, default: false },
+  /** 서버(모의)가 준 만료 시간(초). 재전송하면 다시 내려와 타이머가 되살아난다 */
+  expiresInSeconds: { type: Number, default: 0 },
+  /*
+   * 로딩은 **버튼별로 받는다.** 하나로 두면 「확인」을 눌렀는데 「인증번호 받기」까지
+   * 「보내는 중」이 된다(`stores/auth.js` 의 `pending`).
+   */
+  sending: { type: Boolean, default: false },
+  verifying: { type: Boolean, default: false },
+  /** 틀린 인증번호 안내. 에러 응답이 아니라 화면이 만든 문구다 */
+  errorMessage: { type: String, default: '' },
+  /** 이름 오류. 판정과 문구는 화면이 갖고, 여기는 이름칸 아래에 놓기만 한다 */
+  nameError: { type: String, default: '' },
+})
+const emit = defineEmits(['request', 'verify', 'resend', 'reset', 'name-blur'])
+
+/* 통신사는 응답 필드가 아니라 화면 선택지다. ENUM 을 만들지 않는다 */
+const CARRIERS = ['SKT', 'KT', 'LG U+', '알뜰폰']
+const CODE_LENGTH = 6
+
+const carrier = ref(null)
+const phone = ref('')
+const code = ref('')
+const remaining = ref(0)
+
+// 숫자만 남긴다. 붙여넣기로 하이픈이 섞여 들어오는 것을 막는다
+const phoneDigits = computed(() => phone.value.replace(/\D/g, ''))
+const codeDigits = computed(() => code.value.replace(/\D/g, '').slice(0, CODE_LENGTH))
+const expired = computed(() => remaining.value <= 0)
+
+const canRequest = computed(
+  () =>
+    props.nameValid &&
+    Boolean(carrier.value) &&
+    phoneDigits.value.length >= 10 &&
+    phoneDigits.value.length <= 11 &&
+    !props.sending,
+)
+const canVerify = computed(
+  () => codeDigits.value.length === CODE_LENGTH && !expired.value && !props.verifying,
+)
+
+const clock = computed(() => {
+  const total = Math.max(0, remaining.value)
+  const minutes = String(Math.floor(total / 60)).padStart(2, '0')
+  const seconds = String(total % 60).padStart(2, '0')
+  return `${minutes}:${seconds}`
+})
+
+/** 010-1234-5678. 인증이 끝난 번호를 확인만 하는 자리라 가리지 않는다 */
+const phoneLabel = computed(() => {
+  const raw = phoneDigits.value
+  if (raw.length < 10) return phone.value
+  return `${raw.slice(0, 3)}-${raw.slice(3, raw.length - 4)}-${raw.slice(-4)}`
+})
+
+let timer = null
+
+function stopTimer() {
+  window.clearInterval(timer)
+  timer = null
+}
+
+function startTimer() {
+  stopTimer()
+  timer = window.setInterval(() => {
+    remaining.value -= 1
+    if (remaining.value <= 0) stopTimer()
+  }, 1000)
+}
+
+onUnmounted(stopTimer)
+
+// 발송·재전송하면 만료 시간이 새로 내려온다. 입력도 비우고 타이머를 다시 돌린다
+watch(
+  () => props.expiresInSeconds,
+  (value) => {
+    remaining.value = value
+    code.value = ''
+    if (value > 0) startTimer()
+  },
+)
+
+// 인증이 끝나면 셈할 이유가 없다. 만료 문구가 뒤늦게 뜨는 것도 막는다
+watch(
+  () => props.verified,
+  (value) => {
+    if (value) stopTimer()
+  },
+)
+
+// 번호 변경·재입력으로 발송 상태가 풀리면 인증번호 칸을 비운다
+watch(
+  () => props.sent,
+  (value) => {
+    if (!value) {
+      code.value = ''
+      remaining.value = 0
+      stopTimer()
+    }
+  },
+)
+
+/** 인증을 풀고 입력칸을 되돌린다 */
+function unlock() {
+  emit('reset')
+}
+</script>
+
+<template>
+  <section class="space-y-4">
+    <!-- ① 인증 끝 — 입력칸을 접고 카드 하나만 남긴다. 무슨 일이 일어났는지 여기가 말한다 -->
+    <div v-if="verified" class="bg-primary-bg rounded-lg px-4 py-3.5">
+      <div class="flex items-center justify-between gap-3">
+        <span class="text-body-strong text-primary-on-soft flex items-center gap-2">
+          <IconSealCheck :size="20" aria-hidden="true" />
+          <span>본인인증 완료</span>
+        </span>
+        <button
+          type="button"
+          class="text-body-sm text-primary-on-soft shrink-0 cursor-pointer border-0 bg-transparent p-0 underline"
+          @click="unlock"
+        >
+          번호 변경
+        </button>
+      </div>
+      <p class="text-body-sm text-ink-soft mt-1.5 mb-0">
+        {{ name }} · <span class="tabular-nums">{{ phoneLabel }}</span>
+      </p>
+    </div>
+
+    <!-- ② 인증 전 — 이름·통신사·번호, 그리고 보냈으면 인증번호 -->
+    <template v-else>
+      <div class="space-y-3">
+        <label class="block">
+          <span class="text-body-strong text-muted mb-2 block">이름</span>
+          <input
+            v-model="name"
+            type="text"
+            autocomplete="name"
+            maxlength="20"
+            placeholder="이름을 입력하세요"
+            class="bg-surface border-border text-body placeholder:text-disabled-text min-h-14 w-full rounded-lg border px-4 outline-hidden"
+            @blur="emit('name-blur')"
+          />
+          <span v-if="nameError" class="text-body-sm text-negative mt-1.5 block">
+            {{ nameError }}
+          </span>
+        </label>
+
+        <div>
+          <span class="text-body-strong text-muted mb-2 block" id="carrier-label">통신사</span>
+          <div class="flex flex-wrap gap-2" role="radiogroup" aria-labelledby="carrier-label">
+            <button
+              v-for="item in CARRIERS"
+              :key="item"
+              type="button"
+              role="radio"
+              :aria-checked="item === carrier"
+              class="ease-standard text-body-strong min-h-11 cursor-pointer rounded-full border px-3.5 transition-colors duration-140"
+              :class="
+                item === carrier
+                  ? 'bg-primary border-primary text-on-primary'
+                  : 'bg-surface border-border text-ink-soft'
+              "
+              @click="carrier = item"
+            >
+              {{ item }}
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <span class="text-body-strong text-muted mb-2 block" id="phone-label">휴대폰 번호</span>
+          <div class="flex gap-2">
+            <input
+              v-model="phone"
+              type="tel"
+              inputmode="numeric"
+              autocomplete="tel"
+              maxlength="13"
+              placeholder="01012345678"
+              aria-labelledby="phone-label"
+              class="bg-surface border-border text-body placeholder:text-disabled-text min-h-14 w-full rounded-lg border px-4 tabular-nums outline-hidden"
+            />
+
+            <!-- 보낸 뒤에는 아래 인증번호 칸이 재전송·번호 수정을 맡는다 -->
+            <button
+              v-if="!sent"
+              type="button"
+              :disabled="!canRequest"
+              class="ease-standard bg-primary-bg text-primary-on-soft text-body-strong disabled:bg-disabled-bg disabled:text-disabled-text min-h-14 shrink-0 cursor-pointer rounded-lg border-0 px-4 transition-colors duration-140 disabled:cursor-not-allowed"
+              @click="emit('request')"
+            >
+              {{ sending ? '보내는 중...' : '인증번호 받기' }}
+            </button>
+          </div>
+        </div>
+
+        <div v-if="sent">
+          <span class="text-body-strong text-muted mb-2 block" id="code-label">인증번호</span>
+          <div class="flex gap-2">
+            <input
+              v-model="code"
+              type="text"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              :maxlength="CODE_LENGTH"
+              placeholder="000000"
+              aria-labelledby="code-label"
+              class="bg-surface border-border text-body placeholder:text-disabled-text min-h-14 w-full rounded-lg border px-4 tabular-nums outline-hidden"
+            />
+            <button
+              type="button"
+              :disabled="!canVerify"
+              class="ease-standard bg-primary-bg text-primary-on-soft text-body-strong disabled:bg-disabled-bg disabled:text-disabled-text min-h-14 shrink-0 cursor-pointer rounded-lg border-0 px-5 transition-colors duration-140 disabled:cursor-not-allowed"
+              @click="emit('verify', codeDigits)"
+            >
+              {{ verifying ? '확인 중...' : '확인' }}
+            </button>
+          </div>
+
+          <div class="mt-2 flex items-center justify-between gap-3">
+            <span
+              class="text-body-sm tabular-nums"
+              :class="expired ? 'text-negative' : 'text-primary-on-soft'"
+            >
+              {{ expired ? '인증번호가 만료됐어요' : `${clock} 남음` }}
+            </span>
+            <div class="flex gap-3">
+              <button
+                type="button"
+                class="text-body-sm text-muted cursor-pointer border-0 bg-transparent p-0 underline"
+                @click="unlock"
+              >
+                번호가 틀렸어요
+              </button>
+              <button
+                type="button"
+                class="text-body-sm text-muted cursor-pointer border-0 bg-transparent p-0 underline"
+                :disabled="sending"
+                @click="emit('resend')"
+              >
+                재전송
+              </button>
+            </div>
+          </div>
+
+          <p v-if="errorMessage" class="text-body-sm text-negative mt-2 mb-0">{{ errorMessage }}</p>
+        </div>
+      </div>
+    </template>
+  </section>
+</template>

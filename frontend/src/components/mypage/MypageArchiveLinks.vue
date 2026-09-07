@@ -9,22 +9,22 @@
 import GpCard from '@/components/ui/GpCard.vue'
 import IconChart from '@/components/ui/icons/IconChart.vue'
 import IconChevronRight from '@/components/ui/icons/IconChevronRight.vue'
-import IconReceipt from '@/components/ui/icons/IconReceipt.vue'
+import IconLeaf from '@/components/ui/icons/IconLeaf.vue'
 
-defineEmits(['bills', 'reports'])
+defineEmits(['monthly', 'eco'])
 
 const CARDS = [
   {
-    key: 'bills',
-    title: '고지서 보관함',
-    description: '고지서를 확인해보세요.',
-    icon: IconReceipt,
+    key: 'monthly',
+    title: '월별 리포트',
+    description: '매달 생활비 리포트를 확인해보세요.',
+    icon: IconChart,
   },
   {
-    key: 'reports',
-    title: '리포트 보관함',
-    description: '월별 리포트를 확인해보세요.',
-    icon: IconChart,
+    key: 'eco',
+    title: 'ECO 리포트',
+    description: '6개월 실제 평가 결과를 확인해보세요.',
+    icon: IconLeaf,
   },
 ]
 </script>

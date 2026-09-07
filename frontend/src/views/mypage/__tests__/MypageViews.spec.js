@@ -202,39 +202,31 @@ describe('MY-01 마이페이지 메인', () => {
     expect(wrapper.text()).not.toContain('1005-1234-5678-90')
   })
 
-  it('에코마일리지 등록 주소를 프로필 주소와 구분해 보여준다 (E-1-01 완료 조건)', async () => {
+  it('에코마일리지 등록 주소를 표시하지 않는다', async () => {
     const { wrapper } = await mountView(MypageHomeView)
     const text = wrapper.text()
 
-    expect(text).toContain('에코마일리지 등록 주소')
-    expect(text).toContain('2026년 3월 등록')
-    // 일치하는 상태에서는 이사 안내를 띄우지 않는다
+    expect(text).not.toContain('에코마일리지 등록 주소')
+    expect(text).not.toContain('2026년 3월 등록')
     expect(text).not.toContain('이사했다면 꼭 바꿔주세요')
   })
 
-  it('프로필 주소와 시군구가 다르면 이사 안내를 띄운다 (B-1-08)', async () => {
-    getMypage.mockResolvedValue({
-      ...MYPAGE,
-      ecoAddress: { ...MYPAGE.ecoAddress, matchesProfile: false },
-    })
-    const { wrapper } = await mountView(MypageHomeView)
-    expect(wrapper.text()).toContain('이사했다면 꼭 바꿔주세요')
-  })
-
-  it('미연동이면 등록 주소 카드를 그리지 않는다', async () => {
-    getMypage.mockResolvedValue({ ...MYPAGE, ecoAddress: null })
-    const { wrapper } = await mountView(MypageHomeView)
-    expect(wrapper.text()).not.toContain('에코마일리지 등록 주소')
-  })
-
-  it('보관함 카드에서 두 화면으로 이동한다 (E-1-02)', async () => {
+  it('월별·ECO 리포트 카드가 각각 해당 탭으로 이동한다', async () => {
     const { wrapper, router } = await mountView(MypageHomeView)
     const buttons = wrapper.findAll('button').filter((button) => button.text().includes('바로가기'))
     expect(buttons).toHaveLength(2)
+    expect(wrapper.text()).not.toContain('고지서 보관함')
+    expect(wrapper.text()).toContain('월별 리포트')
+    expect(wrapper.text()).toContain('ECO 리포트')
 
     await buttons[0].trigger('click')
     await flushPromises()
-    expect(router.currentRoute.value.path).toBe('/mypage/bills')
+    expect(router.currentRoute.value.fullPath).toBe('/mypage/reports?tab=MONTHLY')
+
+    await router.push('/mypage')
+    await buttons[1].trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/mypage/reports?tab=ECO')
   })
 })
 
@@ -274,11 +266,45 @@ describe('MY-03 고지서 보관함', () => {
     const { wrapper } = await mountView(BillArchiveView, '/mypage/bills')
     const text = wrapper.text()
 
-    expect(text).toContain('2026년 8월 · 전기 고지서')
+    expect(text).toContain('2026년 8월')
+    expect(text).toContain('전기 고지서')
     expect(text).toContain('43,200원')
     expect(text).toContain('210kWh')
     expect(text).toContain('등록일 2026.09.01')
     expect(text).toContain('등록 완료')
+  })
+
+  it('같은 청구 월의 고지서를 하나의 월 카드로 묶는다', async () => {
+    getBills.mockResolvedValue({
+      ...BILLS,
+      content: [
+        BILLS.content[0],
+        { ...BILLS.content[0], recordId: 52, utilityType: 'WATER', billType: 'WATER' },
+        { ...BILLS.content[0], recordId: 53, billingMonth: '2026-07', utilityType: 'GAS', billType: 'GAS' },
+      ],
+    })
+    const { wrapper } = await mountView(BillArchiveView, '/mypage/bills')
+
+    const august = wrapper.get('[data-billing-month="2026-08"]')
+    expect(august.text()).toContain('전기 고지서')
+    expect(august.text()).toContain('수도 고지서')
+    expect(wrapper.findAll('[data-billing-month="2026-08"]')).toHaveLength(1)
+    expect(wrapper.findAll('[data-billing-month]')).toHaveLength(2)
+  })
+
+  it('월을 누르면 해당 월 고지서가 펼쳐지고 다시 누르면 접힌다', async () => {
+    const { wrapper } = await mountView(BillArchiveView, '/mypage/bills')
+    const month = wrapper.get('[data-billing-month="2026-08"]')
+    const trigger = month.get('button[aria-controls="bills-2026-08"]')
+    const list = month.get('#bills-2026-08')
+
+    expect(trigger.attributes('aria-expanded')).toBe('false')
+    expect(list.isVisible()).toBe(false)
+    await trigger.trigger('click')
+    expect(trigger.attributes('aria-expanded')).toBe('true')
+    expect(list.attributes('style') ?? '').not.toContain('display: none')
+    await trigger.trigger('click')
+    expect(list.attributes('style')).toContain('display: none')
   })
 
   it('비어 있으면 오류가 아니라 안내와 등록 유도를 낸다', async () => {
@@ -291,20 +317,21 @@ describe('MY-03 고지서 보관함', () => {
 })
 
 describe('MY-04 리포트 보관함', () => {
-  it('탭 두 개가 타입 셋을 나눠 담는다', async () => {
+  it('tab 쿼리에 해당하는 리포트 목록을 바로 연다', async () => {
+    const { wrapper } = await mountView(ReportArchiveView, '/mypage/reports?tab=ECO')
+    expect(wrapper.find('[role="tab"]').exists()).toBe(false)
+    expect(wrapper.get('h1').text()).toBe('ECO 리포트')
+    expect(wrapper.text()).toContain('평가 결과')
+    expect(wrapper.text()).not.toContain('7월분 전달 리포트')
+    expect(wrapper.text()).not.toContain('8월 월간 리포트')
+  })
+
+  it('기본 진입은 월별 리포트 목록만 보여준다', async () => {
     const { wrapper } = await mountView(ReportArchiveView, '/mypage/reports')
 
-    // 기본은 월별 리포트 탭
-    expect(wrapper.text()).toContain('8월 생활비 진단')
+    expect(wrapper.get('h1').text()).toBe('월별 리포트')
+    expect(wrapper.text()).toContain('8월 월간 리포트')
     expect(wrapper.text()).not.toContain('7월분 전달 리포트')
-
-    await wrapper.findAll('[role="tab"]')[1].trigger('click')
-    await flushPromises()
-
-    // ECO 탭은 ECO_MONTHLY 와 ECO_RESULT 를 함께 담는다
-    expect(wrapper.text()).toContain('7월분 전달 리포트')
-    expect(wrapper.text()).toContain('평가 결과')
-    expect(wrapper.text()).not.toContain('8월 생활비 진단')
   })
 
   it('type 을 넘기지 않고 한 번만 받는다', async () => {
@@ -314,9 +341,7 @@ describe('MY-04 리포트 보관함', () => {
   })
 
   it('연도별로 묶고 최신순을 유지한다 (E-2-01)', async () => {
-    const { wrapper } = await mountView(ReportArchiveView, '/mypage/reports')
-    await wrapper.findAll('[role="tab"]')[1].trigger('click')
-    await flushPromises()
+    const { wrapper } = await mountView(ReportArchiveView, '/mypage/reports?tab=ECO')
 
     const years = wrapper.findAll('h2').map((heading) => heading.text())
     expect(years).toEqual(['2026년'])
@@ -328,17 +353,31 @@ describe('MY-04 리포트 보관함', () => {
     expect(wrapper.text()).toContain('매월 리포트가 자동으로 저장돼요')
   })
 
-  it('targetScreen 이 가리키는 화면으로 이동한다', async () => {
+  it('월별 진단 보기는 페이지 이동 없이 선택한 월의 리포트를 띄운다', async () => {
     const { wrapper, router } = await mountView(ReportArchiveView, '/mypage/reports')
-    await wrapper.findAll('[role="tab"]')[1].trigger('click')
+    const view = wrapper.findAll('button').find((button) => button.text() === '보기')
+    await view.trigger('click')
     await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/mypage/reports')
+    const dialog = document.body.querySelector('[role="dialog"]')
+    expect(dialog?.getAttribute('aria-label')).toBe('8월 월간 리포트')
+    dialog.querySelector('[aria-label="리포트 닫기"]').click()
+    await flushPromises()
+    expect(document.body.querySelector('[role="dialog"]')).toBeNull()
+  })
+
+  it('ECO 평가는 페이지 이동 없이 리포트로 띄운다', async () => {
+    const { wrapper, router } = await mountView(ReportArchiveView, '/mypage/reports?tab=ECO')
 
     const view = wrapper.findAll('button').find((button) => button.text() === '보기')
     await view.trigger('click')
     await flushPromises()
 
-    expect(router.currentRoute.value.path).toBe('/whatif/report')
-    expect(router.currentRoute.value.query.month).toBe('2026-07')
+    expect(router.currentRoute.value.fullPath).toBe('/mypage/reports?tab=ECO')
+    const dialog = document.body.querySelector('[role="dialog"]')
+    expect(dialog?.getAttribute('aria-label')).toBe('ECO 리포트')
+    dialog.querySelector('[aria-label="리포트 닫기"]').click()
+    await flushPromises()
   })
 })
 

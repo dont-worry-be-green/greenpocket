@@ -262,7 +262,7 @@ public class GreenlifeService {
 
 	private UserSnapshot findUser(Long userId) {
 		return greenlifeRepository.findUser(userId)
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.UNAUTHENTICATED_DEMO_KEY));
+			.orElseThrow(() -> new BusinessException(CommonErrorCode.UNAUTHENTICATED));
 	}
 
 	private YearMonth parseMonth(String value) {

@@ -29,6 +29,7 @@ import {
 
 defineProps({
   rows: { type: Array, default: () => [] },
+  reportMode: { type: Boolean, default: false },
 })
 
 const usage = (row, key) => formatUsage(row[key], usagePrecision(row.usageUnit))
@@ -36,31 +37,46 @@ const usage = (row, key) => formatUsage(row[key], usagePrecision(row.usageUnit))
 /** '1,340 → 1,166kWh' — 단위는 뒤에 한 번만 붙인다 */
 const usageChange = (row) =>
   `${usage(row, 'baselineUsage')} → ${usage(row, 'actualUsage')}${formatUnit(row.usageUnit)}`
+
+const progressWidth = (rate) => `${Math.min(100, Math.max(0, Number(rate) / 30 * 100))}%`
 </script>
 
 <template>
-  <GpCard title="요금별로 보면">
+  <GpCard :title="reportMode ? '항목 별로 보면' : '요금별로 보면'">
     <div class="border-divider divide-divider divide-y border-t">
-      <div v-for="row in rows" :key="row.utilityType" class="flex items-center gap-3 py-3">
-        <UtilityIcon :utility-type="row.utilityType" small />
+      <div v-for="row in rows" :key="row.utilityType" :class="reportMode ? 'py-4' : 'py-3'">
+        <div class="flex items-center gap-3">
+          <UtilityIcon :utility-type="row.utilityType" small />
 
-        <span class="min-w-0 flex-1">
-          <span class="text-list-title text-ink block">{{
-            formatUtilityType(row.utilityType)
-          }}</span>
-          <span class="text-caption text-muted tabular-nums">{{ usageChange(row) }}</span>
-        </span>
+          <span class="min-w-0 flex-1">
+            <span class="text-list-title text-ink block">{{
+              formatUtilityType(row.utilityType)
+            }}</span>
+            <span class="text-caption text-muted tabular-nums">{{ usageChange(row) }}</span>
+          </span>
 
-        <span class="flex flex-none flex-col items-end gap-1">
-          <GpDelta :value="row.finalRate" size="sm" :show-word="false" />
-          <GpTag :tone="row.achieved ? 'positive' : 'sub'" small>
-            {{ row.achieved ? '달성' : `목표 ${formatPercent(row.targetRate)} 줄이기` }}
-          </GpTag>
-        </span>
+          <span class="flex flex-none flex-col items-end gap-1">
+            <GpDelta :value="row.finalRate" size="sm" :show-word="false" />
+            <GpTag v-if="!reportMode" :tone="row.achieved ? 'positive' : 'sub'" small>
+              {{ row.achieved ? '달성' : `목표 ${formatPercent(row.targetRate)} 줄이기` }}
+            </GpTag>
+          </span>
+        </div>
+
+        <div
+          v-if="reportMode"
+          class="bg-surface-sub mt-3 h-1.5 overflow-hidden rounded-full"
+          aria-hidden="true"
+        >
+          <div
+            class="bg-primary-soft h-full rounded-full transition-[width]"
+            :style="{ width: progressWidth(row.finalRate) }"
+          />
+        </div>
       </div>
     </div>
 
-    <p class="text-caption text-muted mt-3 mb-0">
+    <p v-if="!reportMode" class="text-caption text-muted mt-3 mb-0">
       목표에 못 미쳐도 줄인 만큼은 그대로 합산에 들어가요
     </p>
   </GpCard>

@@ -162,6 +162,6 @@ public class ProfileService {
 	}
 
 	private static BusinessException unauthenticated() {
-		return new BusinessException(CommonErrorCode.UNAUTHENTICATED_DEMO_KEY);
+		return new BusinessException(CommonErrorCode.UNAUTHENTICATED);
 	}
 }

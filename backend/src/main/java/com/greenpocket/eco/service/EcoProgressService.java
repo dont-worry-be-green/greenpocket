@@ -67,7 +67,7 @@ public class EcoProgressService {
 
 	public EcoHomeResponse getHome(Long userId) {
 		EcoLinkStatus linkStatus = ecoProgressRepository.findLinkStatus(userId)
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.UNAUTHENTICATED_DEMO_KEY));
+			.orElseThrow(() -> new BusinessException(CommonErrorCode.UNAUTHENTICATED));
 		if (linkStatus == EcoLinkStatus.UNLINKED || linkStatus == EcoLinkStatus.FAILED) {
 			return emptyHome(WhatIfScreen.WF_01_UNLINKED);
 		}
@@ -145,7 +145,7 @@ public class EcoProgressService {
 
 	public EcoMonthlyReportResponse getMonthlyReport(Long userId, String monthValue) {
 		ecoProgressRepository.findLinkStatus(userId)
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.UNAUTHENTICATED_DEMO_KEY));
+			.orElseThrow(() -> new BusinessException(CommonErrorCode.UNAUTHENTICATED));
 		ProgressRoundSnapshot currentRound = ecoProgressRepository.findCurrentRound(userId)
 			.orElseThrow(() -> new BusinessException(EcoErrorCode.ECO_ROUND_NOT_FOUND));
 		YearMonth requestedMonth = parseMonth(monthValue);

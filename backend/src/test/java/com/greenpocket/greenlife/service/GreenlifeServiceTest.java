@@ -292,7 +292,7 @@ class GreenlifeServiceTest {
 		assertThatThrownBy(() -> greenlifeService.getItems(USER_ID, "2026-08"))
 			.isInstanceOf(BusinessException.class)
 			.satisfies(error -> assertThat(((BusinessException)error).getErrorCode())
-				.isEqualTo(CommonErrorCode.UNAUTHENTICATED_DEMO_KEY));
+				.isEqualTo(CommonErrorCode.UNAUTHENTICATED));
 	}
 
 	private ItemDetailSnapshot receiptItem(Long monthlyCapAmount) {

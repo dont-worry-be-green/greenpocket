@@ -34,6 +34,6 @@ public class CurrentUserIdArgumentResolver implements HandlerMethodArgumentResol
 		if (userId instanceof Long currentUserId) {
 			return currentUserId;
 		}
-		throw new BusinessException(CommonErrorCode.UNAUTHENTICATED_DEMO_KEY);
+		throw new BusinessException(CommonErrorCode.UNAUTHENTICATED);
 	}
 }

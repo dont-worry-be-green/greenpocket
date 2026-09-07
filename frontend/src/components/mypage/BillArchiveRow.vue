@@ -14,7 +14,6 @@ import GpTag from '@/components/ui/GpTag.vue'
 import {
   formatBillType,
   formatDotDate,
-  formatMonth,
   formatRecordStatus,
   formatUnit,
   formatUsage,
@@ -28,8 +27,8 @@ const props = defineProps({
   bill: { type: Object, required: true },
 })
 
-/** '2026년 9월 · 전기 고지서' */
-const title = () => `${formatMonth(props.bill.billingMonth)} · ${formatBillType(props.bill.billType)} 고지서`
+/** 청구 월은 묶음 카드 제목에서 한 번만 표시한다. */
+const title = () => `${formatBillType(props.bill.billType)} 고지서`
 
 /**
  * '210kWh · 31,540원'.
