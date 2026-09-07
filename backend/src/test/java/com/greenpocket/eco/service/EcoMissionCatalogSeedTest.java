@@ -9,9 +9,22 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.io.ClassPathResource;
 
 class EcoMissionCatalogSeedTest {
+
+	@Test
+	void disablesRuntimeMissionSeedInProductionProfile() {
+		Profile profile = AnnotatedElementUtils.findMergedAnnotation(
+			EcoMissionCatalogSeedInitializer.class,
+			Profile.class
+		);
+
+		assertThat(profile).isNotNull();
+		assertThat(profile.value()).containsExactly("!prod");
+	}
 
 	private static final Pattern MISSION_CODE = Pattern.compile("\\('((?:ELEC|GAS|WATER)_[A-Z0-9_]+)'");
 
