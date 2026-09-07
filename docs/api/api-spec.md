@@ -4,7 +4,7 @@
 |---|---|
 | 문서 기준일 | 2026-09-07 (ver3 — JWT 인증 결정 반영, 17절) |
 | 참가팀 | 돈워리, 비그린 (Don't worry, be green) |
-| 기준 문서 | `docs/feature-spec/기능명세서.md` (109건) · `docs/database/schema.sql` (현행 13테이블, 인증 2테이블 추가 예정) |
+| 기준 문서 | `docs/feature-spec/기능명세서.md` (109건) · `docs/database/schema.sql` (15테이블) |
 | 대상 범위 | **P0 82건 + P1 24건**. P2 3건(D-3-06 · D-4-01 · E-2-02)은 15절에 자리만 표기 |
 | API 수 | **64개** (P0 47 · P1 17) |
 | 인증 | 이메일·비밀번호 로그인 + JWT Access Token. Refresh Token은 HttpOnly 쿠키 (결정 C-17) |
@@ -2497,8 +2497,8 @@ P0·P1 106건 중 아래 12건은 서버 호출이 없습니다. 나머지 94건
 | 테이블 | 읽는 API | 쓰는 API |
 |---|---|---|
 | `app_user` | `GET /users/me` · `/profile` · `/mypage` · `/eco/status` · `/greenlife/status` · `/pocket` | `POST /auth/signup` · `POST /users`(dev/demo) · `POST/PUT /profile` · `POST /eco/link`(연동 상태·등록 주소) · `POST /greenlife/link` · `POST /demo/reset`(dev/demo) |
-| `auth_account` (추가 예정) | `POST /auth/login` | `POST /auth/signup` · `POST /auth/login`(last_login_at) |
-| `auth_refresh_token` (추가 예정) | `POST /auth/refresh` · `/auth/logout` | `POST /auth/signup` · `/auth/login` · `/auth/refresh` · `/auth/logout` |
+| `auth_account` | `POST /auth/login` | `POST /auth/signup` · `POST /auth/login`(last_login_at) |
+| `auth_refresh_token` | `POST /auth/refresh` · `/auth/logout` | `POST /auth/signup` · `/auth/login` · `/auth/refresh` · `/auth/logout` |
 | `utility_monthly_record` | `GET /diagnosis` · `/bills` · `/eco/monthly-report` · `/reports` | `POST/PUT/DELETE /bills` · `POST /eco/link`(ECO_BASELINE) |
 | `region_utility_snapshot` | `GET /diagnosis` · `/diagnosis/baseline` · `/meta/regions` | 시드만 (COM-09) |
 | `eco_round` | `GET /eco/rounds*` · `/eco/home` · `/pocket/convertible-mileage` | `POST /eco/link` · `POST/PUT .../goal` · `POST .../application` · `POST .../result/view` |
@@ -2582,11 +2582,11 @@ FROM eco_round_utility WHERE eco_round_id = :rid AND is_registered = 1;
 | Access | JWT HS256, 30분, `sub=userId`, Bearer 헤더 |
 | Refresh | 14일 HttpOnly 쿠키, DB에는 SHA-256 해시만 저장, 재발급 시 회전 |
 | 비밀번호 | BCrypt, 최소 8자, 원문 저장·응답·로그 금지 |
-| DB | `app_user.demo_key` NULL 허용 + `auth_account`·`auth_refresh_token` 추가 예정 |
+| DB | `app_user.demo_key` NULL 허용 + `auth_account`·`auth_refresh_token` 추가. Flyway V3 적용 |
 | 데모 | `X-Demo-Key`, `POST /users`, `POST /demo/reset`은 `dev`·`demo` 프로필에서만 유지 |
 | 제외 | 이메일 인증, 비밀번호 재설정, 소셜 로그인, MFA, 역할 권한, Access 블랙리스트 |
 
-> 이 커밋은 Markdown 계약만 갱신합니다. 원본 XLSX, `schema.sql`, Flyway, 백엔드·프론트엔드 구현은 다음 단계에서 반영합니다.
+> 원본 XLSX 동기화와 백엔드·프론트엔드 구현은 별도 커밋으로 진행합니다.
 
 # 부록 A. 시연 흐름 API 호출 순서
 

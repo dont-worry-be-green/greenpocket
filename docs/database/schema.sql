@@ -2,15 +2,15 @@
 --  그린포켓 (GreenPocket) 스키마 기준 DDL
 --  2026 KB IT's Your Life 해커톤 · 돈워리, 비그린
 --
---  기준     : ERD Cloud export + 2026-09-03 팀 결정 (C-1 ~ C-13)
+--  기준     : ERD Cloud export + 2026-09-07 팀 결정 (C-1 ~ C-17)
 --  DBMS     : MySQL 8.4 · InnoDB · utf8mb4 · utf8mb4_0900_ai_ci
---  규모     : 테이블 13 · 외래키 16 · UNIQUE 16 · CHECK 9
+--  규모     : 테이블 15 · 외래키 18 · UNIQUE 19 · CHECK 9
 --
 --  ERD Cloud export 는 다이어그램 원본이라 PK 외 제약이 빠져 있습니다.
 --  이 파일이 스키마의 기준(단일 진실 공급원)입니다.
 --
 --  ⚠️ 이 파일을 DB에 직접 실행하지 마세요.
---     아래 DROP TABLE 13개가 기존 데이터를 전부 지웁니다.
+--     아래 DROP TABLE 15개가 기존 데이터를 전부 지웁니다.
 --     DB 적용은 backend/src/main/resources/db/migration/ 의 Flyway 마이그레이션으로 합니다.
 --     스키마를 바꿀 때는 이 파일과 새 마이그레이션을 함께 고치고,
 --     이미 적용된 마이그레이션 파일은 절대 수정하지 않습니다.
@@ -26,6 +26,7 @@
 --    6  user_mission 스냅샷 컬럼 미도입 (mission_catalog 조인)
 --    7  eco_monthly_report.source_batch_id 미도입 ((user_id, report_month) 로 재계산)
 --   11  지역난방 미지원 (utility_type 은 전기·가스·수도 3종 유지)
+--   17  JWT 회원 인증 (auth_account · auth_refresh_token, demo_key NULL 허용)
 -- ============================================================
 
 SET NAMES utf8mb4;
@@ -43,13 +44,15 @@ DROP TABLE IF EXISTS `eco_round_utility`;
 DROP TABLE IF EXISTS `eco_round`;
 DROP TABLE IF EXISTS `region_utility_snapshot`;
 DROP TABLE IF EXISTS `utility_monthly_record`;
+DROP TABLE IF EXISTS `auth_refresh_token`;
+DROP TABLE IF EXISTS `auth_account`;
 DROP TABLE IF EXISTS `app_user`;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
 CREATE TABLE `app_user` (
 	`id`	BIGINT	NOT NULL	AUTO_INCREMENT	COMMENT '사용자 ID | 사용자 내부 식별자',
-	`demo_key`	VARCHAR(50)	NOT NULL	COMMENT '데모 사용자 키 | 로그인 없는 데모에서 재진입 시 같은 사용자를 찾는 기기 고유 키',
+	`demo_key`	VARCHAR(50)	NULL	COMMENT '데모 사용자 키 | dev·demo 프로필에서만 사용하는 UUID v4, 일반 회원은 NULL',
 	`name`	VARCHAR(20)	NOT NULL	COMMENT '이름 | 온보딩에서 입력한 사용자 이름, 공백 제거 후 1~20자',
 	`sido_code`	VARCHAR(10)	NULL	COMMENT '시도 코드 | 거주 시도 행정구역 코드, 서울은 11',
 	`sido_name`	VARCHAR(30)	NULL	COMMENT '시도명 | 화면에 표시할 거주 시도명',
@@ -74,6 +77,30 @@ CREATE TABLE `app_user` (
 	UNIQUE KEY `uq_app_user_demo_key` (`demo_key`),
 	UNIQUE KEY `uq_app_user_pocket_account_no` (`pocket_account_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='사용자';
+CREATE TABLE `auth_account` (
+	`id`	BIGINT	NOT NULL	AUTO_INCREMENT	COMMENT '인증 계정 ID',
+	`user_id`	BIGINT	NOT NULL	COMMENT '사용자 ID | app_user 1:1',
+	`email`	VARCHAR(255)	NOT NULL	COMMENT '로그인 이메일 | trim 후 소문자로 정규화',
+	`password_hash`	VARCHAR(255)	NOT NULL	COMMENT 'BCrypt 비밀번호 해시 | 원문 저장 금지',
+	`last_login_at`	DATETIME	NULL	COMMENT '마지막 로그인 성공 일시',
+	`created_at`	TIMESTAMP	NOT NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '생성 일시',
+	`updated_at`	TIMESTAMP	NOT NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '수정 일시',
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `uq_auth_account_user` (`user_id`),
+	UNIQUE KEY `uq_auth_account_email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='이메일·비밀번호 인증 계정';
+CREATE TABLE `auth_refresh_token` (
+	`id`	BIGINT	NOT NULL	AUTO_INCREMENT	COMMENT 'Refresh Token ID',
+	`user_id`	BIGINT	NOT NULL	COMMENT '사용자 ID | 토큰 소유자',
+	`token_hash`	CHAR(64)	NOT NULL	COMMENT 'Refresh Token SHA-256 hex | 원문 저장 금지',
+	`expires_at`	DATETIME	NOT NULL	COMMENT '만료 일시',
+	`revoked_at`	DATETIME	NULL	COMMENT '폐기 일시 | NULL이면 활성',
+	`created_at`	TIMESTAMP	NOT NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '생성 일시',
+	`updated_at`	TIMESTAMP	NOT NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '수정 일시',
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `uq_auth_refresh_token_hash` (`token_hash`),
+	KEY `ix_auth_refresh_token_user_active` (`user_id`, `revoked_at`, `expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Refresh Token 세션';
 CREATE TABLE `utility_monthly_record` (
 	`id`	BIGINT	NOT NULL	AUTO_INCREMENT	COMMENT '생활요금 기록 ID | 월별 에너지원 기록 내부 식별자',
 	`user_id`	BIGINT	NOT NULL	COMMENT '사용자 ID | 기록을 소유한 사용자',
@@ -311,7 +338,9 @@ CREATE TABLE `withdrawal_account` (
 	UNIQUE KEY `uq_withdrawal_account_default` (`default_slot`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='출금 계좌';
 
--- ── 외래키 16 ────────────────────────────────────────────────
+-- ── 외래키 18 ────────────────────────────────────────────────
+ALTER TABLE `auth_account` ADD CONSTRAINT `fk_auth_account_user` FOREIGN KEY (`user_id`) REFERENCES `app_user` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT;
+ALTER TABLE `auth_refresh_token` ADD CONSTRAINT `fk_auth_refresh_token_user` FOREIGN KEY (`user_id`) REFERENCES `app_user` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT;
 ALTER TABLE `utility_monthly_record` ADD CONSTRAINT `fk_umr_user` FOREIGN KEY (`user_id`) REFERENCES `app_user` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT;
 ALTER TABLE `eco_round` ADD CONSTRAINT `fk_eco_round_user` FOREIGN KEY (`user_id`) REFERENCES `app_user` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT;
 ALTER TABLE `eco_round_utility` ADD CONSTRAINT `fk_eru_round` FOREIGN KEY (`eco_round_id`) REFERENCES `eco_round` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT;

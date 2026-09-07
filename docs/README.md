@@ -31,7 +31,7 @@
 | `feature-spec/기능명세서.md` | 같은 내용 읽기용 사본. 검색·diff·AI 참조용 |
 | `api/api-spec.md` | API 명세. 공통 규약·엔드포인트 64개·매핑표·검증 체크리스트 |
 | `auth/jwt-auth.md` | JWT 회원 인증 결정, 토큰·쿠키 규격, 계획 스키마와 구현 체크리스트 |
-| `database/schema.sql` | **스키마 기준 원본.** 테이블 13 · FK 16 · UNIQUE 16 · CHECK 9 |
+| `database/schema.sql` | **스키마 기준 원본.** 테이블 15 · FK 18 · UNIQUE 19 · CHECK 9 |
 | `design/` | 디자인 규칙 — `design-system.md` · `tokens.css` (작성 예정, 결정 B-3) |
 
 > **`schema.sql` 이 스키마의 유일한 기준입니다.** ERD Cloud export는 PK 외 제약이 담기지 않아 고지서 중복·출금 중복·마일리지 전환 중복이 전부 통과합니다. 저장소에 두지 않으며, 다이어그램을 고칠 때만 ERD Cloud 쪽에서 씁니다.
@@ -61,7 +61,7 @@
 
 - 기능명세 Markdown **109건** (P0 82 · P1 24 · P2 3). 원본 XLSX는 COM-13~16 동기화 전
 - API **64개** (P0 47 · P1 17)
-- 현재 스키마 **13테이블**. JWT 구현 단계에서 `auth_account`·`auth_refresh_token` 2테이블과 `app_user.demo_key` NULL 허용을 반영 예정
+- 현재 스키마 **15테이블**. `auth_account`·`auth_refresh_token`과 `app_user.demo_key` NULL 허용을 Flyway V3에 반영
 - 2026-09-07 팀 결정 **C-17 JWT 회원 인증**을 Markdown 문서에 반영 완료
 
 ### 개발 전에 채워야 할 값

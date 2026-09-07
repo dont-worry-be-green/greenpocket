@@ -3,7 +3,7 @@
 | 항목 | 내용 |
 |---|---|
 | 문서 기준일 | 2026-09-07 |
-| 상태 | 팀 결정 완료 · 구현 전 |
+| 상태 | 팀 결정 완료 · 구현 중 |
 | 관련 기능 | COM-13 회원가입 · COM-14 로그인 · COM-15 토큰 재발급 · COM-16 로그아웃 |
 | 관련 API | `POST /api/v1/auth/signup` · `/login` · `/refresh` · `/logout` |
 
@@ -118,7 +118,7 @@ FE는 Refresh Token을 읽거나 로컬 스토리지에 저장하지 않습니�
 
 ## 6. 계획 스키마
 
-이번 문서 단계에서는 DDL을 변경하지 않습니다. 다음 구현 단계에서 `docs/database/schema.sql`과 새 Flyway 마이그레이션을 함께 반영합니다.
+`docs/database/schema.sql`과 `V3__add_jwt_auth.sql`에 아래 구조를 반영했습니다.
 
 ### `app_user` 변경
 
