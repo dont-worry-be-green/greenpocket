@@ -318,7 +318,9 @@ public class EcoController {
 
 	@Operation(
 		summary = "실천 미션 다시 고르기",
-		description = "최근 실적을 바탕으로 같은 기기군의 강화 교체를 우선 추천하고, 부족하면 다른 기기군을 추가 추천합니다. 자동 저장하지 않습니다."
+		description = "최근 실적을 바탕으로 같은 기기군의 강화 교체를 우선 추천하고, 부족하면 다른 기기군을 추가 추천합니다. "
+			+ "회복 부담이 목표의 1.5배 이상이거나 추천 미션으로 필요 감축률을 채울 수 없으면 한 단계 낮은 목표 구간을 제안합니다. "
+			+ "최저 구간은 더 낮추지 않으며 자동 저장하지 않습니다."
 	)
 	@ApiResponses({
 		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "미션 조정 화면 조회 성공 또는 고지서 없음"),
