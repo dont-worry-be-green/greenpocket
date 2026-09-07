@@ -39,9 +39,12 @@ const fake = async (value, ms = 400) => {
 /** 데모 인증번호. 발표자가 맞힐 수 있어야 하고, 틀리면 거부돼야 한다 */
 const DEMO_SMS_CODE = '000000'
 
-/** 인증번호 발송 요청. `demoCode` 는 모의 응답에만 있는 필드이고 화면 캡션이 쓴다 */
+/*
+ * 인증번호 발송 요청. 한동안 `demoCode` 를 같이 내려 화면 캡션이 번호를 알려 줬는데,
+ * **화면이 길어 캡션째 뺐다.** 입력칸 placeholder 가 `000000` 이라 발표에서는 그것으로 충분하다.
+ */
 export function requestSmsCode() {
-  return fake({ expiresInSeconds: 180, demoCode: DEMO_SMS_CODE }, 700)
+  return fake({ expiresInSeconds: 180 }, 700)
 }
 
 /**
@@ -50,6 +53,26 @@ export function requestSmsCode() {
  */
 export function verifySmsCode(code) {
   return fake(() => ({ verified: String(code ?? '').trim() === DEMO_SMS_CODE }), 900)
+}
+
+/*
+ * 데모에서 「이미 쓰는 아이디」를 실제로 보여줄 수 있어야 한다. 서버에 사용자 목록이 없어
+ * **화면용 고정 목록**을 둔다 — 스키마 값도 응답 필드도 아니다. 계약이 붙으면 이 목록과 함께
+ * 사라진다. 이 기기에 가입해 둔 아이디도 「쓰는 중」으로 친다(로그아웃 후 재가입 경로).
+ */
+const TAKEN_LOGIN_IDS = ['admin', 'greenpocket', 'test']
+
+/**
+ * 아이디 중복확인. **「이미 쓴다」는 에러가 아니라 `available: false` 다** — 공통 에러 코드를
+ * 새로 만들지 않는다(AGENTS.md 3절). 대조 대상을 인자로 받는 이유는 `login` 과 같다.
+ */
+export function checkLoginId({ loginId, savedLoginId }) {
+  const input = String(loginId ?? '').trim()
+  const saved = String(savedLoginId ?? '').trim()
+  const taken =
+    TAKEN_LOGIN_IDS.includes(input.toLowerCase()) ||
+    (Boolean(saved) && saved.toLowerCase() === input.toLowerCase())
+  return fake(() => ({ loginId: input, available: Boolean(input) && !taken }))
 }
 
 /**

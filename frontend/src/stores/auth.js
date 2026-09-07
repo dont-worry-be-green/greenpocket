@@ -18,23 +18,41 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
-import { login as loginApi, requestSmsCode as requestSmsCodeApi, verifySmsCode } from '@/api/auth'
+import {
+  checkLoginId as checkLoginIdApi,
+  login as loginApi,
+  requestSmsCode as requestSmsCodeApi,
+  verifySmsCode,
+} from '@/api/auth'
 import { clearLoggedIn, getLoginId, markLoggedIn } from '@/router/guards'
 import { useOnboardingStore } from '@/stores/onboarding'
 
 export const useAuthStore = defineStore('auth', () => {
-  const isLoading = ref(false)
+  /*
+   * ── 로딩은 **어떤 동작인지까지** 들고 있는다 ──────────────────────────
+   * 회원가입 화면 하나에 버튼이 넷이다(인증번호 받기 · 확인 · 중복확인 · 가입).
+   * 참/거짓 하나로 두면 **하나를 눌렀는데 넷이 모두 「확인 중」이 된다.**
+   * 그래서 지금 무엇이 도는지를 담고, 화면은 자기 버튼에 해당하는 것만 본다.
+   */
+  const pending = ref('')
   const error = ref(null)
 
   /** 문자인증 상태. 만료 시간은 재전송하면 다시 내려온다 */
   const smsExpiresInSeconds = ref(0)
-  const smsDemoCode = ref('')
 
   /** 이 기기에 가입해 둔 아이디. 로그인 화면이 프리필에 쓴다 */
   const savedLoginId = computed(() => getLoginId())
 
-  async function run(task) {
-    isLoading.value = true
+  /** 아무거나 돌고 있나. 버튼이 하나뿐인 화면(ONB-01a)은 이것만 보면 된다 */
+  const isLoading = computed(() => pending.value !== '')
+
+  const isSendingSms = computed(() => pending.value === 'SMS')
+  const isVerifyingCode = computed(() => pending.value === 'CODE')
+  const isCheckingLoginId = computed(() => pending.value === 'LOGIN_ID')
+  const isSigningUp = computed(() => pending.value === 'SIGNUP')
+
+  async function run(task, kind = 'GENERAL') {
+    pending.value = kind
     error.value = null
     try {
       return await task()
@@ -42,25 +60,28 @@ export const useAuthStore = defineStore('auth', () => {
       error.value = nextError
       return null
     } finally {
-      isLoading.value = false
+      pending.value = ''
     }
   }
 
   // ── 문자인증 ──────────────────────────────────────────────────────────
 
   async function requestSmsCode() {
-    const data = await run(requestSmsCodeApi)
-    if (data) {
-      smsExpiresInSeconds.value = data.expiresInSeconds ?? 0
-      // 실제 엔드포인트가 생기면 이 필드가 사라지고 캡션도 함께 사라진다
-      smsDemoCode.value = data.demoCode ?? ''
-    }
+    const data = await run(requestSmsCodeApi, 'SMS')
+    if (data) smsExpiresInSeconds.value = data.expiresInSeconds ?? 0
     return data
   }
 
   /** 틀린 인증번호는 에러가 아니라 `verified: false` 다. 문구는 화면이 만든다 */
   async function verifyCode(code) {
-    return run(() => verifySmsCode(code))
+    return run(() => verifySmsCode(code), 'CODE')
+  }
+
+  // ── 아이디 ────────────────────────────────────────────────────────────
+
+  /** 중복확인. 「이미 쓴다」는 에러가 아니라 `available: false` 다. 문구는 화면이 만든다 */
+  async function checkLoginId(loginId) {
+    return run(() => checkLoginIdApi({ loginId, savedLoginId: savedLoginId.value }), 'LOGIN_ID')
   }
 
   // ── 가입 · 로그인 ─────────────────────────────────────────────────────
@@ -71,7 +92,7 @@ export const useAuthStore = defineStore('auth', () => {
    */
   async function signup({ name, loginId }) {
     const onboarding = useOnboardingStore()
-    const started = await run(() => onboarding.startUser(name))
+    const started = await run(() => onboarding.startUser(name), 'SIGNUP')
     if (!started) {
       // 온보딩 스토어가 자기 error 에 담는다. 화면이 둘 다 보지 않게 여기로 옮긴다
       error.value = onboarding.error
@@ -95,12 +116,16 @@ export const useAuthStore = defineStore('auth', () => {
 
   return {
     isLoading,
+    isSendingSms,
+    isVerifyingCode,
+    isCheckingLoginId,
+    isSigningUp,
     error,
     smsExpiresInSeconds,
-    smsDemoCode,
     savedLoginId,
     requestSmsCode,
     verifyCode,
+    checkLoginId,
     signup,
     login,
     logout,

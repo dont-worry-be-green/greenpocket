@@ -174,13 +174,20 @@ describe('LoginView (ONB-01a)', () => {
   })
 })
 
-describe('SignupView (ONB-01b)', () => {
+/*
+ * ⚠️ **기본 타임아웃(5초)으로는 모자란다.** 이 화면 하나에서 문자 발송(0.7초) · 확인(0.9초) ·
+ * 중복확인(0.4초) · 가입(`POST /users`)을 차례로 기다리는 시나리오가 있다. 모의 지연을 줄이면
+ * 로딩 경로가 실제로 안 돌아가므로(`api/auth.js` 주석) 지연이 아니라 타임아웃을 늘린다.
+ */
+describe('SignupView (ONB-01b)', { timeout: 20000 }, () => {
   beforeEach(resetStorage)
 
   /*
-   * 본인확인 → 인증번호 → 계정.
+   * **한 화면이다.** 본인확인(이름·번호 → 인증번호)이 위, 계정(아이디·비밀번호)이 아래고
+   * 잠기는 것은 가입 CTA 하나다.
+   *
    * ⚠️ 문자인증 모의는 발송 0.7초 · 확인 0.9초라 공용 `settle()`(0.5초)보다 길다.
-   * 여기서만 더 기다린다 — 짧게 두면 다음 단계가 아직 안 그려져 버튼을 못 찾는다.
+   * 여기서만 더 기다린다 — 짧게 두면 다음 블록이 아직 안 그려져 버튼을 못 찾는다.
    */
   const settleSms = async () => {
     await flushPromises()
@@ -188,29 +195,68 @@ describe('SignupView (ONB-01b)', () => {
     await flushPromises()
   }
 
+  /** 본인확인 블록. 이름도 여기 있다 — 인증의 대상이고 예금주가 되는 값이다 */
   async function verify(wrapper, code = '000000') {
+    await wrapper.find('input[autocomplete="name"]').setValue('김수현')
     await buttonWith(wrapper, 'SKT').trigger('click')
     await wrapper.find('input[type="tel"]').setValue('01012345678')
-    await wrapper.find('input[type="checkbox"]').setValue(true)
     await buttonWith(wrapper, '인증번호 받기').trigger('click')
     await settleSms()
 
-    await wrapper.find('input[inputmode="numeric"]').setValue(code)
+    // 번호 칸도 inputmode="numeric" 이라 자릿수가 아니라 용도로 찾는다
+    await wrapper.find('input[autocomplete="one-time-code"]').setValue(code)
     await buttonWith(wrapper, '확인').trigger('click')
     await settleSms()
   }
 
-  it('본인확인부터 시작하고 동의 없이는 인증번호를 보낼 수 없다', async () => {
+  /** `check` 를 끄면 중복확인을 누르지 않는다 — 그 자체를 보는 테스트가 있다 */
+  async function fillAccount(
+    wrapper,
+    { id = 'suhyeon', confirm = 'password1234', check = true } = {},
+  ) {
+    await wrapper.find('input[autocomplete="username"]').setValue(id)
+    if (check) {
+      // 중복확인 모의는 0.4초라 공용 `settle()`(0.5초)로 충분하다
+      await buttonWith(wrapper, '중복확인').trigger('click')
+      await settle()
+    }
+    const passwords = wrapper.findAll('input[type="password"]')
+    await passwords[0].setValue('password1234')
+    await passwords[1].setValue(confirm)
+  }
+
+  it('본인확인과 계정 입력이 한 화면에 같이 있다', async () => {
     const { wrapper, errors } = await mountView(SignupView, '/onboarding/signup')
     expect(errors).toEqual([])
-    expect(wrapper.text()).toContain('본인확인을 해주세요')
+
+    // 제목은 헤더가 든다 — 본문 위 큰 제목을 두면 화면이 그만큼 길어진다
+    expect(wrapper.text()).toContain('회원가입')
+    expect(wrapper.find('input[autocomplete="tel"]').exists()).toBe(true)
+    // 인증 전에도 계정 입력칸이 보인다. 잠기는 것은 CTA 하나다
+    expect(wrapper.find('input[autocomplete="username"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  // 이름은 본인확인의 대상이다. 번호만 있고 이름이 비면 보낼 것이 못 된다
+  it('이름·통신사·번호가 다 있어야 인증번호를 보낼 수 있다', async () => {
+    const { wrapper } = await mountView(SignupView, '/onboarding/signup')
 
     await buttonWith(wrapper, 'SKT').trigger('click')
     await wrapper.find('input[type="tel"]').setValue('01012345678')
     expect(buttonWith(wrapper, '인증번호 받기').attributes('disabled')).toBeDefined()
 
-    await wrapper.find('input[type="checkbox"]').setValue(true)
+    await wrapper.find('input[autocomplete="name"]').setValue('김수현')
     expect(buttonWith(wrapper, '인증번호 받기').attributes('disabled')).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  // 한 화면이 되면서 이름칸 blur 만으로 아직 손대지 않은 아이디 오류가 뜬 적이 있다
+  it('이름 오류는 이름칸 아래에만 뜨고 계정 오류를 끌어오지 않는다', async () => {
+    const { wrapper } = await mountView(SignupView, '/onboarding/signup')
+
+    await wrapper.find('input[autocomplete="name"]').trigger('blur')
+    expect(wrapper.text()).toContain('이름을 입력해 주세요.')
+    expect(wrapper.text()).not.toContain('아이디는 4자 이상')
     wrapper.unmount()
   })
 
@@ -220,18 +266,113 @@ describe('SignupView (ONB-01b)', () => {
 
     await verify(wrapper, '123456')
     expect(wrapper.text()).toContain('인증번호가 맞지 않아요')
-    expect(wrapper.text()).not.toContain('계정을 만들어요')
+    expect(wrapper.text()).not.toContain('본인인증 완료')
     wrapper.unmount()
   })
 
-  it('본인확인을 마쳐야 계정 만들기로 넘어간다', async () => {
+  // 한 화면이 되면서 「가입만 눌러 인증을 건너뛰는」 길이 생겼다. 그 길을 막는 계약이다
+  it('계정을 다 채워도 본인확인 전에는 가입할 수 없다', async () => {
     const { wrapper } = await mountView(SignupView, '/onboarding/signup')
 
-    // 인증 전에는 계정 입력칸이 없다
-    expect(wrapper.text()).not.toContain('계정을 만들어요')
+    await wrapper.find('input[autocomplete="name"]').setValue('김수현')
+    await fillAccount(wrapper)
 
+    expect(buttonWith(wrapper, '가입하고 시작하기').attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('휴대폰 본인확인을 마치면 가입할 수 있어요')
+    expect(isLoggedIn()).toBe(false)
+    wrapper.unmount()
+  })
+
+  // 중복확인을 안 눌러도 가입되면 그 버튼은 장식이다
+  it('중복확인을 누르지 않으면 가입할 수 없다', async () => {
+    const { wrapper } = await mountView(SignupView, '/onboarding/signup')
     await verify(wrapper)
-    expect(wrapper.text()).toContain('계정을 만들어요')
+    await fillAccount(wrapper, { check: false })
+
+    expect(buttonWith(wrapper, '가입하고 시작하기').attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('아이디 중복확인을 눌러 주세요')
+    wrapper.unmount()
+  })
+
+  // 「중복확인」을 누르면 아이디 칸이 blur 된다. 그것이 비밀번호 오류를 켜면 안 된다
+  it('중복확인을 눌러도 아직 손대지 않은 비밀번호 오류가 뜨지 않는다', async () => {
+    const { wrapper } = await mountView(SignupView, '/onboarding/signup')
+
+    await wrapper.find('input[autocomplete="username"]').setValue('suhyeon')
+    await buttonWith(wrapper, '중복확인').trigger('click')
+    await settle()
+
+    expect(wrapper.text()).toContain('사용할 수 있는 아이디예요')
+    expect(wrapper.text()).not.toContain('비밀번호는 8자 이상')
+    wrapper.unmount()
+  })
+
+  it('이미 쓰는 아이디는 통과하지 않는다', async () => {
+    const { wrapper } = await mountView(SignupView, '/onboarding/signup')
+    await verify(wrapper)
+    await fillAccount(wrapper, { id: 'admin' })
+
+    expect(wrapper.text()).toContain('이미 사용 중인 아이디예요')
+    expect(buttonWith(wrapper, '가입하고 시작하기').attributes('disabled')).toBeDefined()
+    wrapper.unmount()
+  })
+
+  // 확인한 아이디와 제출되는 아이디가 어긋나면 안 된다 — 번호와 같은 이유다
+  it('중복확인 뒤 아이디를 고치면 확인이 풀린다', async () => {
+    const { wrapper } = await mountView(SignupView, '/onboarding/signup')
+    await verify(wrapper)
+    await fillAccount(wrapper)
+    expect(wrapper.text()).toContain('사용할 수 있는 아이디예요')
+
+    await wrapper.find('input[autocomplete="username"]').setValue('suhyeon2')
+    expect(wrapper.text()).not.toContain('사용할 수 있는 아이디예요')
+    expect(buttonWith(wrapper, '가입하고 시작하기').attributes('disabled')).toBeDefined()
+    wrapper.unmount()
+  })
+
+  // 끝난 일이 화면의 절반을 계속 차지하지 않도록 입력칸을 접는다
+  it('인증을 마치면 입력칸이 접히고 완료 카드만 남는다', async () => {
+    const { wrapper } = await mountView(SignupView, '/onboarding/signup')
+    await verify(wrapper)
+
+    expect(wrapper.text()).toContain('본인인증 완료')
+    expect(wrapper.text()).toContain('010-1234-5678')
+    expect(wrapper.find('input[type="tel"]').exists()).toBe(false)
+    expect(wrapper.find('input[autocomplete="name"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  // 인증한 번호와 제출되는 번호가 어긋나면 안 된다 — 합치면서 새로 생긴 경로다
+  it('인증을 마친 뒤 번호를 바꾸면 인증이 풀린다', async () => {
+    const { wrapper } = await mountView(SignupView, '/onboarding/signup')
+    await verify(wrapper)
+    expect(wrapper.text()).toContain('본인인증 완료')
+
+    await buttonWith(wrapper, '번호 변경').trigger('click')
+    await settleSms()
+
+    expect(wrapper.text()).not.toContain('본인인증 완료')
+    expect(buttonWith(wrapper, '인증번호 받기')).toBeTruthy()
+    expect(buttonWith(wrapper, '가입하고 시작하기').attributes('disabled')).toBeDefined()
+    wrapper.unmount()
+  })
+
+  /*
+   * 버튼 넷이 한 로딩 플래그를 나눠 쓰면 **하나를 눌렀을 때 넷이 다 「확인 중」이 된다.**
+   * 중복확인이 도는 동안 가입 CTA 가 「가입하는 중...」이 되면 안 된다.
+   */
+  it('버튼마다 로딩이 따로 돈다', async () => {
+    const { wrapper } = await mountView(SignupView, '/onboarding/signup')
+    await verify(wrapper)
+
+    await wrapper.find('input[autocomplete="username"]').setValue('suhyeon')
+    await buttonWith(wrapper, '중복확인').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('확인 중...')
+    expect(wrapper.text()).not.toContain('가입하는 중...')
+
+    await settle()
     wrapper.unmount()
   })
 
@@ -239,15 +380,12 @@ describe('SignupView (ONB-01b)', () => {
     const { wrapper } = await mountView(SignupView, '/onboarding/signup')
     await verify(wrapper)
 
-    await wrapper.find('input[autocomplete="name"]').setValue('김수현')
-    await wrapper.find('input[autocomplete="username"]').setValue('suhyeon')
-    const passwords = wrapper.findAll('input[type="password"]')
-    await passwords[0].setValue('password1234')
-    await passwords[1].setValue('password9999')
+    await fillAccount(wrapper, { confirm: 'password9999' })
     await buttonWith(wrapper, '가입하고 시작하기').trigger('click')
     await settleSms()
 
     expect(wrapper.text()).toContain('비밀번호가 서로 달라요')
+    expect(isLoggedIn()).toBe(false)
     wrapper.unmount()
   })
 
@@ -255,11 +393,7 @@ describe('SignupView (ONB-01b)', () => {
     const { wrapper, router } = await mountView(SignupView, '/onboarding/signup')
     await verify(wrapper)
 
-    await wrapper.find('input[autocomplete="name"]').setValue('김수현')
-    await wrapper.find('input[autocomplete="username"]').setValue('suhyeon')
-    const passwords = wrapper.findAll('input[type="password"]')
-    await passwords[0].setValue('password1234')
-    await passwords[1].setValue('password1234')
+    await fillAccount(wrapper)
     await buttonWith(wrapper, '가입하고 시작하기').trigger('click')
     await settleSms()
 
