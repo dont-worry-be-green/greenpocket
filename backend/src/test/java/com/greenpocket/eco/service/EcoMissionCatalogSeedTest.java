@@ -39,10 +39,20 @@ class EcoMissionCatalogSeedTest {
 			}
 		}
 
-		assertThat(electricityCount).isBetween(6, 9);
-		assertThat(gasCount).isBetween(6, 9);
-		assertThat(waterCount).isBetween(6, 9);
+		assertThat(electricityCount).isBetween(9, 12);
+		assertThat(gasCount).isBetween(9, 12);
+		assertThat(waterCount).isBetween(9, 12);
 		assertThat(codes).hasSize(electricityCount + gasCount + waterCount);
 		assertThat(sql).contains("ON DUPLICATE KEY UPDATE");
+		assertThat(sql).contains("난이도는 비용이나 주거 설비 변경이 아니라");
+		assertThat(sql).doesNotContain(
+			"노후 난방배관 청소하기",
+			"고효율 보일러로 교체하기",
+			"온수 온도 55℃에서 40℃로 낮추기",
+			"절수형 샤워헤드 사용하기",
+			"수도꼭지에 절수기 달기",
+			"변기 수조에 절수기 설치하기",
+			"절수형 변기로 바꾸기"
+		);
 	}
 }
