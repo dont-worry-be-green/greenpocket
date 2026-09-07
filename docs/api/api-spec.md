@@ -1501,6 +1501,7 @@ monthlyRate    = (E_base,m − E_m) / E_base,m × 100
                  E_m      = 진단 탭 고지서 사용량 × 계수        (record_source='BILL')
 cumulativeRate = (Σ E_base,m − Σ E_m) / Σ E_base,m × 100        # 등록된 달만
 requiredRate   = (targetRate × 6 − Σ monthlyRate) / remainingMonths
+recoveryBurden = requiredRate / targetRate
 ```
 
 | 규칙 | 내용 |
@@ -1555,8 +1556,8 @@ requiredRate   = (targetRate × 6 − Σ monthlyRate) / remainingMonths
 
   "preview": { "currentRate": 18.000, "withRecommendedRate": 35.000, "coversRequired": true },
 
-  "tierDowngrade": { "suggest": false, "consecutiveMisses": 1,
-    "message": "한 달 미끄러진 것만으로 10~15% 구간을 포기하기엔 일러요" }
+  "tierDowngrade": { "suggest": true, "consecutiveMisses": 1,
+    "message": "남은 기간에는 매달 33% 감축이 필요해 처음 목표보다 실천 부담이 커졌어요. 5~10% 구간으로 조정을 검토해 보세요" }
 }
 ```
 
@@ -1564,7 +1565,10 @@ requiredRate   = (targetRate × 6 − Σ monthlyRate) / remainingMonths
 |---|---|
 | `recommended` | 이미 고른 `deviceGroup`에 더 높은 `computedRate` 미션이 있으면 **교체 추천을 우선**하고, 그래도 부족하면 겹치지 않는 다른 `deviceGroup` 미션을 추가 추천 (B-4-09) |
 | `preview.withRecommendedRate` | 교체 추천은 기존 그룹 최댓값과의 **증가분만**, 새 그룹 추천은 전체 `computedRate`를 반영한 미션 합계 |
-| `tierDowngrade.suggest` | **2회 연속 미달일 때만 `true`** (비즈니스 규칙 9) |
+| 회복 부담 배수 | `requiredRate ÷ 현재 목표 구간 하한`. 낮출 구간이 있고 **1.5 이상이면** `tierDowngrade.suggest: true` |
+| 추천 미션 부족 | `preview.coversRequired: false`이고 낮출 구간이 있으면 미달 횟수와 관계없이 `tierDowngrade.suggest: true` |
+| `consecutiveMisses` | 연속 미달 횟수는 응답 설명용이며 하향 여부를 직접 결정하지 않음 |
+| 최저 구간 | 현재 목표가 `TIER_5`이면 더 낮은 지급 구간을 만들지 않고 `suggest: false` |
 | 자동 변경 | 없음. **앱은 제안만 하고 사용자가 저장해야 바뀝니다** |
 
 ## 10.5 선택 미션 갱신
