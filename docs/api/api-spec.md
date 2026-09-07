@@ -11,7 +11,7 @@
 | 서버 | Spring Boot · MySQL 8.4 · Base URL `/api/v1` |
 | 스키마 기준 | `docs/database/schema.sql` — FK·UNIQUE·CHECK 포함본. **DB 적용은 `backend/src/main/resources/db/migration/`의 Flyway 마이그레이션으로 한다** |
 
-> **우선순위 규칙** — 기능은 원칙적으로 엑셀, 데이터는 `schema.sql`이 기준입니다. 단, JWT 기능 COM-13~16은 원본 XLSX·DDL 동기화 전까지 이 문서와 `docs/auth/jwt-auth.md`를 따릅니다.
+> **우선순위 규칙** — 기능은 원칙적으로 엑셀, 데이터는 `schema.sql`이 기준입니다. JWT 기능 COM-13~16도 원본 XLSX·DDL과 동기화되어 있습니다.
 > 이전 버전에서 열어 두었던 결정 13건은 2026-09-03에 전부 확정됐고 이 문서에 반영돼 있습니다. 무엇을 어떻게 정했는지는 **16절**을 보세요.
 
 ---
@@ -1217,6 +1217,8 @@ CLOVA Template OCR의 고정 데모 템플릿은 관리비 통합(43341)·개별
 
 기준값 + 구간 칩 + 미션 목록을 **한 번에** 내려 WF-04를 한 요청으로 그립니다.
 
+마스터 카탈로그는 요금별 9~12개를 유지합니다. API는 프론트가 계절·목표 구간·추천 맥락에 따라 6~9개를 고를 수 있도록 전체 활성 미션과 `seasonTags`를 내려줍니다. 미션은 임대 주거의 청년이 직접 수행할 수 있는 습관 행동으로 한정하고, 난이도는 비용·설비 권한이 아니라 반복 강도를 뜻합니다(C-19).
+
 **Response 200**
 
 ```json
@@ -1289,6 +1291,8 @@ CLOVA Template OCR의 고정 데모 템플릿은 관리비 통합(43341)·개별
 | 규칙 | 내용 |
 |---|---|
 | 미션 노출 | `evidence_amount` · `calculation_basis` · `source_org` **셋 다 있는 것만.** DB가 NOT NULL로 강제 (B-3-01) |
+| 카탈로그·화면 수 | API는 요금별 활성 미션 9~12개를 반환. FE는 현재 계절·목표·추천 맥락에 맞는 6~9개만 노출 (C-19) |
+| 난이도 | `EASY`·`NORMAL`·`HARD`는 한 달 동안 지속할 습관 변화 강도. 공사·설비 교체·전문업체 작업은 카탈로그에서 제외 (C-19) |
 | `computedRate` | `evidenceAmount ÷ (baselineUsage ÷ 6) × 100`, 상한 전기 30% · 수도 20% 적용 (B-3-02 · 계산식 11) |
 | `monthlyBaselineUsage` | `baselineUsage ÷ 6`. 환산 근거를 FE가 그대로 보여줄 수 있게 함 |
 | `capped` | 상한이 걸려 잘렸으면 `true` → "한 미션 상한 30% 적용" 문구 |
@@ -1644,6 +1648,7 @@ monthlyRate    = (E_base,m − E_m) / E_base,m × 100
                  E_m      = 진단 탭 고지서 사용량 × 계수        (record_source='BILL')
 cumulativeRate = (Σ E_base,m − Σ E_m) / Σ E_base,m × 100        # 등록된 달만
 requiredRate   = (targetRate × 6 − Σ monthlyRate) / remainingMonths
+recoveryBurden = requiredRate / targetRate
 ```
 
 | 규칙 | 내용 |
@@ -1674,7 +1679,7 @@ requiredRate   = (targetRate × 6 − Σ monthlyRate) / remainingMonths
   "roundId": 7,
   "utilityType": "ELECTRICITY",
   "reportMonth": "2026-07",
-  "requiredRate": 11.000,
+  "requiredRate": 33.000,
   "requiredAssumption": "도시가스 16%, 수도 11% 감축을 지금처럼 유지할 때예요",
   "carbonSharePercent": 83.0,
 
@@ -1686,9 +1691,9 @@ requiredRate   = (targetRate × 6 − Σ monthlyRate) / remainingMonths
       "deviceGroup": "냉방", "evidenceText": "월 40kWh · 4,880원",
       "calculationBasis": "15평형 2kW를 20일 기준 · 40kWh ÷ 우리 집 223kWh", "sourceOrg": "한국에너지공단",
       "selected": true, "recommended": false, "capped": false },
-    { "missionId": 15, "title": "에어컨 필터 청소하기", "computedRate": 5.000, "difficulty": "EASY",
-      "deviceGroup": "냉방", "evidenceText": "월 10.7kWh",
-      "calculationBasis": "필터를 청소하지 않으면 소비전력이 3~5% 증가", "sourceOrg": "한국에너지공단",
+    { "missionId": 14, "title": "에어컨 하루 2시간 줄이기", "computedRate": 30.000, "difficulty": "HARD",
+      "deviceGroup": "냉방", "evidenceText": "월 80kWh · 1시간 실천의 2배",
+      "calculationBasis": "공식 1시간 절감량 40kWh를 동일 조건에서 2시간으로 선형 환산", "sourceOrg": "한국에너지공단",
       "selected": false, "recommended": true, "capped": false },
     { "missionId": 16, "title": "안 쓰는 플러그 뽑기", "computedRate": 5.000, "difficulty": "EASY",
       "deviceGroup": "대기전력", "evidenceText": "가정 전력의 10% 이상",
@@ -1696,18 +1701,21 @@ requiredRate   = (targetRate × 6 − Σ monthlyRate) / remainingMonths
       "selected": false, "recommended": true, "capped": false }
   ],
 
-  "preview": { "currentRate": 18.000, "withRecommendedRate": 28.000, "coversRequired": true },
+  "preview": { "currentRate": 18.000, "withRecommendedRate": 35.000, "coversRequired": true },
 
-  "tierDowngrade": { "suggest": false, "consecutiveMisses": 1,
-    "message": "한 달 미끄러진 것만으로 10~15% 구간을 포기하기엔 일러요" }
+  "tierDowngrade": { "suggest": true, "consecutiveMisses": 1,
+    "message": "남은 기간에는 매달 33% 감축이 필요해 처음 목표보다 실천 부담이 커졌어요. 5~10% 구간으로 조정을 검토해 보세요" }
 }
 ```
 
 | 규칙 | 내용 |
 |---|---|
-| `recommended` | 부족분을 메울 수 있고 **이미 고른 미션과 `deviceGroup` 이 겹치지 않는** 것 (B-4-09) |
-| `preview.withRecommendedRate` | 추천을 전부 반영했을 때의 미션 합계 (기기 그룹 규칙 적용 후) |
-| `tierDowngrade.suggest` | **2회 연속 미달일 때만 `true`** (비즈니스 규칙 9) |
+| `recommended` | 이미 고른 `deviceGroup`에 더 높은 `computedRate` 미션이 있으면 **교체 추천을 우선**하고, 그래도 부족하면 겹치지 않는 다른 `deviceGroup` 미션을 추가 추천 (B-4-09) |
+| `preview.withRecommendedRate` | 교체 추천은 기존 그룹 최댓값과의 **증가분만**, 새 그룹 추천은 전체 `computedRate`를 반영한 미션 합계 |
+| 회복 부담 배수 | `requiredRate ÷ 현재 목표 구간 하한`. 낮출 구간이 있고 **1.5 이상이면** `tierDowngrade.suggest: true` (C-20) |
+| 추천 미션 부족 | `preview.coversRequired: false`이고 낮출 구간이 있으면 미달 횟수와 관계없이 `tierDowngrade.suggest: true` (C-20) |
+| `consecutiveMisses` | 연속 미달 횟수는 응답 설명용이며 하향 여부를 직접 결정하지 않음 |
+| 최저 구간 | 현재 목표가 `TIER_5`이면 더 낮은 지급 구간을 만들지 않고 `suggest: false` |
 | 자동 변경 | 없음. **앱은 제안만 하고 사용자가 저장해야 바뀝니다** |
 
 ## 10.5 선택 미션 갱신

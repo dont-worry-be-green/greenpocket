@@ -62,7 +62,7 @@
 - 기능명세 Markdown **109건** (P0 82 · P1 24 · P2 3). 원본 XLSX는 COM-13~16 동기화 전
 - API **64개** (P0 47 · P1 17)
 - 현재 스키마 **15테이블**. `auth_account`·`auth_refresh_token`과 `app_user.demo_key` NULL 허용을 Flyway V3에 반영
-- 2026-09-07 팀 결정 **C-17 JWT 회원 인증**을 Markdown 문서에 반영 완료
+- 2026-09-08 팀 결정 **C-17 JWT 회원 인증**과 **C-18~C-20 미션 결정**을 XLSX·Markdown 문서에 동기화 완료
 
 ### 개발 전에 채워야 할 값
 

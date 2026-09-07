@@ -2,6 +2,9 @@ package com.greenpocket.eco.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -28,6 +31,7 @@ import com.greenpocket.global.type.UtilityType;
 public class EcoMissionAdjustService {
 
 	private static final BigDecimal ZERO_RATE = new BigDecimal("0.000");
+	private static final BigDecimal RECOVERY_BURDEN_MULTIPLIER = new BigDecimal("1.500");
 
 	private final EcoGoalService ecoGoalService;
 	private final EcoProgressService ecoProgressService;
@@ -56,13 +60,13 @@ public class EcoMissionAdjustService {
 			.orElseThrow(() -> invalidUtility(utilityValue));
 		ReportValues reportValues = reportValues(report, utilityType);
 		BigDecimal currentRate = currentMissionRate(goal, utilityType);
-		Set<Long> recommendedIds = recommendedMissionIds(segment, currentRate, reportValues.requiredRate());
-		BigDecimal recommendedRate = segment.missions().stream()
-			.filter(mission -> recommendedIds.contains(mission.missionId()))
-			.map(EcoGoalFormResponse.Mission::computedRate)
-			.filter(java.util.Objects::nonNull)
-			.reduce(BigDecimal.ZERO, BigDecimal::add);
-		BigDecimal withRecommendedRate = scale(currentRate.add(recommendedRate));
+		RecommendationPlan recommendationPlan = recommendationPlan(
+			segment,
+			currentRate,
+			reportValues.requiredRate()
+		);
+		Set<Long> recommendedIds = recommendationPlan.missionIds();
+		BigDecimal withRecommendedRate = recommendationPlan.previewRate();
 		int consecutiveMisses = consecutiveMisses(report.monthlyRates());
 
 		return new EcoMissionAdjustResponse(
@@ -95,7 +99,12 @@ public class EcoMissionAdjustService {
 				reportValues.requiredRate() != null
 					&& withRecommendedRate.compareTo(reportValues.requiredRate()) >= 0
 			),
-			tierDowngrade(consecutiveMisses, segment.selectedTier())
+			tierDowngrade(
+				consecutiveMisses,
+				segment.selectedTier(),
+				reportValues.requiredRate(),
+				withRecommendedRate
+			)
 		);
 	}
 
@@ -130,41 +139,91 @@ public class EcoMissionAdjustService {
 			.reduce(BigDecimal.ZERO, BigDecimal::add));
 	}
 
-	private Set<Long> recommendedMissionIds(
+	private RecommendationPlan recommendationPlan(
 		EcoGoalFormResponse.Segment segment,
 		BigDecimal currentRate,
 		BigDecimal requiredRate
 	) {
 		Set<Long> recommendedIds = new LinkedHashSet<>();
 		if (requiredRate == null || currentRate.compareTo(requiredRate) >= 0) {
-			return recommendedIds;
+			return new RecommendationPlan(recommendedIds, currentRate);
 		}
-		Set<String> usedDeviceGroups = new LinkedHashSet<>();
-		segment.missions().stream()
-			.filter(EcoGoalFormResponse.Mission::selected)
-			.map(EcoGoalFormResponse.Mission::deviceGroup)
-			.filter(java.util.Objects::nonNull)
-			.forEach(usedDeviceGroups::add);
 
 		BigDecimal previewRate = currentRate;
+		Map<String, BigDecimal> selectedGroupRates = selectedGroupRates(segment.missions());
+
+		for (Map.Entry<String, BigDecimal> selectedGroup : selectedGroupRates.entrySet()) {
+			BigDecimal remainingRate = requiredRate.subtract(previewRate);
+			EcoGoalFormResponse.Mission replacement = chooseCandidate(
+				segment.missions().stream()
+					.filter(mission -> !mission.selected())
+					.filter(mission -> selectedGroup.getKey().equals(mission.deviceGroup()))
+					.filter(this::hasPositiveRate)
+					.filter(mission -> mission.computedRate().compareTo(selectedGroup.getValue()) > 0)
+					.toList(),
+				remainingRate.add(selectedGroup.getValue())
+			);
+			if (replacement == null) {
+				continue;
+			}
+			recommendedIds.add(replacement.missionId());
+			previewRate = previewRate.add(replacement.computedRate().subtract(selectedGroup.getValue()));
+			selectedGroup.setValue(replacement.computedRate());
+			if (previewRate.compareTo(requiredRate) >= 0) {
+				return new RecommendationPlan(recommendedIds, scale(previewRate));
+			}
+		}
+
+		Map<String, List<EcoGoalFormResponse.Mission>> unusedGroups = new LinkedHashMap<>();
 		for (EcoGoalFormResponse.Mission mission : segment.missions()) {
-			if (mission.selected() || mission.computedRate() == null || mission.computedRate().signum() <= 0) {
+			if (mission.selected() || !hasPositiveRate(mission) || mission.deviceGroup() == null
+				|| selectedGroupRates.containsKey(mission.deviceGroup())) {
 				continue;
 			}
-			String deviceGroup = mission.deviceGroup();
-			if (deviceGroup != null && usedDeviceGroups.contains(deviceGroup)) {
-				continue;
-			}
-			recommendedIds.add(mission.missionId());
-			if (deviceGroup != null) {
-				usedDeviceGroups.add(deviceGroup);
-			}
-			previewRate = previewRate.add(mission.computedRate());
+			unusedGroups.computeIfAbsent(mission.deviceGroup(), ignored -> new ArrayList<>()).add(mission);
+		}
+		for (List<EcoGoalFormResponse.Mission> candidates : unusedGroups.values()) {
+			EcoGoalFormResponse.Mission addition = chooseCandidate(
+				candidates,
+				requiredRate.subtract(previewRate)
+			);
+			recommendedIds.add(addition.missionId());
+			previewRate = previewRate.add(addition.computedRate());
 			if (previewRate.compareTo(requiredRate) >= 0) {
 				break;
 			}
 		}
-		return recommendedIds;
+		return new RecommendationPlan(recommendedIds, scale(previewRate));
+	}
+
+	private Map<String, BigDecimal> selectedGroupRates(List<EcoGoalFormResponse.Mission> missions) {
+		Map<String, BigDecimal> rates = new LinkedHashMap<>();
+		for (EcoGoalFormResponse.Mission mission : missions) {
+			if (!mission.selected() || !hasPositiveRate(mission) || mission.deviceGroup() == null) {
+				continue;
+			}
+			rates.merge(mission.deviceGroup(), mission.computedRate(), BigDecimal::max);
+		}
+		return rates;
+	}
+
+	private EcoGoalFormResponse.Mission chooseCandidate(
+		List<EcoGoalFormResponse.Mission> candidates,
+		BigDecimal targetRate
+	) {
+		if (candidates.isEmpty()) {
+			return null;
+		}
+		return candidates.stream()
+			.filter(mission -> mission.computedRate().compareTo(targetRate) >= 0)
+			.min(Comparator.comparing(EcoGoalFormResponse.Mission::computedRate))
+			.orElseGet(() -> candidates.stream()
+				.max(Comparator.comparing(EcoGoalFormResponse.Mission::computedRate))
+				.orElseThrow());
+	}
+
+	private boolean hasPositiveRate(EcoGoalFormResponse.Mission mission) {
+		return mission.computedRate() != null && mission.computedRate().signum() > 0;
 	}
 
 	private int consecutiveMisses(List<EcoMonthlyReportResponse.MonthlyRate> monthlyRates) {
@@ -180,20 +239,57 @@ public class EcoMissionAdjustService {
 
 	private EcoMissionAdjustResponse.TierDowngrade tierDowngrade(
 		int consecutiveMisses,
-		TargetTier selectedTier
+		TargetTier selectedTier,
+		BigDecimal requiredRate,
+		BigDecimal withRecommendedRate
 	) {
-		boolean suggest = consecutiveMisses >= 2;
-		String message;
-		if (suggest) {
-			message = "%d개월 연속 목표에 못 미쳤어요. 목표 구간 조정을 검토해 보세요".formatted(consecutiveMisses);
+		if (selectedTier == null || requiredRate == null) {
+			return new EcoMissionAdjustResponse.TierDowngrade(
+				false,
+				consecutiveMisses,
+				"목표 조정에 필요한 월별 데이터가 아직 부족해요"
+			);
 		}
-		else if (consecutiveMisses == 1 && selectedTier != null) {
-			message = "한 달 미끄러진 것만으로 %s 구간을 포기하기엔 일러요".formatted(selectedTier.label());
+
+		TargetTier suggestedTier = lowerTier(selectedTier);
+		BigDecimal burdenThreshold = selectedTier.targetRate().multiply(RECOVERY_BURDEN_MULTIPLIER);
+		boolean recoveryBurdenHigh = requiredRate.compareTo(burdenThreshold) >= 0;
+		boolean missionPlanInsufficient = withRecommendedRate.compareTo(requiredRate) < 0;
+		boolean suggest = suggestedTier != null && (recoveryBurdenHigh || missionPlanInsufficient);
+		String message;
+		if (suggest && missionPlanInsufficient) {
+			message = "추천 가능한 실천을 모두 반영해도 필요한 %s%%에 미치지 못해요. %s 구간으로 조정을 검토해 보세요"
+				.formatted(rateText(requiredRate), suggestedTier.label());
+		}
+		else if (suggest) {
+			message = "남은 기간에는 매달 %s%% 감축이 필요해 처음 목표보다 실천 부담이 커졌어요. %s 구간으로 조정을 검토해 보세요"
+				.formatted(rateText(requiredRate), suggestedTier.label());
+		}
+		else if (suggestedTier == null && (recoveryBurdenHigh || missionPlanInsufficient)) {
+			message = "현재는 가장 낮은 %s 구간이에요. 목표 하향 대신 실천 강도를 조정해 보세요"
+				.formatted(selectedTier.label());
+		}
+		else if (consecutiveMisses > 0) {
+			message = "%d개월 연속 목표에 못 미쳤지만 필요한 월 감축률 %s%%는 회복 가능한 범위예요. 현재 %s 구간을 유지해 보세요"
+				.formatted(consecutiveMisses, rateText(requiredRate), selectedTier.label());
 		}
 		else {
-			message = "현재 목표 구간을 유지해도 좋아요";
+			message = "필요한 월 감축률 %s%%는 현재 목표에서 회복 가능한 범위예요"
+				.formatted(rateText(requiredRate));
 		}
 		return new EcoMissionAdjustResponse.TierDowngrade(suggest, consecutiveMisses, message);
+	}
+
+	private TargetTier lowerTier(TargetTier selectedTier) {
+		return switch (selectedTier) {
+			case TIER_15 -> TargetTier.TIER_10;
+			case TIER_10 -> TargetTier.TIER_5;
+			case TIER_5 -> null;
+		};
+	}
+
+	private String rateText(BigDecimal rate) {
+		return scale(rate).stripTrailingZeros().toPlainString();
 	}
 
 	private UtilityType parseUtility(String value) {
@@ -229,5 +325,8 @@ public class EcoMissionAdjustService {
 		BigDecimal carbonSharePercent,
 		BigDecimal actualRate
 	) {
+	}
+
+	private record RecommendationPlan(Set<Long> missionIds, BigDecimal previewRate) {
 	}
 }
