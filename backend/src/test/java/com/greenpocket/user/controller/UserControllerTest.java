@@ -37,7 +37,10 @@ class UserControllerTest {
 	@BeforeEach
 	void setUp() {
 		userService = mock(UserService.class);
-		mockMvc = MockMvcBuilders.standaloneSetup(new UserController(userService))
+		mockMvc = MockMvcBuilders.standaloneSetup(
+				new UserController(userService),
+				new DemoUserController(userService)
+			)
 			.setCustomArgumentResolvers(new CurrentUserIdArgumentResolver())
 			.setControllerAdvice(new GlobalExceptionHandler())
 			.build();
@@ -129,7 +132,7 @@ class UserControllerTest {
 	void rejectsBootstrapWithoutAuthentication() throws Exception {
 		mockMvc.perform(get("/api/v1/users/me"))
 			.andExpect(status().isUnauthorized())
-			.andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED_DEMO_KEY"));
+			.andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
 	}
 
 	private UserStartResponse startResponse() {
