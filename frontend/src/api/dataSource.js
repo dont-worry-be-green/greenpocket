@@ -6,8 +6,8 @@
  *
  * 값은 `localStorage` 에 있고 개발 빌드의 데모 도구(`components/layout/DemoToolsFab.vue`)가 바꾼다.
  *
- * 적용 범위는 `api/onboarding.js` 와 `api/eco.js` 다. 나머지(`greenlife` · `analysis` · `pocket`)는
- * 애초에 픽스처가 없어 항상 실 호출이다.
+ * 적용 범위는 `api/onboarding.js` · `api/eco.js` · `api/mypage.js` · `api/policy.js` 다.
+ * 나머지(`greenlife` · `analysis` · `pocket`)는 픽스처가 없어 항상 실 호출이다.
  *
  * 목데이터 모드가 아직 필요한 이유는 `mission_catalog` 시드다(이슈 #75). 비어 있어서
  * 실 API 로는 WF-04 의 실천 미션 목록이 빈 카드로 뜬다 — 그 화면을 보려면 목데이터로 바꾼다.

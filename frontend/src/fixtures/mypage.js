@@ -22,21 +22,18 @@
 export const MYPAGE = {
   profile: {
     name: '김수현',
-    sidoName: '서울특별시',
-    sigunguName: '관악구',
-    housingType: 'ONE_ROOM',
-    areaBand: 'UNDER_10',
-    profileSummary: '서울 관악구 · 원룸 · 10평 이하',
+    birthDate: '1998-03-15',
+    gender: 'FEMALE',
+    phoneNumber: '01091740339',
   },
   links: {
     billArchive: { count: 14, screen: 'MY-03' },
     reportArchive: { count: 15, screen: 'MY-04' },
   },
   ecoAddress: {
-    label: '서울 관악구',
+    label: '서울특별시 관악구',
     registeredAt: '2026-03',
-    matchesProfile: true,
-    notice: '이사했다면 꼭 바꿔주세요. 바꾸지 않으면 지금 살지 않는 집의 사용량과 비교돼요',
+    notice: '주소를 바꾸려면 에코마일리지 누리집에서 변경한 뒤 다시 연동해 주세요',
   },
   integration: {
     ecoLinkStatus: 'LINKED',
@@ -46,20 +43,27 @@ export const MYPAGE = {
     registeredUtilities: ['ELECTRICITY', 'GAS', 'WATER'],
   },
   pocketAccountNo: '1005-1234-5678-90',
-}
-
-/** GET /profile (5.2). MY-02 가 프리필에 쓴다 — `GET /mypage` 에는 지역 **코드**가 없다 */
-export const PROFILE = {
-  name: '김수현',
-  sidoCode: '11',
-  sidoName: '서울특별시',
-  sigunguCode: '11620',
-  sigunguName: '관악구',
-  housingType: 'ONE_ROOM',
-  areaBand: 'UNDER_10',
-  profileSummary: '서울 관악구 · 원룸 · 10평 이하',
-  seoulResident: true,
-  onboardingCompleted: true,
+  youthPolicy: {
+    profileCompleted: true,
+    regionLinked: true,
+    recommendedCount: 3,
+    preview: [
+      {
+        policyId: '20260722005400213265',
+        title: '2026 지역가치창업가 양성사업',
+        category: 'JOB',
+        subCategory: '창업',
+        supportSummary: '창업교육과 컨설팅, 창업자금 최대 3천만원을 지원해요.',
+        applicationStatus: 'OPEN',
+        applicationEndDate: '2026-12-31',
+        matchStatus: 'ELIGIBLE',
+        matchScore: 100,
+        matchReasons: ['에코마일리지 연동 지역과 일치해요'],
+        regionScope: 'SIGUNGU',
+      },
+    ],
+    lastSyncedAt: '2026-09-09T02:29:35+09:00',
+  },
 }
 
 /*
