@@ -21,7 +21,7 @@ export const TABS = [
   // fab: 가운데 솟은 원형 버튼. 온보딩 완료 후 항상 여기로 진입한다 (결정 C-1)
   { key: 'whatif', label: 'What-if', path: '/whatif', icon: IconLeaf, fab: true },
   { key: 'pocket', label: '포켓', path: '/pocket', icon: IconPocket },
-  { key: 'mypage', label: '마이페이지', path: '/mypage', icon: IconUser },
+  { key: 'mypage', label: '마이', path: '/mypage', icon: IconUser },
 ]
 
 export function findTab(key) {
