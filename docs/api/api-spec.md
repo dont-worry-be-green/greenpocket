@@ -2,11 +2,11 @@
 
 | 항목 | 내용 |
 |---|---|
-| 문서 기준일 | 2026-09-07 (ver3 — JWT 인증 결정 반영, 17절) |
+| 문서 기준일 | 2026-09-08 (ver3.3 — 결정 C-1~C-21 반영) |
 | 참가팀 | 돈워리, 비그린 (Don't worry, be green) |
 | 기준 문서 | `docs/feature-spec/기능명세서.md` (109건) · `docs/database/schema.sql` (15테이블) |
-| 대상 범위 | **P0 82건 + P1 24건**. P2 3건(D-3-06 · D-4-01 · E-2-02)은 15절에 자리만 표기 |
-| API 수 | **64개** (P0 47 · P1 17) |
+| 대상 범위 | **P0 82건 + P1 25건**. P2 2건(D-3-06 · E-2-02)은 15절에 자리만 표기 |
+| API 수 | **65개** (P0 47 · P1 18) |
 | 인증 | 이메일·비밀번호 로그인 + JWT Access Token. Refresh Token은 HttpOnly 쿠키 (결정 C-17) |
 | 서버 | Spring Boot · MySQL 8.4 · Base URL `/api/v1` |
 | 스키마 기준 | `docs/database/schema.sql` — FK·UNIQUE·CHECK 포함본. **DB 적용은 `backend/src/main/resources/db/migration/`의 Flyway 마이그레이션으로 한다** |
@@ -2343,6 +2343,43 @@ requiredByUtility
 
 > **포켓 이름은 "그린포켓"으로 고정**이고 변경 기능은 넣지 않습니다(결정 2). PK-06 시안의 이름 수정 UI는 빼주세요.
 
+## 13.13 KB 금융상품 추천
+
+`GET /pocket/recommended-product` · **P1** · D-4-01 · PK-01 · PK-02 → PK-09
+
+포켓 홈 추천 배너와 상품 상세 화면에서 공통으로 사용하는 실제 판매 상품 정보를 조회합니다. 그린포켓은 금융상품 가입·저축·계좌 연결을 처리하지 않고 외부 상품 페이지 URL만 제공합니다.
+
+**Response 200**
+
+```json
+{
+  "productCode": "DP01000942",
+  "name": "KB맑은하늘적금",
+  "tagline": "맑은하늘 만들고 금리도 Up",
+  "recommendation": {
+    "badge": "그린포켓 추천",
+    "title": "친환경 실천과 가장 잘 어울리는 적금",
+    "description": "맑은하늘을 위한 생활 속 작은 실천에 우대금리를 제공해요."
+  },
+  "productType": "자유적립식",
+  "monthlyDeposit": { "minimumAmount": 10000, "maximumAmount": 1000000 },
+  "contractTermsMonths": [12, 24, 36],
+  "preferentialMissions": ["종이통장 줄이기", "비대면 가입", "대중교통 이용", "미세먼지 퀴즈"],
+  "informationBaseDate": "2026-08-26",
+  "applicationUrl": "https://obank.kbstar.com/quics?cc=b061761:b061770&isNew=N&page=C020702&prcode=DP01000942",
+  "notice": "금리와 우대 조건은 가입 시점에 KB국민은행에서 확인해 주세요."
+}
+```
+
+| 규칙 | 내용 |
+|---|---|
+| 추천 범위 | 실제 판매 중인 KB맑은하늘적금 1개를 고정 추천. 개인별 금융상품 적합성 판단은 하지 않음 |
+| 신청 동작 | `applicationUrl`로 외부 이동. 그린포켓 내부에서 가입 신청·자동저축·이체를 실행하지 않음 |
+| 우대 조건 | `preferentialMissions`는 기존 KB 상품 조건 안내이며 그린포켓 미션 달성을 우대 조건으로 표현하지 않음 |
+| 정보 기준일 | 상품 조건은 바뀔 수 있으므로 `informationBaseDate`와 `notice`를 함께 표시 |
+
+**Errors** `UNAUTHENTICATED(401)` · 개발·시연 프로필의 Demo Key 오류는 `UNAUTHENTICATED_DEMO_KEY(401)`
+
 ---
 
 # 14. 마이페이지·보관함 API (E)
@@ -2427,7 +2464,7 @@ requiredByUtility
 
 # 15. 매핑표
 
-## 15.1 API 64개 한눈에 보기
+## 15.1 API 65개 한눈에 보기
 
 P1만 표시하고 나머지는 P0입니다. 뒤 숫자는 이 문서의 절 번호. 표 형태 목록은 노션 「API 기본 명세서」 DB에도 있습니다.
 
@@ -2442,14 +2479,14 @@ P1만 표시하고 나머지는 P0입니다. 뒤 숫자는 이 문서의 절 번
 | 진행·리포트 (5) | `GET /eco/home` 10.1 · `POST .../result/view` 10.2 (P1) · `GET /eco/monthly-report` 10.3 · `GET .../mission-adjust` 10.4 (P1) · `PUT .../missions` 10.5 (P1) |
 | 평가 결과 (3) | `GET .../result` 11.1 · `GET .../settlement` 11.2 · `POST .../application` 11.3 (P1) |
 | 혜택 (5) | `GET /greenlife/status` 12.1 · `POST /greenlife/link` 12.2 · `GET /greenlife/items` 12.3 · `GET /greenlife/items/{itemId}` 12.4 (P1) · `POST /greenlife/settlements` 12.5 |
-| 포켓 (14) | `GET /pocket` 13.1 · `GET /pocket/balance` 13.2 · `GET /pocket/convertible-mileage` 13.3 · `GET /pocket/transactions` 13.4 · `POST /pocket/conversions` 13.5 · `POST .../conversions/{id}/complete` 13.6 · `GET /pocket/accounts` 13.7 · `POST /pocket/accounts` 13.8 · `PUT /pocket/accounts/{id}` 13.9 · `PUT .../{id}/default` 13.9 · `DELETE .../{id}` 13.9 (P1) · `POST /pocket/withdrawals` 13.10 · `GET /pocket/withdrawals` 13.11 (P1) · `GET /pocket/management` 13.12 (P1) |
+| 포켓 (15) | `GET /pocket` 13.1 · `GET /pocket/balance` 13.2 · `GET /pocket/convertible-mileage` 13.3 · `GET /pocket/transactions` 13.4 · `POST /pocket/conversions` 13.5 · `POST .../conversions/{id}/complete` 13.6 · `GET /pocket/accounts` 13.7 · `POST /pocket/accounts` 13.8 · `PUT /pocket/accounts/{id}` 13.9 · `PUT .../{id}/default` 13.9 · `DELETE .../{id}` 13.9 (P1) · `POST /pocket/withdrawals` 13.10 · `GET /pocket/withdrawals` 13.11 (P1) · `GET /pocket/management` 13.12 (P1) · `GET /pocket/recommended-product` 13.13 (P1) |
 | 마이페이지 (2) | `GET /mypage` 14.1 · `GET /reports` 14.2 (P1) |
 
 각 엔드포인트 절 제목에 담당 기능 ID가 붙어 있습니다. 기능 ID로 역추적할 때는 문서에서 `A-2-11` 처럼 검색하세요.
 
 ## 15.2 API가 없는 기능 (FE 단독 · 비개발)
 
-P0·P1 106건 중 아래 12건은 서버 호출이 없습니다. 나머지 94건은 위 64개 API로 덮습니다.
+P0·P1 107건 중 아래 12건은 서버 호출이 없습니다. 나머지 95건은 위 65개 API로 덮습니다.
 
 | 기능 ID | 내용 | 왜 API가 없나 |
 |---|---|---|
@@ -2494,14 +2531,15 @@ P0·P1 106건 중 아래 12건은 서버 호출이 없습니다. 나머지 94건
 | WF-09 | 평가 종료 팝업 | `GET /eco/home` (`resultModal`) → `POST .../result/view` |
 | WF-10 | 평가 결과 상세 | `GET /eco/rounds/{id}/result` |
 | WF-11 | 마일리지 적립·현금 전환 | `GET .../settlement` → `POST /pocket/conversions` → `.../complete` |
-| PK-01 | 계좌 미등록 메인 | `GET /pocket` (`empty.noAccount:true`) |
-| PK-02 | 계좌 등록 메인 | `GET /pocket` · `GET /pocket/convertible-mileage` |
+| PK-01 | 계좌 미등록 메인 | `GET /pocket` (`empty.noAccount:true`) · `GET /pocket/recommended-product` |
+| PK-02 | 계좌 등록 메인 | `GET /pocket` · `GET /pocket/convertible-mileage` · `GET /pocket/recommended-product` |
 | PK-03 | 출금 신청 | `GET /pocket/accounts` → `POST /pocket/withdrawals` |
 | PK-04 | 출금 완료 | `POST /pocket/withdrawals` 응답 |
 | PK-05 | 적립 내역 | `GET /pocket/transactions` |
 | PK-06 | 그린포켓 관리 | `GET /pocket/management` |
 | PK-07 | 출금계좌 등록·변경 | `GET/POST/PUT /pocket/accounts` |
 | PK-08 | 출금 내역 | `GET /pocket/withdrawals` |
+| PK-09 | KB맑은하늘적금 상세 | `GET /pocket/recommended-product` → `applicationUrl` 외부 이동 |
 | MY-01 | 마이페이지 메인 | `GET /mypage` |
 | MY-02 | 기본 정보 수정 | `GET /profile` → `PUT /profile` |
 | MY-03 | 고지서 보관함 | `GET /bills?utility=&year=` |
@@ -2630,10 +2668,11 @@ FROM eco_round_utility WHERE eco_round_id = :rid AND is_registered = 1;
 20. POST /greenlife/settlements                  월 지급분 → 포켓 입금
 21. GET  /pocket                 → POST /pocket/withdrawals                PK-02~04
 22. GET  /pocket/transactions                    PK-05
-23. GET  /mypage                 → GET /reports                            MY-01·MY-04
-24. POST /auth/logout                            Refresh 폐기
+23. GET  /pocket/recommended-product             PK-01·02 → PK-09
+24. GET  /mypage                 → GET /reports                            MY-01·MY-04
+25. POST /auth/logout                            Refresh 폐기
 
-개발·시연 프로필에서는 1번을 `POST /users`, 24번을 `POST /demo/reset`으로 대체할 수 있습니다.
+개발·시연 프로필에서는 1번을 `POST /users`, 25번을 `POST /demo/reset`으로 대체할 수 있습니다.
 ```
 
 # 부록 B. 검증 체크리스트 (완료 조건 → 테스트)

@@ -21,9 +21,11 @@ import com.greenpocket.pocket.dto.ConvertibleMileageResponse;
 import com.greenpocket.pocket.dto.PocketBalanceResponse;
 import com.greenpocket.pocket.dto.PocketMainResponse;
 import com.greenpocket.pocket.dto.PocketManagementResponse;
+import com.greenpocket.pocket.dto.PocketRecommendedProductResponse;
 import com.greenpocket.pocket.dto.PocketTransactionListResponse;
 import com.greenpocket.pocket.entity.TransactionDirection;
 import com.greenpocket.pocket.entity.TransactionType;
+import com.greenpocket.pocket.service.PocketProductRecommendationService;
 import com.greenpocket.pocket.service.PocketQueryService;
 
 class PocketQueryControllerTest {
@@ -31,12 +33,17 @@ class PocketQueryControllerTest {
 	private static final Long USER_ID = 42L;
 
 	private PocketQueryService pocketQueryService;
+	private PocketProductRecommendationService pocketProductRecommendationService;
 	private MockMvc mockMvc;
 
 	@BeforeEach
 	void setUp() {
 		pocketQueryService = mock(PocketQueryService.class);
-		mockMvc = MockMvcBuilders.standaloneSetup(new PocketQueryController(pocketQueryService))
+		pocketProductRecommendationService = mock(PocketProductRecommendationService.class);
+		mockMvc = MockMvcBuilders.standaloneSetup(new PocketQueryController(
+			pocketQueryService,
+			pocketProductRecommendationService
+		))
 			.setCustomArgumentResolvers(new CurrentUserIdArgumentResolver())
 			.setControllerAdvice(new GlobalExceptionHandler())
 			.build();
@@ -126,8 +133,51 @@ class PocketQueryControllerTest {
 	}
 
 	@Test
+	void returnsRecommendedProduct() throws Exception {
+		when(pocketProductRecommendationService.getRecommendedProduct()).thenReturn(
+			new PocketRecommendedProductResponse(
+				"DP01000942",
+				"KB맑은하늘적금",
+				"맑은하늘 만들고 금리도 Up",
+				new PocketRecommendedProductResponse.Recommendation(
+					"그린포켓 추천",
+					"친환경 실천과 가장 잘 어울리는 적금",
+					"맑은하늘을 위한 생활 속 작은 실천에 우대금리를 제공해요."
+				),
+				"자유적립식",
+				new PocketRecommendedProductResponse.MonthlyDeposit(10_000L, 1_000_000L),
+				List.of(12, 24, 36),
+				List.of("종이통장 줄이기", "비대면 가입", "대중교통 이용", "미세먼지 퀴즈"),
+				java.time.LocalDate.of(2026, 8, 26),
+				"https://obank.kbstar.com/quics?prcode=DP01000942",
+				"금리와 우대 조건은 가입 시점에 KB국민은행에서 확인해 주세요."
+			)
+		);
+
+		performGet("/api/v1/pocket/recommended-product")
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.productCode").value("DP01000942"))
+			.andExpect(jsonPath("$.data.name").value("KB맑은하늘적금"))
+			.andExpect(jsonPath("$.data.recommendation.badge").value("그린포켓 추천"))
+			.andExpect(jsonPath("$.data.monthlyDeposit.minimumAmount").value(10000))
+			.andExpect(jsonPath("$.data.contractTermsMonths[2]").value(36))
+			.andExpect(jsonPath("$.data.preferentialMissions[2]").value("대중교통 이용"))
+			.andExpect(jsonPath("$.data.informationBaseDate").value("2026-08-26"))
+			.andExpect(jsonPath("$.data.applicationUrl").value(
+				"https://obank.kbstar.com/quics?prcode=DP01000942"
+			));
+	}
+
+	@Test
 	void rejectsMissingAuthentication() throws Exception {
 		mockMvc.perform(get("/api/v1/pocket"))
+			.andExpect(status().isUnauthorized())
+			.andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
+	}
+
+	@Test
+	void rejectsRecommendedProductWithoutAuthentication() throws Exception {
+		mockMvc.perform(get("/api/v1/pocket/recommended-product"))
 			.andExpect(status().isUnauthorized())
 			.andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
 	}

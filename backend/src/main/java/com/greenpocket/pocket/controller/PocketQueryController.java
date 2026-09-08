@@ -19,18 +19,21 @@ import com.greenpocket.pocket.dto.ConvertibleMileageResponse;
 import com.greenpocket.pocket.dto.PocketBalanceResponse;
 import com.greenpocket.pocket.dto.PocketMainResponse;
 import com.greenpocket.pocket.dto.PocketManagementResponse;
+import com.greenpocket.pocket.dto.PocketRecommendedProductResponse;
 import com.greenpocket.pocket.dto.PocketTransactionListResponse;
 import com.greenpocket.pocket.entity.TransactionDirection;
 import com.greenpocket.pocket.entity.TransactionType;
+import com.greenpocket.pocket.service.PocketProductRecommendationService;
 import com.greenpocket.pocket.service.PocketQueryService;
 
-@Tag(name = "Pocket", description = "그린포켓 메인·잔액·마일리지·거래 내역 조회 API")
+@Tag(name = "Pocket", description = "그린포켓 메인·잔액·마일리지·거래 내역·KB 금융상품 추천 조회 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/pocket")
 public class PocketQueryController {
 
 	private final PocketQueryService pocketQueryService;
+	private final PocketProductRecommendationService pocketProductRecommendationService;
 
 	@Operation(summary = "포켓 메인 조회", description = "잔액, 적립 구분, 전환 가능 마일리지와 적립·출금 통합 최근 내역 4건을 조회합니다.")
 	@ApiResponses({
@@ -99,5 +102,20 @@ public class PocketQueryController {
 		@Parameter(hidden = true) @CurrentUserId Long userId
 	) {
 		return ApiResponse.success(pocketQueryService.getManagement(userId));
+	}
+
+	@Operation(
+		summary = "KB 추천 금융상품 조회",
+		description = "포켓 홈 배너와 상세 화면에서 사용할 KB맑은하늘적금 정보와 KB국민은행 외부 상품 페이지 URL을 조회합니다."
+	)
+	@ApiResponses({
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 실패")
+	})
+	@GetMapping("/recommended-product")
+	public ApiResponse<PocketRecommendedProductResponse> getRecommendedProduct(
+		@Parameter(hidden = true) @CurrentUserId Long userId
+	) {
+		return ApiResponse.success(pocketProductRecommendationService.getRecommendedProduct());
 	}
 }
