@@ -49,8 +49,8 @@ describe('auth store', () => {
     authApi.getCurrentUser.mockResolvedValue({
       userId: 1,
       name: '이아영',
-      onboardingCompleted: false,
-      entryScreen: 'ONB-02',
+      onboardingCompleted: true,
+      entryScreen: 'WF-01',
     })
     const store = useAuthStore()
 
@@ -58,7 +58,7 @@ describe('auth store', () => {
     expect(authApi.refreshSession).toHaveBeenCalledOnce()
     expect(authApi.getCurrentUser).toHaveBeenCalledOnce()
     expect(store.authenticated).toBe(true)
-    expect(store.onboardingCompleted).toBe(false)
+    expect(store.onboardingCompleted).toBe(true)
   })
 
   it('refresh 실패는 비로그인 상태로 확정한다', async () => {
