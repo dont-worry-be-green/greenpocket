@@ -179,6 +179,8 @@ class DiagnosisResultServiceTest {
 		assertThat(response.lastYearComparison().available()).isFalse();
 		assertThat(response.lastYearComparison().unavailableReason()).isEqualTo("NO_BASELINE");
 		assertThat(response.regionComparison().tabs().getFirst().available()).isFalse();
+		assertThat(response.regionComparison().tabs().getFirst().unavailableReason())
+			.isEqualTo("ECO_ADDRESS_REQUIRED");
 		assertThat(response.regionComparison().tabs().getFirst().regionAvgAmount()).isNull();
 		assertThat(response.whatIfLink()).isEqualTo(new DiagnosisResponse.WhatIfLink(null, false));
 	}

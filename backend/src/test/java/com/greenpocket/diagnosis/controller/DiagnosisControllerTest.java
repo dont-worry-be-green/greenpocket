@@ -104,6 +104,7 @@ class DiagnosisControllerTest {
 	void returnsWrappedBaselineResponse() throws Exception {
 		DiagnosisBaselineResponse response = new DiagnosisBaselineResponse(
 			true,
+			null,
 			RegionLevel.SIGUNGU,
 			"11",
 			"11620",

@@ -15,6 +15,7 @@ import com.greenpocket.diagnosis.entity.RegionUtilitySnapshot;
 import com.greenpocket.diagnosis.repository.RegionUtilitySnapshotRepository;
 import com.greenpocket.global.type.UtilityType;
 import com.greenpocket.user.service.UserRegionQueryService;
+import com.greenpocket.user.service.UserRegionQueryService.UserDiagnosisProfile;
 
 @Service
 @RequiredArgsConstructor
@@ -32,16 +33,19 @@ public class DiagnosisBaselineService {
 		YearMonth month,
 		UtilityType utilityType
 	) {
-		Optional<String> sidoCode = userRegionQueryService.findSidoCode(userId);
-		if (sidoCode.isEmpty()) {
-			return DiagnosisBaselineResponse.notFound(null, sigunguCode, utilityType);
+		Optional<UserDiagnosisProfile> profile = userRegionQueryService.findDiagnosisProfile(userId)
+			.filter(value -> value.sidoCode() != null && value.sigunguCode() != null);
+		if (profile.isEmpty()) {
+			return DiagnosisBaselineResponse.notFound(null, null, utilityType, "ECO_ADDRESS_REQUIRED");
 		}
+		String sidoCode = profile.get().sidoCode();
+		String linkedSigunguCode = profile.get().sigunguCode();
 
 		LocalDate latestBaseMonth = month.atDay(1);
 		Optional<RegionUtilitySnapshot> sigunguBaseline = findLatestAvailable(
 			RegionLevel.SIGUNGU,
-			sidoCode.get(),
-			sigunguCode,
+			sidoCode,
+			linkedSigunguCode,
 			utilityType,
 			latestBaseMonth
 		);
@@ -51,13 +55,18 @@ public class DiagnosisBaselineService {
 
 		return findLatestAvailable(
 			RegionLevel.SIDO,
-			sidoCode.get(),
+			sidoCode,
 			SIDO_SIGUNGU_CODE,
 			utilityType,
 			latestBaseMonth
 		)
 			.map(DiagnosisBaselineResponse::found)
-			.orElseGet(() -> DiagnosisBaselineResponse.notFound(sidoCode.get(), sigunguCode, utilityType));
+			.orElseGet(() -> DiagnosisBaselineResponse.notFound(
+				sidoCode,
+				linkedSigunguCode,
+				utilityType,
+				"NO_BASELINE"
+			));
 	}
 
 	private Optional<RegionUtilitySnapshot> findLatestAvailable(

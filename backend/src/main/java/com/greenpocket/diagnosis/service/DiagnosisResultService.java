@@ -218,8 +218,11 @@ public class DiagnosisResultService {
 	) {
 		Long myAmount = amount(currentByUtility.get(UtilityType.ELECTRICITY));
 		if (targetBaseline.isEmpty()) {
+			String unavailableReason = profile
+				.filter(value -> value.sidoCode() != null && value.sigunguCode() != null)
+				.isPresent() ? "NO_BASELINE" : "ECO_ADDRESS_REQUIRED";
 			return new DiagnosisResponse.RegionTab(
-				UtilityType.ELECTRICITY, false, "NO_BASELINE", myAmount, null, null, null
+				UtilityType.ELECTRICITY, false, unavailableReason, myAmount, null, null, null
 			);
 		}
 

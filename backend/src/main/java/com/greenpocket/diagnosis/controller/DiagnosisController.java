@@ -63,7 +63,7 @@ public class DiagnosisController {
 		return ApiResponse.success(diagnosisResultService.findDiagnosis(userId, month));
 	}
 
-	@Operation(summary = "지역 기준선 단건 조회", description = "요청 월 이하의 최신 시군구 기준선을 조회하고 없으면 시도 기준선으로 대체합니다.")
+	@Operation(summary = "지역 기준선 단건 조회", description = "에코마일리지 연동 주소로 요청 월 이하의 최신 시군구 기준선을 조회하고 없으면 시도 기준선으로 대체합니다.")
 	@ApiResponses({
 		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "기준선 조회 성공 또는 기준선 없음"),
 		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "필수 쿼리 누락 또는 쿼리 형식 오류"),
@@ -72,7 +72,7 @@ public class DiagnosisController {
 	@GetMapping("/baseline")
 	public ApiResponse<DiagnosisBaselineResponse> getBaseline(
 		@Parameter(hidden = true) @CurrentUserId Long userId,
-		@Parameter(description = "시군구 코드", example = "11620", required = true)
+		@Parameter(description = "호환용 시군구 코드(조회 기준은 에코마일리지 연동 주소)", example = "11620", required = true)
 		@RequestParam @NotBlank String sigunguCode,
 		@Parameter(description = "조회 기준 월(YYYY-MM)", example = "2026-08", required = true)
 		@RequestParam @DateTimeFormat(pattern = "yyyy-MM") YearMonth month,

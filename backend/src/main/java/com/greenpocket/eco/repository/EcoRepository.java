@@ -7,7 +7,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 import lombok.RequiredArgsConstructor;
 
@@ -28,18 +27,13 @@ public class EcoRepository {
 
 	public Optional<EcoUserSnapshot> findUser(Long userId) {
 		return jdbcClient.sql("""
-				SELECT sido_code, sido_name, sigungu_code, sigungu_name,
-				       eco_link_status, eco_linked_at,
+				SELECT eco_link_status, eco_linked_at,
 				       eco_sido_code, eco_sigungu_code, eco_address_label, eco_address_registered_at
 				FROM app_user
 				WHERE id = :userId
 				""")
 			.param("userId", userId)
 			.query((resultSet, rowNum) -> new EcoUserSnapshot(
-				resultSet.getString("sido_code"),
-				resultSet.getString("sido_name"),
-				resultSet.getString("sigungu_code"),
-				resultSet.getString("sigungu_name"),
 				EcoLinkStatus.valueOf(resultSet.getString("eco_link_status")),
 				toLocalDateTime(resultSet.getTimestamp("eco_linked_at")),
 				resultSet.getString("eco_sido_code"),
@@ -289,10 +283,6 @@ public class EcoRepository {
 	}
 
 	public record EcoUserSnapshot(
-		String sidoCode,
-		String sidoName,
-		String sigunguCode,
-		String sigunguName,
 		EcoLinkStatus linkStatus,
 		LocalDateTime linkedAt,
 		String ecoSidoCode,
@@ -300,15 +290,12 @@ public class EcoRepository {
 		String ecoAddressLabel,
 		LocalDate ecoAddressRegisteredAt
 	) {
-		public boolean isSeoulResident() {
-			return "11".equals(sidoCode);
+		public boolean hasLinkedAddress() {
+			return ecoSidoCode != null && !ecoSidoCode.isBlank();
 		}
 
-		public String profileAddressLabel() {
-			return Stream.of(sidoName, sigunguName)
-				.filter(value -> value != null && !value.isBlank())
-				.reduce((left, right) -> left + " " + right)
-				.orElse("서울");
+		public boolean isEcoSeoulResident() {
+			return "11".equals(ecoSidoCode);
 		}
 	}
 

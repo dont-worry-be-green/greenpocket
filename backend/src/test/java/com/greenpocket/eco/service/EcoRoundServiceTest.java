@@ -158,8 +158,7 @@ class EcoRoundServiceTest {
 
 	private EcoUserSnapshot user(EcoLinkStatus status) {
 		return new EcoUserSnapshot(
-			"11", "서울특별시", "11620", "관악구", status, null,
-			"11", "11620", "서울특별시 관악구", LocalDate.of(2026, 3, 1)
+			status, null, "11", "11620", "서울특별시 관악구", LocalDate.of(2026, 3, 1)
 		);
 	}
 

@@ -34,7 +34,6 @@ import com.greenpocket.global.type.UtilityType;
 public class EcoLinkService {
 
 	private static final ZoneId KOREA_ZONE_ID = ZoneId.of("Asia/Seoul");
-	private static final String SEOUL_CODE = "11";
 	private static final String NOT_SEOUL = "NOT_SEOUL";
 	private static final String EXTERNAL_URL = "https://ecomileage.seoul.go.kr";
 	private static final int ESTIMATED_SECONDS = 20;
@@ -57,14 +56,15 @@ public class EcoLinkService {
 		long registeredCount = utilities.stream().filter(EcoStatusResponse.RegisteredUtility::registered).count();
 		boolean electricityRegistered = utilities.stream()
 			.anyMatch(value -> value.utilityType() == UtilityType.ELECTRICITY && value.registered());
-		boolean seoulResident = user.isSeoulResident();
+		boolean addressKnown = user.hasLinkedAddress();
+		boolean seoulResident = !addressKnown || user.isEcoSeoulResident();
 
 		return new EcoStatusResponse(
 			user.linkStatus(),
 			toOffsetDateTime(user.linkedAt()),
 			seoulResident,
 			seoulResident && (user.linkStatus() == EcoLinkStatus.UNLINKED || user.linkStatus() == EcoLinkStatus.FAILED),
-			seoulResident ? null : NOT_SEOUL,
+			addressKnown && !seoulResident ? NOT_SEOUL : null,
 			utilities,
 			electricityRegistered && registeredCount >= 2,
 			statusAddress(user),
@@ -75,7 +75,7 @@ public class EcoLinkService {
 	@Transactional
 	public EcoLinkStartResponse startLink(Long userId) {
 		EcoUserSnapshot user = findUser(userId);
-		if (!user.isSeoulResident()) {
+		if (user.hasLinkedAddress() && !user.isEcoSeoulResident()) {
 			throw new BusinessException(EcoErrorCode.ECO_NOT_SEOUL);
 		}
 
@@ -130,13 +130,12 @@ public class EcoLinkService {
 			insertBaselineMonths(userId, utility);
 		}
 
-		String addressLabel = user.profileAddressLabel();
 		ecoRepository.markLinked(
 			userId,
 			EcoMockData.LINKED_AT,
-			user.sidoCode(),
-			user.sigunguCode(),
-			addressLabel,
+			EcoMockData.ADDRESS_SIDO_CODE,
+			EcoMockData.ADDRESS_SIGUNGU_CODE,
+			EcoMockData.ADDRESS_LABEL,
 			EcoMockData.ADDRESS_REGISTERED_AT
 		);
 
@@ -145,9 +144,9 @@ public class EcoLinkService {
 			toOffsetDateTime(EcoMockData.LINKED_AT),
 			roundId,
 			new EcoLinkProgressResponse.EcoAddress(
-				addressLabel,
-				user.sidoCode(),
-				user.sigunguCode(),
+				EcoMockData.ADDRESS_LABEL,
+				EcoMockData.ADDRESS_SIDO_CODE,
+				EcoMockData.ADDRESS_SIGUNGU_CODE,
 				EcoMockData.ADDRESS_REGISTERED_AT.format(YEAR_MONTH_FORMATTER)
 			)
 		);
@@ -191,8 +190,7 @@ public class EcoLinkService {
 			user.ecoSidoCode(),
 			user.ecoSigunguCode(),
 			user.ecoAddressRegisteredAt().format(YEAR_MONTH_FORMATTER),
-			java.util.Objects.equals(user.sidoCode(), user.ecoSidoCode())
-				&& java.util.Objects.equals(user.sigunguCode(), user.ecoSigunguCode())
+			true
 		);
 	}
 

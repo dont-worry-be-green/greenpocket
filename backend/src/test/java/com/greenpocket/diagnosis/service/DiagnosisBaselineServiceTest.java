@@ -19,6 +19,7 @@ import com.greenpocket.diagnosis.entity.RegionUtilitySnapshot;
 import com.greenpocket.diagnosis.repository.RegionUtilitySnapshotRepository;
 import com.greenpocket.global.type.UtilityType;
 import com.greenpocket.user.service.UserRegionQueryService;
+import com.greenpocket.user.service.UserRegionQueryService.UserDiagnosisProfile;
 
 class DiagnosisBaselineServiceTest {
 
@@ -39,7 +40,9 @@ class DiagnosisBaselineServiceTest {
 			regionUtilitySnapshotRepository,
 			userRegionQueryService
 		);
-		when(userRegionQueryService.findSidoCode(USER_ID)).thenReturn(Optional.of(SIDO_CODE));
+		when(userRegionQueryService.findDiagnosisProfile(USER_ID)).thenReturn(Optional.of(
+			new UserDiagnosisProfile(SIDO_CODE, "서울특별시", SIGUNGU_CODE, "관악구", "APARTMENT", "OVER_20")
+		));
 	}
 
 	@Test
@@ -59,6 +62,7 @@ class DiagnosisBaselineServiceTest {
 		);
 
 		assertThat(response.found()).isTrue();
+		assertThat(response.unavailableReason()).isNull();
 		assertThat(response.regionLevel()).isEqualTo(RegionLevel.SIGUNGU);
 		assertThat(response.baseMonth()).isEqualTo("2026-07");
 		assertThat(response.avgAmount()).isEqualTo(38_900L);
@@ -104,6 +108,26 @@ class DiagnosisBaselineServiceTest {
 		assertThat(response.sidoCode()).isEqualTo(SIDO_CODE);
 		assertThat(response.sigunguCode()).isEqualTo(SIGUNGU_CODE);
 		assertThat(response.utilityType()).isEqualTo(UtilityType.GAS);
+		assertThat(response.unavailableReason()).isEqualTo("NO_BASELINE");
+	}
+
+	@Test
+	void returnsEcoAddressRequiredWhenUserHasNotLinkedEcoMileage() {
+		when(userRegionQueryService.findDiagnosisProfile(USER_ID)).thenReturn(Optional.of(
+			new UserDiagnosisProfile(null, null, null, null, "APARTMENT", "OVER_20")
+		));
+
+		DiagnosisBaselineResponse response = diagnosisBaselineService.findBaseline(
+			USER_ID,
+			"99999",
+			REQUEST_MONTH,
+			UtilityType.ELECTRICITY
+		);
+
+		assertThat(response.found()).isFalse();
+		assertThat(response.unavailableReason()).isEqualTo("ECO_ADDRESS_REQUIRED");
+		assertThat(response.sidoCode()).isNull();
+		assertThat(response.sigunguCode()).isNull();
 	}
 
 	private Optional<RegionUtilitySnapshot> findBaseline(RegionLevel regionLevel, String sigunguCode) {

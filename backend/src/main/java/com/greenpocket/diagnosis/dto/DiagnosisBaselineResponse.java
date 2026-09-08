@@ -11,6 +11,7 @@ import com.greenpocket.global.type.UtilityType;
 
 public record DiagnosisBaselineResponse(
 	boolean found,
+	String unavailableReason,
 	RegionLevel regionLevel,
 	String sidoCode,
 	String sigunguCode,
@@ -28,6 +29,7 @@ public record DiagnosisBaselineResponse(
 	public static DiagnosisBaselineResponse found(RegionUtilitySnapshot snapshot) {
 		return new DiagnosisBaselineResponse(
 			true,
+			null,
 			snapshot.getRegionLevel(),
 			snapshot.getSidoCode(),
 			snapshot.getSigunguCode(),
@@ -44,10 +46,12 @@ public record DiagnosisBaselineResponse(
 	public static DiagnosisBaselineResponse notFound(
 		String sidoCode,
 		String sigunguCode,
-		UtilityType utilityType
+		UtilityType utilityType,
+		String unavailableReason
 	) {
 		return new DiagnosisBaselineResponse(
 			false,
+			unavailableReason,
 			null,
 			sidoCode,
 			sigunguCode,
