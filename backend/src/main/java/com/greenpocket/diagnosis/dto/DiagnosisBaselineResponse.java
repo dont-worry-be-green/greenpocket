@@ -1,62 +1,50 @@
 package com.greenpocket.diagnosis.dto;
 
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
 import java.time.YearMonth;
-import java.time.ZoneId;
 
-import com.greenpocket.diagnosis.entity.RegionLevel;
-import com.greenpocket.diagnosis.entity.RegionUtilitySnapshot;
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+import com.greenpocket.diagnosis.service.SingleHouseholdBaselineCatalog.Baseline;
+import com.greenpocket.eco.entity.UsageUnit;
 import com.greenpocket.global.type.UtilityType;
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record DiagnosisBaselineResponse(
 	boolean found,
-	String unavailableReason,
-	RegionLevel regionLevel,
-	String sidoCode,
-	String sigunguCode,
-	String baseMonth,
+	String targetYearMonth,
 	UtilityType utilityType,
-	Long householdCount,
-	BigDecimal avgUsage,
-	Long avgAmount,
+	String comparisonLabel,
+	BigDecimal averageUsage,
+	UsageUnit usageUnit,
 	String sourceName,
-	OffsetDateTime extractedAt
+	String referencePeriod,
+	BaselineCalculationBasis calculationBasis,
+	String note
 ) {
 
-	private static final ZoneId KOREA_ZONE_ID = ZoneId.of("Asia/Seoul");
-
-	public static DiagnosisBaselineResponse found(RegionUtilitySnapshot snapshot) {
+	public static DiagnosisBaselineResponse found(YearMonth targetMonth, Baseline baseline) {
 		return new DiagnosisBaselineResponse(
 			true,
-			null,
-			snapshot.getRegionLevel(),
-			snapshot.getSidoCode(),
-			snapshot.getSigunguCode(),
-			YearMonth.from(snapshot.getBaseMonth()).toString(),
-			snapshot.getUtilityType(),
-			snapshot.getHouseholdCount(),
-			snapshot.getAvgUsage(),
-			snapshot.getAvgAmount(),
-			snapshot.getSourceName(),
-			snapshot.getExtractedAt().atZone(KOREA_ZONE_ID).toOffsetDateTime()
+			targetMonth.toString(),
+			baseline.utilityType(),
+			baseline.comparisonLabel(),
+			baseline.averageUsage(),
+			baseline.usageUnit(),
+			baseline.sourceName(),
+			baseline.referencePeriod(),
+			baseline.calculationBasis(),
+			baseline.note()
 		);
 	}
 
-	public static DiagnosisBaselineResponse notFound(
-		String sidoCode,
-		String sigunguCode,
-		UtilityType utilityType,
-		String unavailableReason
-	) {
+	public static DiagnosisBaselineResponse notFound(YearMonth targetMonth, UtilityType utilityType) {
 		return new DiagnosisBaselineResponse(
 			false,
-			unavailableReason,
-			null,
-			sidoCode,
-			sigunguCode,
-			null,
+			targetMonth.toString(),
 			utilityType,
+			null,
+			null,
 			null,
 			null,
 			null,

@@ -8,6 +8,7 @@ import {
   getPocketBalance,
   getPocketHome,
   getPocketManagement,
+  getRecommendedPocketProduct,
   getPocketTransactions,
   getWithdrawalAccounts,
   getWithdrawals,
@@ -26,6 +27,7 @@ export const usePocketStore = defineStore('pocket', () => {
   const accounts = ref([])
   const withdrawals = ref(null)
   const withdrawalResult = ref(null)
+  const recommendedProduct = ref(null)
   const isLoading = ref(false)
   const error = ref(null)
   const accountsLoading = ref(false)
@@ -42,6 +44,8 @@ export const usePocketStore = defineStore('pocket', () => {
   const conversionError = ref(null)
   const conversionLoading = ref(false)
   const pendingConversion = ref(null)
+  const recommendedProductLoading = ref(false)
+  const recommendedProductError = ref(null)
 
   const defaultAccount = computed(
     () => accounts.value.find((account) => account.isDefault) ?? accounts.value[0] ?? null,
@@ -94,6 +98,21 @@ export const usePocketStore = defineStore('pocket', () => {
       accountsLoaded.value = true
     }
     return data
+  }
+
+  async function fetchRecommendedProduct() {
+    recommendedProductLoading.value = true
+    recommendedProductError.value = null
+    try {
+      const data = await getRecommendedPocketProduct()
+      recommendedProduct.value = data
+      return data
+    } catch (nextError) {
+      recommendedProductError.value = nextError
+      return null
+    } finally {
+      recommendedProductLoading.value = false
+    }
   }
 
   async function startConversion(roundId) {
@@ -230,6 +249,7 @@ export const usePocketStore = defineStore('pocket', () => {
     withdrawals,
     defaultAccount,
     withdrawalResult,
+    recommendedProduct,
     isLoading,
     error,
     accountsLoading,
@@ -245,11 +265,14 @@ export const usePocketStore = defineStore('pocket', () => {
     conversionError,
     conversionLoading,
     pendingConversion,
+    recommendedProductLoading,
+    recommendedProductError,
     fetchHome,
     fetchBalance,
     fetchConvertibleMileage,
     fetchTransactions,
     fetchManagement,
+    fetchRecommendedProduct,
     fetchWithdrawalAccounts,
     createAccount,
     setDefaultAccount,

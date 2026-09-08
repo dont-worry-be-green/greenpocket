@@ -10,7 +10,7 @@ export default [
     path: '/mypage',
     name: 'my-home',
     component: () => import('@/views/mypage/MypageHomeView.vue'),
-    meta: { tab: 'mypage', title: '마이페이지' },
+    meta: { tab: 'mypage', title: '마이' },
   },
   {
     path: '/mypage/profile',

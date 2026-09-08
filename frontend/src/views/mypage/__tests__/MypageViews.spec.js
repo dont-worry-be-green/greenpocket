@@ -3,11 +3,10 @@
  * 지켜지는지 본다. API 모듈을 여기서 막는다 — 응답 모양은 **api-spec.md 5.2 · 6.6 · 14.1 · 14.2
  * 예시 그대로**다. 임의 필드를 만들면 계약이 갈라진다.
  *
- * 특히 지키려는 것 넷:
- *   ① MY-01 에 나이·소득 구간·취업 상태가 **없다**(결정 B-1). 시안에는 있어서 되살아나기 쉽다
- *   ② 계좌번호를 그리지 않는다 — 응답에는 있다
- *   ③ MY-03 탭 배지가 목록 길이가 아니라 `counts` 다(A-2-12 완료 조건)
- *   ④ MY-02 는 지역 변경 경고를 확인받고 나서야 `confirmBaselineChange` 를 붙인다(핵심 규칙 9)
+ * 특히 지키려는 것 셋:
+ *   ① 계좌번호를 그리지 않는다 — 응답에는 있다
+ *   ② MY-03 탭 배지가 목록 길이가 아니라 `counts` 다(A-2-12 완료 조건)
+ *   ③ MY-02 는 지역 변경 경고를 확인받고 나서야 `confirmBaselineChange` 를 붙인다(핵심 규칙 9)
  */
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
@@ -47,6 +46,10 @@ const MYPAGE = {
     housingType: 'ONE_ROOM',
     areaBand: 'UNDER_10',
     profileSummary: '서울 관악구 · 원룸 · 10평 이하',
+    birthDate: '1998-03-14',
+    currentStatus: '재직 중',
+    annualIncomeBand: '3,000만원 이하',
+    interestAreas: ['주거', '취업', '생활비', '교육'],
   },
   links: {
     billArchive: { count: 14, screen: 'MY-03' },
@@ -188,13 +191,62 @@ describe('MY-01 마이페이지 메인', () => {
     expect(text).toContain('원룸 · 10평 이하')
   })
 
-  it('나이·소득 구간·취업 상태 행이 없다 (결정 B-1)', async () => {
+  it('맞춤 지원금 3개를 가로 스와이프 카드로 보여준다', async () => {
     const { wrapper } = await mountView(MypageHomeView)
+    const carousel = wrapper.get('[aria-roledescription="carousel"]')
+    const cards = carousel.findAll('article')
+
+    expect(wrapper.text()).toContain('맞춤 지원 혜택')
+    expect(wrapper.text()).toContain('내 정보로 찾은 지원금이에요.')
+    expect(wrapper.text()).toContain('서울 관악구 · 원룸 · 10평 이하 기준')
+    expect(cards).toHaveLength(3)
+    expect(cards[0].text()).toContain('청년월세 특별지원')
+    expect(cards[0].text()).not.toContain('추천')
+    expect(cards[0].text()).not.toContain('신청 가능성 높음')
+    expect(cards[0].text()).toContain('접수 일정 확인')
+    expect(carousel.classes()).toContain('snap-mandatory')
+    expect(carousel.classes()).toContain('overflow-x-auto')
+  })
+
+  it('맞춤 지원금에 필요한 추가 기본 정보를 표시하고 관심 분야는 3개로 제한한다', async () => {
+    const { wrapper } = await mountView(MypageHomeView)
+    const toggle = wrapper.get('[aria-controls="mypage-basic-info"]')
+
+    expect(toggle.text()).toContain('더 보기')
+    expect(toggle.attributes('aria-expanded')).toBe('false')
+    await toggle.trigger('click')
+
     const text = wrapper.text()
 
-    expect(text).not.toContain('나이')
-    expect(text).not.toContain('소득')
-    expect(text).not.toContain('취업')
+    expect(text).toContain('생년월일1998.03.14')
+    expect(text).toContain('현재 상태재직 중')
+    expect(text).toContain('연소득 구간3,000만원 이하')
+    expect(text).toContain('관심 분야주거 · 취업 · 생활비')
+    expect(text).not.toContain('주거 · 취업 · 생활비 · 교육')
+    expect(toggle.text()).toContain('접기')
+    expect(toggle.attributes('aria-expanded')).toBe('true')
+  })
+
+  it('맞춤 정보 값이 없어도 네 항목을 펼쳐 확인할 수 있다', async () => {
+    getMypage.mockResolvedValueOnce({
+      ...MYPAGE,
+      profile: {
+        ...MYPAGE.profile,
+        birthDate: null,
+        currentStatus: null,
+        annualIncomeBand: null,
+        interestAreas: [],
+      },
+    })
+
+    const { wrapper } = await mountView(MypageHomeView)
+    await wrapper.get('[aria-controls="mypage-basic-info"]').trigger('click')
+    const info = wrapper.get('#mypage-basic-info')
+
+    expect(info.text()).toContain('생년월일-')
+    expect(info.text()).toContain('현재 상태-')
+    expect(info.text()).toContain('연소득 구간-')
+    expect(info.text()).toContain('관심 분야-')
   })
 
   it('계좌번호를 그리지 않는다 — 응답에는 있다', async () => {
@@ -280,7 +332,13 @@ describe('MY-03 고지서 보관함', () => {
       content: [
         BILLS.content[0],
         { ...BILLS.content[0], recordId: 52, utilityType: 'WATER', billType: 'WATER' },
-        { ...BILLS.content[0], recordId: 53, billingMonth: '2026-07', utilityType: 'GAS', billType: 'GAS' },
+        {
+          ...BILLS.content[0],
+          recordId: 53,
+          billingMonth: '2026-07',
+          utilityType: 'GAS',
+          billType: 'GAS',
+        },
       ],
     })
     const { wrapper } = await mountView(BillArchiveView, '/mypage/bills')

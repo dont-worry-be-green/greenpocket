@@ -8,8 +8,6 @@
  * **`GET /profile` 을 부르지 않는다.** `GET /mypage` 의 `profile` 에 표시할 값이 다 있다.
  * 지역 코드가 필요한 것은 수정 폼(MY-02)뿐이라 그 화면이 자기 것을 받는다.
  *
- * **요약 문장을 만들지 않는다.** `profileSummary` 는 서버가 조립한다(A-1-07).
- *
  * ── 응답에 있지만 그리지 않는 두 값 ─────────────────────────────────────
  * `pocketAccountNo` 와 `integration`(에코 연동 상태·녹색생활실천 참여·등록 요금)은
  * **시안에도 E-1-01 규칙에도 없다.** 명세에 없는 UI 를 만들지 않는 것이 규칙이고(AGENTS 3),
@@ -36,6 +34,7 @@ import MypageArchiveLinks from '@/components/mypage/MypageArchiveLinks.vue'
 import MypageInfoTable from '@/components/mypage/MypageInfoTable.vue'
 import MypageProfileCard from '@/components/mypage/MypageProfileCard.vue'
 import MypageState from '@/components/mypage/MypageState.vue'
+import MypageSupportBenefits from '@/components/mypage/MypageSupportBenefits.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useMypageStore } from '@/stores/mypage'
 
@@ -56,7 +55,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <AppTabLayout tab="mypage" title="마이페이지" subtitle="내 정보와 보관함을 확인해요">
+  <AppTabLayout tab="mypage" title="마이" subtitle="내 정보와 보관함을 확인해요">
     <MypageState
       :loading="bootstrapping"
       :error="store.mypage ? null : store.error"
@@ -66,6 +65,8 @@ onMounted(() => {
         <MypageProfileCard :profile="store.mypage.profile" />
 
         <MypageInfoTable :profile="store.mypage.profile" />
+
+        <MypageSupportBenefits :profile="store.mypage.profile" />
 
         <MypageArchiveLinks
           @monthly="router.push({ path: '/mypage/reports', query: { tab: 'MONTHLY' } })"

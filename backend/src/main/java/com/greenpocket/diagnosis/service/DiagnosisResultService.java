@@ -2,8 +2,9 @@ package com.greenpocket.diagnosis.service;
 
 import static com.greenpocket.diagnosis.exception.DiagnosisErrorCode.DIAGNOSIS_MONTH_EMPTY;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Clock;
-import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -21,9 +22,7 @@ import com.greenpocket.bill.service.BillDiagnosisQueryService;
 import com.greenpocket.bill.service.BillDiagnosisQueryService.MonthlyRecord;
 import com.greenpocket.diagnosis.dto.DiagnosisMonthsResponse;
 import com.greenpocket.diagnosis.dto.DiagnosisResponse;
-import com.greenpocket.diagnosis.entity.RegionLevel;
-import com.greenpocket.diagnosis.entity.RegionUtilitySnapshot;
-import com.greenpocket.diagnosis.repository.RegionUtilitySnapshotRepository;
+import com.greenpocket.diagnosis.service.SingleHouseholdBaselineCatalog.Baseline;
 import com.greenpocket.eco.service.EcoCurrentRoundQueryService;
 import com.greenpocket.global.exception.BusinessException;
 import com.greenpocket.global.type.UtilityType;
@@ -35,7 +34,7 @@ import com.greenpocket.user.service.UserRegionQueryService.UserDiagnosisProfile;
 public class DiagnosisResultService {
 
 	private static final ZoneId KOREA_ZONE_ID = ZoneId.of("Asia/Seoul");
-	private static final String SIDO_SIGUNGU_CODE = "";
+	private static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
 	private static final List<UtilityType> UTILITY_ORDER = List.of(
 		UtilityType.ELECTRICITY,
 		UtilityType.GAS,
@@ -45,7 +44,7 @@ public class DiagnosisResultService {
 	private final BillDiagnosisQueryService billDiagnosisQueryService;
 	private final UserRegionQueryService userRegionQueryService;
 	private final EcoCurrentRoundQueryService ecoCurrentRoundQueryService;
-	private final RegionUtilitySnapshotRepository regionUtilitySnapshotRepository;
+	private final SingleHouseholdBaselineCatalog baselineCatalog;
 	private final Clock clock;
 
 	@Autowired
@@ -53,13 +52,13 @@ public class DiagnosisResultService {
 		BillDiagnosisQueryService billDiagnosisQueryService,
 		UserRegionQueryService userRegionQueryService,
 		EcoCurrentRoundQueryService ecoCurrentRoundQueryService,
-		RegionUtilitySnapshotRepository regionUtilitySnapshotRepository
+		SingleHouseholdBaselineCatalog baselineCatalog
 	) {
 		this(
 			billDiagnosisQueryService,
 			userRegionQueryService,
 			ecoCurrentRoundQueryService,
-			regionUtilitySnapshotRepository,
+			baselineCatalog,
 			Clock.system(KOREA_ZONE_ID)
 		);
 	}
@@ -68,13 +67,13 @@ public class DiagnosisResultService {
 		BillDiagnosisQueryService billDiagnosisQueryService,
 		UserRegionQueryService userRegionQueryService,
 		EcoCurrentRoundQueryService ecoCurrentRoundQueryService,
-		RegionUtilitySnapshotRepository regionUtilitySnapshotRepository,
+		SingleHouseholdBaselineCatalog baselineCatalog,
 		Clock clock
 	) {
 		this.billDiagnosisQueryService = billDiagnosisQueryService;
 		this.userRegionQueryService = userRegionQueryService;
 		this.ecoCurrentRoundQueryService = ecoCurrentRoundQueryService;
-		this.regionUtilitySnapshotRepository = regionUtilitySnapshotRepository;
+		this.baselineCatalog = baselineCatalog;
 		this.clock = clock;
 	}
 
@@ -123,7 +122,7 @@ public class DiagnosisResultService {
 			profile.map(UserDiagnosisProfile::profileSummary).orElse(""),
 			createSummary(currentRecords, previousRecords),
 			createLastYearComparison(currentRecords, previousRecords),
-			createRegionComparison(userId, targetMonth, currentRecords, profile),
+			createSingleHouseholdComparison(targetMonth, currentRecords),
 			createWhatIfLink(userId)
 		);
 	}
@@ -182,152 +181,69 @@ public class DiagnosisResultService {
 		return new DiagnosisResponse.LastYearComparison(true, null, totalDiff, items);
 	}
 
-	private DiagnosisResponse.RegionComparison createRegionComparison(
-		Long userId,
+	private DiagnosisResponse.SingleHouseholdComparison createSingleHouseholdComparison(
 		YearMonth targetMonth,
-		List<MonthlyRecord> currentRecords,
-		Optional<UserDiagnosisProfile> profile
+		List<MonthlyRecord> currentRecords
 	) {
 		Map<UtilityType, MonthlyRecord> currentByUtility = byUtility(currentRecords);
-		Optional<RegionUtilitySnapshot> targetBaseline = profile.flatMap(value ->
-			findLatestAvailableBaseline(value, UtilityType.ELECTRICITY, targetMonth));
-
-		List<DiagnosisResponse.RegionTab> tabs = new ArrayList<>();
-		tabs.add(createElectricityTab(userId, targetMonth, currentByUtility, profile, targetBaseline));
-		tabs.add(unavailableRegionTab(UtilityType.GAS, currentByUtility));
-		tabs.add(unavailableRegionTab(UtilityType.WATER, currentByUtility));
-
-		return new DiagnosisResponse.RegionComparison(
-			targetBaseline.map(RegionUtilitySnapshot::getRegionLevel).orElse(null),
-			targetBaseline.map(snapshot -> regionLabel(snapshot, profile.orElse(null))).orElse(null),
-			targetBaseline.map(snapshot -> snapshot.getRegionLevel() == RegionLevel.SIDO).orElse(false),
-			targetBaseline.map(RegionUtilitySnapshot::getSourceName).orElse(null),
-			targetBaseline.map(snapshot -> YearMonth.from(snapshot.getBaseMonth()).toString()).orElse(null),
-			targetBaseline.map(snapshot -> snapshot.getExtractedAt().atZone(KOREA_ZONE_ID).toOffsetDateTime())
-				.orElse(null),
+		List<DiagnosisResponse.SingleHouseholdTab> tabs = UTILITY_ORDER.stream()
+			.map(utilityType -> createSingleHouseholdTab(
+				targetMonth,
+				currentByUtility.get(utilityType),
+				utilityType
+			))
+			.toList();
+		return new DiagnosisResponse.SingleHouseholdComparison(
+			"1인 가구 평균 사용량",
 			tabs
 		);
 	}
 
-	private DiagnosisResponse.RegionTab createElectricityTab(
-		Long userId,
+	private DiagnosisResponse.SingleHouseholdTab createSingleHouseholdTab(
 		YearMonth targetMonth,
-		Map<UtilityType, MonthlyRecord> currentByUtility,
-		Optional<UserDiagnosisProfile> profile,
-		Optional<RegionUtilitySnapshot> targetBaseline
+		MonthlyRecord currentRecord,
+		UtilityType utilityType
 	) {
-		Long myAmount = amount(currentByUtility.get(UtilityType.ELECTRICITY));
-		if (targetBaseline.isEmpty()) {
-			String unavailableReason = profile
-				.filter(value -> value.sidoCode() != null && value.sigunguCode() != null)
-				.isPresent() ? "NO_BASELINE" : "ECO_ADDRESS_REQUIRED";
-			return new DiagnosisResponse.RegionTab(
-				UtilityType.ELECTRICITY, false, unavailableReason, myAmount, null, null, null
+		Optional<Baseline> baseline = baselineCatalog.find(targetMonth, utilityType);
+		BigDecimal myUsage = currentRecord == null ? null : currentRecord.usage();
+		if (baseline.isEmpty()) {
+			return new DiagnosisResponse.SingleHouseholdTab(
+				utilityType,
+				false,
+				"NO_BASELINE",
+				myUsage,
+				null,
+				null,
+				null,
+				currentRecord == null ? null : currentRecord.usageUnit(),
+				null,
+				null,
+				null,
+				null,
+				null
 			);
 		}
-
-		long regionAverage = targetBaseline.get().getAvgAmount();
-		YearMonth firstMonth = targetMonth.minusMonths(5);
-		Map<YearMonth, Long> mineByMonth = billDiagnosisQueryService
-			.findBills(userId, firstMonth, targetMonth)
-			.stream()
-			.filter(record -> record.utilityType() == UtilityType.ELECTRICITY)
-			.collect(java.util.stream.Collectors.toMap(MonthlyRecord::yearMonth, MonthlyRecord::amount));
-		List<DiagnosisResponse.SeriesPoint> series = new ArrayList<>();
-		for (int index = 0; index < 6; index++) {
-			YearMonth month = firstMonth.plusMonths(index);
-			Long average = profile.flatMap(value -> findLatestAvailableAtLevel(
-				value,
-				UtilityType.ELECTRICITY,
-				month,
-				targetBaseline.get().getRegionLevel()
-			))
-				.map(RegionUtilitySnapshot::getAvgAmount)
-				.orElse(null);
-			series.add(new DiagnosisResponse.SeriesPoint(month.toString(), mineByMonth.get(month), average));
-		}
-		return new DiagnosisResponse.RegionTab(
-			UtilityType.ELECTRICITY,
+		Baseline value = baseline.get();
+		BigDecimal difference = myUsage == null ? null : myUsage.subtract(value.averageUsage());
+		BigDecimal differenceRate = difference == null || value.averageUsage().signum() == 0
+			? null
+			: difference.multiply(ONE_HUNDRED)
+				.divide(value.averageUsage(), 3, RoundingMode.HALF_UP);
+		return new DiagnosisResponse.SingleHouseholdTab(
+			utilityType,
 			true,
 			null,
-			myAmount,
-			regionAverage,
-			myAmount == null ? null : myAmount - regionAverage,
-			series
+			myUsage,
+			value.averageUsage(),
+			difference,
+			differenceRate,
+			value.usageUnit(),
+			value.comparisonLabel(),
+			value.sourceName(),
+			value.referencePeriod(),
+			value.calculationBasis(),
+			value.note()
 		);
-	}
-
-	private Optional<RegionUtilitySnapshot> findLatestAvailableAtLevel(
-		UserDiagnosisProfile profile,
-		UtilityType utilityType,
-		YearMonth month,
-		RegionLevel level
-	) {
-		String sigunguCode = level == RegionLevel.SIDO ? SIDO_SIGUNGU_CODE : profile.sigunguCode();
-		return findLatestAvailable(
-			level,
-			profile.sidoCode(),
-			sigunguCode,
-			utilityType,
-			month.atDay(1)
-		);
-	}
-
-	private DiagnosisResponse.RegionTab unavailableRegionTab(
-		UtilityType utilityType,
-		Map<UtilityType, MonthlyRecord> currentByUtility
-	) {
-		return new DiagnosisResponse.RegionTab(
-			utilityType,
-			false,
-			"REGION_DATA_NOT_PUBLISHED",
-			amount(currentByUtility.get(utilityType)),
-			null,
-			null,
-			null
-		);
-	}
-
-	private Optional<RegionUtilitySnapshot> findLatestAvailableBaseline(
-		UserDiagnosisProfile profile,
-		UtilityType utilityType,
-		YearMonth month
-	) {
-		if (profile.sidoCode() == null || profile.sigunguCode() == null) {
-			return Optional.empty();
-		}
-		LocalDate latestMonth = month.atDay(1);
-		Optional<RegionUtilitySnapshot> sigungu = findLatestAvailable(
-			RegionLevel.SIGUNGU,
-			profile.sidoCode(),
-			profile.sigunguCode(),
-			utilityType,
-			latestMonth
-		);
-		return sigungu.isPresent() ? sigungu : findLatestAvailable(
-			RegionLevel.SIDO,
-			profile.sidoCode(),
-			SIDO_SIGUNGU_CODE,
-			utilityType,
-			latestMonth
-		);
-	}
-
-	private Optional<RegionUtilitySnapshot> findLatestAvailable(
-		RegionLevel level,
-		String sidoCode,
-		String sigunguCode,
-		UtilityType utilityType,
-		LocalDate latestMonth
-	) {
-		return regionUtilitySnapshotRepository
-			.findFirstByRegionLevelAndSidoCodeAndSigunguCodeAndUtilityTypeAndBaseMonthLessThanEqualAndAvgUsageIsNotNullAndAvgAmountIsNotNullOrderByBaseMonthDesc(
-				level,
-				sidoCode,
-				sigunguCode,
-				utilityType,
-				latestMonth
-			);
 	}
 
 	private DiagnosisResponse.WhatIfLink createWhatIfLink(Long userId) {
@@ -368,15 +284,4 @@ public class DiagnosisResultService {
 		return record == null ? null : record.amount();
 	}
 
-	private static String regionLabel(
-		RegionUtilitySnapshot snapshot,
-		UserDiagnosisProfile profile
-	) {
-		if (profile == null) {
-			return null;
-		}
-		return snapshot.getRegionLevel() == RegionLevel.SIDO
-			? profile.sidoLabel()
-			: profile.regionLabel();
-	}
 }

@@ -43,7 +43,7 @@ beforeEach(async () => {
 
 describe('탭 정의', () => {
   it('라벨과 순서가 진단·혜택·What-if·포켓·마이페이지로 고정된다', () => {
-    expect(TABS.map((t) => t.label)).toEqual(['진단', '혜택', 'What-if', '포켓', '마이페이지'])
+    expect(TABS.map((t) => t.label)).toEqual(['진단', '혜택', 'What-if', '포켓', '마이'])
   })
 
   it('가운데 What-if 하나만 FAB 이다', () => {
@@ -61,7 +61,7 @@ describe('탭 정의', () => {
 describe('AppTabLayout', () => {
   it('탭 5개를 라벨 순서대로 렌더한다', () => {
     const labels = wrapper.findAll('[role="tab"]').map((b) => b.text())
-    expect(labels).toEqual(['진단', '혜택', 'What-if', '포켓', '마이페이지'])
+    expect(labels).toEqual(['진단', '혜택', 'What-if', '포켓', '마이'])
   })
 
   it('현재 탭만 aria-selected 다', () => {

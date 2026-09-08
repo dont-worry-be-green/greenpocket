@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
 import java.time.YearMonth;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -15,10 +14,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import com.greenpocket.diagnosis.dto.BaselineCalculationBasis;
 import com.greenpocket.diagnosis.dto.DiagnosisBaselineResponse;
 import com.greenpocket.diagnosis.dto.DiagnosisMonthsResponse;
 import com.greenpocket.diagnosis.dto.DiagnosisResponse;
-import com.greenpocket.diagnosis.entity.RegionLevel;
 import com.greenpocket.diagnosis.exception.DiagnosisErrorCode;
 import com.greenpocket.diagnosis.service.DiagnosisBaselineService;
 import com.greenpocket.diagnosis.service.DiagnosisResultService;
@@ -104,36 +103,30 @@ class DiagnosisControllerTest {
 	void returnsWrappedBaselineResponse() throws Exception {
 		DiagnosisBaselineResponse response = new DiagnosisBaselineResponse(
 			true,
-			null,
-			RegionLevel.SIGUNGU,
-			"11",
-			"11620",
-			"2026-07",
+			"2026-08",
 			UtilityType.ELECTRICITY,
-			132_840L,
-			new BigDecimal("289.400"),
-			38_900L,
-			"한국전력공사 전력데이터 개방포털",
-			OffsetDateTime.parse("2026-08-28T00:00:00+09:00")
+			"전국 1인 가구",
+			new BigDecimal("247.633"),
+			com.greenpocket.eco.entity.UsageUnit.kWh,
+			"산업통상자원부·에너지경제연구원 2022년 기준 13차 가구에너지패널조사",
+			"2022",
+			BaselineCalculationBasis.ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT,
+			"월평균 환산 참고값"
 		);
-		when(diagnosisBaselineService.findBaseline(
-			USER_ID,
-			"11620",
-			YearMonth.of(2026, 8),
-			UtilityType.ELECTRICITY
-		)).thenReturn(response);
+		when(diagnosisBaselineService.findBaseline(YearMonth.of(2026, 8), UtilityType.ELECTRICITY))
+			.thenReturn(response);
 
 		mockMvc.perform(get("/api/v1/diagnosis/baseline")
 				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID)
-				.param("sigunguCode", "11620")
 				.param("month", "2026-08")
 				.param("utility", "ELECTRICITY"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.found").value(true))
-			.andExpect(jsonPath("$.data.regionLevel").value("SIGUNGU"))
-			.andExpect(jsonPath("$.data.baseMonth").value("2026-07"))
-			.andExpect(jsonPath("$.data.avgAmount").value(38_900))
+			.andExpect(jsonPath("$.data.comparisonLabel").value("전국 1인 가구"))
+			.andExpect(jsonPath("$.data.averageUsage").value(247.633))
+			.andExpect(jsonPath("$.data.calculationBasis")
+				.value("ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT"))
 			.andExpect(jsonPath("$.error").doesNotExist());
 	}
 
@@ -141,7 +134,6 @@ class DiagnosisControllerTest {
 	void missingRequiredParameterReturnsInvalidRequest() throws Exception {
 		mockMvc.perform(get("/api/v1/diagnosis/baseline")
 				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID)
-				.param("month", "2026-08")
 				.param("utility", "ELECTRICITY"))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.success").value(false))
@@ -154,7 +146,6 @@ class DiagnosisControllerTest {
 	void invalidMonthFormatReturnsInvalidRequest() throws Exception {
 		mockMvc.perform(get("/api/v1/diagnosis/baseline")
 				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID)
-				.param("sigunguCode", "11620")
 				.param("month", "2026/08")
 				.param("utility", "ELECTRICITY"))
 			.andExpect(status().isBadRequest())
@@ -166,7 +157,6 @@ class DiagnosisControllerTest {
 	void invalidUtilityReturnsInvalidRequest() throws Exception {
 		mockMvc.perform(get("/api/v1/diagnosis/baseline")
 				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID)
-				.param("sigunguCode", "11620")
 				.param("month", "2026-08")
 				.param("utility", "ELECTRIC"))
 			.andExpect(status().isBadRequest())

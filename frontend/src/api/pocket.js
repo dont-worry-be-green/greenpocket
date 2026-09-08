@@ -20,6 +20,10 @@ export function getPocketManagement() {
   return client.get('/pocket/management')
 }
 
+export function getRecommendedPocketProduct() {
+  return client.get('/pocket/recommended-product')
+}
+
 export function getWithdrawalAccounts() {
   return client.get('/pocket/accounts')
 }
