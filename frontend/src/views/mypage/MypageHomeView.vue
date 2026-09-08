@@ -20,9 +20,6 @@
  * 로그인 화면에 다시 닿을 수 없게 됐다** — 가드가 로그인한 사람의 온보딩 진입을 막기 때문이다.
  * 시연에서 로그인 흐름을 보여줄 통로가 필요해 마이페이지 맨 아래에 둔다. 위치는 팀 확인 대상이다.
  *
- * 데모 키는 지우지 않는다. 같은 기기에서 다시 로그인하면 그대로 이어진다 —
- * 계정까지 지우는 것은 DEV 도구의 「데모 초기화」다.
- *
  * ── 저장하고 돌아오면 다시 받는다 ───────────────────────────────────────
  * MY-02 가 저장에 성공하면 스토어가 `mypage` 를 비운다. `<KeepAlive>` 를 쓰지 않으므로
  * 돌아올 때 이 화면이 다시 마운트되고, 그때 비어 있는 것을 보고 새로 받는다.
@@ -46,8 +43,8 @@ const router = useRouter()
 const store = useMypageStore()
 const auth = useAuthStore()
 
-function logout() {
-  auth.logout()
+async function logout() {
+  await auth.logout()
   router.replace('/onboarding/start')
 }
 

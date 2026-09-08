@@ -30,7 +30,7 @@ import { DATA_SOURCE, getDataSource, setDataSource } from '@/api/dataSource'
 import { resetDemo } from '@/api/demo'
 import GpButton from '@/components/ui/GpButton.vue'
 import GpModal from '@/components/ui/GpModal.vue'
-import { clearOnboarded } from '@/router/guards'
+import { useAuthStore } from '@/stores/auth'
 import { DEMO_SHORTCUTS } from './demoShortcuts'
 
 const SOURCES = [
@@ -71,7 +71,7 @@ async function reset() {
   error.value = null
   try {
     await resetDemo()
-    clearOnboarded()
+    useAuthStore().clearSession()
     clearDemoKey()
     window.location.assign('/onboarding/start')
   } catch (nextError) {

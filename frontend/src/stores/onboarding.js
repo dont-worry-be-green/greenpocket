@@ -13,15 +13,10 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 
-import {
-  getRegions,
-  saveProfile as saveProfileApi,
-  startUser as startUserApi,
-} from '@/api/onboarding'
-import { markOnboarded } from '@/router/guards'
+import { getRegions, saveProfile as saveProfileApi } from '@/api/onboarding'
+import { useAuthStore } from '@/stores/auth'
 
 export const useOnboardingStore = defineStore('onboarding', () => {
-  const user = ref(null)
   const sidos = ref([])
   const sigungus = ref([])
   const profileResult = ref(null)
@@ -40,13 +35,6 @@ export const useOnboardingStore = defineStore('onboarding', () => {
     } finally {
       isLoading.value = false
     }
-  }
-
-  /** ONB-01 (COM-01). 성공해야 데모 키가 서버에 등록된다 */
-  async function startUser(name) {
-    const data = await run(() => startUserApi({ name }))
-    if (data) user.value = data
-    return data
   }
 
   async function fetchSidos() {
@@ -75,27 +63,25 @@ export const useOnboardingStore = defineStore('onboarding', () => {
   /**
    * ONB-02 (A-1-05). 성공하면 `nextScreen: 'WF-06'` 이라 뷰가 /whatif 로 보낸다.
    *
-   * 여기서 온보딩 완료 플래그를 남긴다 — 진입 가드가 볼 근거다.
-   * 서버의 `onboardingCompleted` 를 쓰지 못하는 이유는 `router/guards.js` 주석에 있다.
+   * 저장 성공 즉시 인증 스토어에도 완료 상태를 반영한다. 다음 새로고침부터는
+   * `GET /users/me`의 `onboardingCompleted`가 같은 상태를 복구한다.
    */
   async function saveProfile(payload) {
     const data = await run(() => saveProfileApi(payload))
     if (data) {
       profileResult.value = data
-      markOnboarded()
+      useAuthStore().completeOnboarding()
     }
     return data
   }
 
   return {
-    user,
     sidos,
     sigungus,
     profileResult,
     isLoading,
     error,
     sigungusLoading,
-    startUser,
     fetchSidos,
     fetchSigungus,
     saveProfile,

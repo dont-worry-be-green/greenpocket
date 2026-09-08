@@ -31,7 +31,7 @@ import { AREA_BAND_OPTIONS, HOUSING_TYPE_OPTIONS } from '@/utils/format'
 const router = useRouter()
 const store = useOnboardingStore()
 
-// 폼 상태는 스토어가 아니라 뷰 로컬이다. 화면을 건너는 것은 store.user 뿐이다
+// 입력 중인 프로필은 이 화면에서만 관리하고 저장 성공 후 서버 상태를 다시 따른다
 const sido = ref(null)
 const sigungu = ref(null)
 const housingType = ref(null)
@@ -87,9 +87,7 @@ async function submit() {
     <div class="space-y-6 pt-5">
       <div>
         <h1 class="text-title tracking-display text-ink m-0">어디에 살고 계세요?</h1>
-        <p class="text-body-sm text-muted mt-2 mb-0">
-          같은 지역·같은 조건 가구와 비교하는 데 써요
-        </p>
+        <p class="text-body-sm text-muted mt-2 mb-0">같은 지역·같은 조건 가구와 비교하는 데 써요</p>
       </div>
 
       <OnbRegionPicker
