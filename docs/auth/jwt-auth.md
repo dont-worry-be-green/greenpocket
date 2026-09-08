@@ -2,8 +2,8 @@
 
 | 항목 | 내용 |
 |---|---|
-| 문서 기준일 | 2026-09-07 |
-| 상태 | 백엔드 구현·단위/회귀/Swagger 스모크 테스트 완료 · FE 연동 대기 |
+| 문서 기준일 | 2026-09-09 |
+| 상태 | JWT 인증 구현 완료 · 본인인증 정보 저장·에코 연동 우선 라우팅 반영 |
 | 관련 기능 | COM-13 회원가입 · COM-14 로그인 · COM-15 토큰 재발급 · COM-16 로그아웃 |
 | 관련 API | `POST /api/v1/auth/signup` · `/login` · `/refresh` · `/logout` |
 
@@ -25,6 +25,8 @@
 | JWT 식별자 | `sub`에는 `app_user.id`만 저장. 이메일·이름 등 개인정보는 넣지 않음 |
 | 기존 API | URL·요청 DTO는 유지하고, 공통 인증 계층이 해석한 `userId`를 `@CurrentUserId`로 전달 |
 | 데모 키 | `dev`·`demo` 프로필에서만 호환용으로 허용. 운영 프로필에서는 비활성화 |
+| 본인인증 | 외부 인증 API는 연동하지 않고 인증 성공으로 간주. 이름·생년월일·성별·휴대전화번호를 모두 필수 저장 |
+| 가입 후 이동 | 별도 온보딩 없이 에코마일리지 미연동 화면 `WF-01`로 이동 |
 
 ## 2. 범위
 
@@ -53,12 +55,12 @@
 ### 회원가입
 
 1. 이메일을 `trim`하고 소문자로 정규화한다.
-2. 이메일 형식, 비밀번호 8자 이상·UTF-8 기준 72바이트 이하, 이름 1~20자를 검증한다.
+2. 이메일 형식, 비밀번호 8자 이상·UTF-8 기준 72바이트 이하, 이름 1~20자, 생년월일, 성별, 휴대전화번호를 검증한다.
 3. `app_user`와 `auth_account`를 하나의 트랜잭션에서 생성한다.
 4. 그린포켓 계좌번호를 기존 규칙대로 발급한다.
 5. Access Token과 Refresh Token을 발급한다.
 6. Access Token은 응답 본문으로, Refresh Token은 HttpOnly 쿠키로 전달한다.
-7. 주거 프로필이 없으므로 `nextScreen`은 `ONB-02`다.
+7. 별도 온보딩 없이 `nextScreen`은 에코마일리지 미연동 화면 `WF-01`이다.
 
 ### 로그인
 
@@ -66,7 +68,7 @@
 2. BCrypt로 비밀번호를 비교한다.
 3. 이메일 존재 여부를 노출하지 않도록 두 실패 모두 `AUTH_CREDENTIALS_INVALID`로 응답한다.
 4. 다른 기기·브라우저의 활성 Refresh Token은 유지하고, 새 로그인 세션의 토큰을 별도 행으로 발급한다.
-5. 온보딩 완료 여부에 따라 `entryScreen`을 `ONB-02` 또는 `WF-06`으로 반환한다.
+5. 에코 연동 상태에 따라 `entryScreen`을 `WF-01`(미연동·실패), `WF-02`(연동 중), `WF-06`(연동 완료)으로 반환한다.
 
 ### Access Token 재발급
 
@@ -118,13 +120,16 @@ FE는 Refresh Token을 읽거나 로컬 스토리지에 저장하지 않습니�
 
 ## 6. 적용 스키마
 
-`docs/database/schema.sql`과 `V3__add_jwt_auth.sql`에 아래 구조를 반영했습니다.
+`docs/database/schema.sql`, `V3__add_jwt_auth.sql`, `V5__add_signup_identity_information.sql`에 아래 구조를 반영했습니다.
 
 ### `app_user` 변경
 
 - `demo_key`를 NULL 허용으로 변경한다.
 - 기존 데모 사용자는 값을 유지한다.
 - 일반 회원가입 사용자는 `demo_key = NULL`이다.
+- `birth_date`, `gender`, `phone_number`에 본인인증 정보를 저장한다.
+- `phone_number`는 숫자만 정규화해 저장하고 UNIQUE로 중복 가입을 막는다.
+- 별도 온보딩이 없으므로 신규 가입자의 `onboarding_completed`는 생성 시 `1`이다.
 
 ### `auth_account` 추가
 

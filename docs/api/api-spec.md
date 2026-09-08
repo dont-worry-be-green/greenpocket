@@ -2,11 +2,11 @@
 
 | 항목 | 내용 |
 |---|---|
-| 문서 기준일 | 2026-09-08 (ver3.3 — 결정 C-1~C-21 반영) |
+| 문서 기준일 | 2026-09-09 (ver3.5 — 결정 C-1~C-28 반영) |
 | 참가팀 | 돈워리, 비그린 (Don't worry, be green) |
-| 기준 문서 | `docs/feature-spec/기능명세서.md` (109건) · `docs/database/schema.sql` (15테이블) |
-| 대상 범위 | **P0 82건 + P1 25건**. P2 2건(D-3-06 · E-2-02)은 15절에 자리만 표기 |
-| API 수 | **65개** (P0 47 · P1 18) |
+| 기준 문서 | `docs/feature-spec/기능명세서.md` (116건) · `docs/database/schema.sql` (20테이블) |
+| 대상 범위 | **P0 89건 + P1 25건**. P2 2건(D-3-06 · E-2-02)은 15절에 자리만 표기 |
+| API 수 | **69개** (P0 51 · P1 18) |
 | 인증 | 이메일·비밀번호 로그인 + JWT Access Token. Refresh Token은 HttpOnly 쿠키 (결정 C-17) |
 | 서버 | Spring Boot · MySQL 8.4 · Base URL `/api/v1` |
 | 스키마 기준 | `docs/database/schema.sql` — FK·UNIQUE·CHECK 포함본. **DB 적용은 `backend/src/main/resources/db/migration/`의 Flyway 마이그레이션으로 한다** |
@@ -33,10 +33,11 @@
 | 11 | 평가 결과·마일리지 API (B-5) |
 | 12 | 혜택 API (C) |
 | 13 | 포켓 API (D) |
-| 14 | 마이페이지·보관함 API (E) |
+| 14 | 마이·보관함·청년정책 API (E) |
 | 15 | 매핑표 (화면 ↔ API · 기능 ID ↔ API · DB ↔ API) |
 | 16 | 2026-09-03 결정 기록 |
 | 17 | 2026-09-07 JWT 인증 결정 |
+| 18 | 2026-09-08 청년정책 추천 결정 |
 
 ---
 
@@ -182,7 +183,7 @@ GET   /bills/ocr/{jobId}   200           → { status, progress, result | error 
 
 | 항목 | 이유 |
 |---|---|
-| 실제 외부 연동 | 에코마일리지·녹색생활실천은 시드 기반 모의(결정 A-5). 엔드포인트 이름만 실제 연동과 같게 씀 |
+| 실제 외부 연동 | 에코마일리지·녹색생활실천은 시드 기반 모의다. 온통청년 청년정책 API 동기화만 실연동한다(결정 C-24) |
 | 실제 이체 | 전환·출금은 원장에 거래만 남기고 돈은 움직이지 않음(결정 A-6) |
 | 요금 계산 | 공식 요금표 기반 전기요금 계산 엔진 없음. 절감액은 `기준 요금 × 목표율` 비례(B-2-05) |
 | 이미지 보관 | 고지서 원본은 저장하지 않고 인식 후 폐기(COM-11) |
@@ -217,8 +218,9 @@ GET   /bills/ocr/{jobId}   200           → { status, progress, result | error 
 | | `REFRESH_TOKEN_INVALID` | 401 | Refresh Token 누락·형식 오류·폐기·재사용 | COM-15 |
 | | `REFRESH_TOKEN_EXPIRED` | 401 | Refresh Token 만료 | COM-15 |
 | 프로필 | `NAME_INVALID` | 400 | 공백 제거 후 1~20자 아님 / 특수문자만 | COM-01 |
-| | `PROFILE_INCOMPLETE` | 409 | 지역·주거형태·평수 중 미입력 | A-1-05 |
-| | `REGION_NOT_FOUND` | 404 | 없는 행정구역 코드 | A-1-01 |
+| | `PROFILE_INCOMPLETE` | 409 | 마이 정책 추천 선택값 중 필수값 미입력 | A-1-05 |
+| | `BIRTH_DATE_INVALID` | 400 | 미래 날짜 또는 지원하지 않는 날짜 범위 | A-1-01 |
+| | `POLICY_INTEREST_LIMIT_EXCEEDED` | 400 | 레거시 관심 분야 입력 오류(신규 API에서는 사용하지 않음) | 레거시 |
 | 고지서 | `IMAGE_TOO_LARGE` | 413 | 10MB 초과 | A-2-03 |
 | | `IMAGE_UNSUPPORTED` | 415 | JPG·PNG 아님 | A-2-03 |
 | | `OCR_JOB_NOT_FOUND` | 404 | 잘못된 jobId | A-2-04 |
@@ -228,7 +230,7 @@ GET   /bills/ocr/{jobId}   200           → { status, progress, result | error 
 | | `BILL_USAGE_REQUIRED` | 400 | 사용량 누락·0 이하 | A-2-08 · A-2-09 |
 | | `BILL_ELECTRICITY_REQUIRED` | 400 | 직접 입력에서 전기 미입력 | A-2-08 |
 | 진단 | `DIAGNOSIS_MONTH_EMPTY` | 404 | 해당 월 고지서 없음 | A-3-09 |
-| What-if | `ECO_NOT_SEOUL` | 403 | 프로필 시도 ≠ 서울(11) | B-1-09 |
+| What-if | `ECO_NOT_SEOUL` | 403 | 에코마일리지 연동 주소 시도 ≠ 서울(11) | B-1-09 |
 | | `ECO_NOT_LINKED` | 409 | `eco_link_status != LINKED` | B-1-01 |
 | | `ECO_LINK_FAILED` | 502 | 모의 연동 실패 | B-1-02 |
 | | `ECO_ROUND_NOT_FOUND` | 404 | 회차 없음 | B-1-07 |
@@ -247,6 +249,8 @@ GET   /bills/ocr/{jobId}   200           → { status, progress, result | error 
 | | `CONVERSION_ALREADY_DONE` | 409 | 같은 회차 전환 이력 존재 | D-2-02 |
 | | `CONVERSION_DAILY_LIMIT` | 429 | 오늘 이미 전환함 (1일 1회) | D-2-02 |
 | | `CONVERSION_NOT_RETURNED` | 409 | 외부 이동 기록 없이 완료 요청 | D-2-02 |
+| 청년정책 | `YOUTH_POLICY_NOT_FOUND` | 404 | 없는 정책 ID | E-3-03 |
+| | `YOUTH_POLICY_DATA_UNAVAILABLE` | 503 | 정상 동기화 데이터가 아직 없음 | E-3-01 · E-3-02 |
 
 > **비교 데이터 부재는 에러가 아닙니다.** 1인 가구 기준이 없거나(A-3-03) 작년 값이 없으면(A-3-06) `200` + `available: false` + `unavailableReason` 으로 내려서 화면이 "비교 데이터 준비 중"을 띄우게 합니다. 임의 값을 만들지 않습니다(비즈니스 규칙 8).
 
@@ -262,6 +266,11 @@ GET   /bills/ocr/{jobId}   200           → { status, progress, result | error 
 | `UsageUnit` | `kWh` · `m3` | 전기 kWh, 가스·수도 m3 |
 | `HousingType` | `ONE_ROOM` · `OFFICETEL` · `APARTMENT` · `MULTI_HOUSE` | 원룸·오피스텔·아파트·다세대 |
 | `AreaBand` | `UNDER_10` · `FROM_10_TO_20` · `OVER_20` | 10평 이하·10~20평·20평 이상 |
+| `CurrentStatus` | `EMPLOYED` · `SELF_EMPLOYED` · `UNEMPLOYED` · `FREELANCER` · `STUDENT` · `PREPARING_STARTUP` · `OTHER` | 정책 추천 현재 상태 |
+| `AnnualIncomeBand` | `NO_INCOME` · `UNDER_24M` · `FROM_24M_TO_36M` · `FROM_36M_TO_50M` · `OVER_50M` · `UNKNOWN` | 연소득 구간, 원 단위 상세 금액은 받지 않음 |
+| `HouseholdStatus` | `ONE_PERSON` · `WITH_PARENTS` · `MARRIED` · `SINGLE_PARENT` · `OTHER` | 가구 상태 |
+| `PolicyInterestCategory` | `JOB` · `HOUSING` · `EDUCATION` · `WELFARE_CULTURE` · `PARTICIPATION_RIGHTS` | 최대 3개 |
+| `PolicyApplicationStatus` | `OPEN` · `UPCOMING` · `CLOSED` · `UNKNOWN` | 정책 신청 상태 |
 | `EcoLinkStatus` | `UNLINKED` · `LINKING` · `LINKED` · `FAILED` | WF-01 · WF-02 |
 | `RecordSource` | `BILL` · `ECO_BASELINE` | 고지서 / 직전 2년 기준값 |
 | `BillType` | `MANAGEMENT` · `ELECTRICITY` · `GAS` · `WATER` | 관리비 통합·개별 |
@@ -286,6 +295,7 @@ GET   /bills/ocr/{jobId}   200           → { status, progress, result | error 
 | `WhatIfScreen` | `WF_01_UNLINKED` · `WF_02_LINKING` · `WF_03_NO_GOAL` · `WF_06_IN_PROGRESS` · `WF_09_RESULT_READY` | `GET /eco/home` 이 FE에 알려주는 렌더 상태 |
 | `JobStatus` | `PENDING` · `RUNNING` · `SUCCEEDED` · `PARTIAL` · `FAILED` · `TIMEOUT` | OCR·연동 비동기 작업 |
 | `Tab` | `DIAGNOSIS` · `BENEFIT` · `WHATIF` · `POCKET` · `MYPAGE` | 하단 탭 5개 (COM-02) |
+| `PolicyMatchStatus` | `ELIGIBLE` · `CHECK_REQUIRED` · `NOT_ELIGIBLE` | 추천 조건 판정. `ELIGIBLE`도 최종 자격 확정을 뜻하지 않음 |
 | `BaselineCalculationBasis` | `ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT` · `DAILY_USAGE_MONTH_EQUIVALENT` | 1인 가구 기준의 연간 집계 월평균 환산 / 일 사용량 월 일수 환산 |
 
 ---
@@ -315,8 +325,8 @@ GET   /bills/ocr/{jobId}   200           → { status, progress, result | error 
 {
   "userId": 1,
   "name": "김수현",
-  "onboardingCompleted": false,
-  "nextScreen": "ONB-02",
+  "onboardingCompleted": true,
+  "nextScreen": "WF-01",
   "pocketAccountNo": "1005-1234-5678-90",
   "pocketHolder": "김수현",
   "createdAt": "2026-09-03T18:30:00+09:00"
@@ -357,22 +367,22 @@ GET   /bills/ocr/{jobId}   200           → { status, progress, result | error 
 
 | 필드 | 설명 |
 |---|---|
-| `entryScreen` | 서버가 판단한 진입 화면. `onboardingCompleted=false` → `ONB-01`, 완료면 홈인 `WF-06` (COM-02) |
+| `entryScreen` | 에코 연동 상태 기준 진입 화면. `UNLINKED/FAILED` → `WF-01`, `LINKING` → `WF-02`, `LINKED` → `WF-06` |
 | `hasBill` | 등록 고지서 1건 이상 여부. 진단 빈 상태(A-3-04) 분기용 |
 
-> **마지막 방문 탭 복원은 만들지 않습니다**(결정 1). 온보딩을 마쳤으면 항상 What-if 탭(홈)으로 들어갑니다.
+> 별도 온보딩은 없습니다. **마지막 방문 탭 복원도 만들지 않으며**, 에코 연동 상태에 따라 What-if 화면으로 들어갑니다(결정 C-1·C-26).
 
 ---
 
 ## 4.3 행정구역 목록
 
-`GET /meta/regions` · **P0** · A-1-01 · ONB-02
+`GET /meta/regions` · **P0** · 레거시 호환
 
 | 쿼리 | 필수 | 설명 |
 |---|---|---|
 | `sidoCode` | | 없으면 시도 목록, 있으면 그 시도의 시군구 목록 |
 
-MVP 서비스 지역은 서울특별시로 한정합니다(결정 C-15). `sidoCode`가 없으면 서울특별시 1건만, `sidoCode=11`이면 서울 25개 자치구를 반환합니다. 다른 시·도 코드는 `404 REGION_NOT_FOUND`입니다.
+MVP 서비스 지역은 서울특별시로 한정합니다(결정 C-15). 신규 가입·정책 추천에서는 지역을 직접 입력받지 않으며, 이 API는 기존 화면 호환용입니다. 정책 추천 지역은 에코마일리지 연동 주소만 사용합니다.
 
 **Response 200**
 
@@ -385,7 +395,7 @@ MVP 서비스 지역은 서울특별시로 한정합니다(결정 C-15). `sidoCo
 }
 ```
 
-- `hasRegionAverage` — 기존 지역 평균 비교와의 응답 호환을 위해 유지하는 필드입니다. 결정 C-22 이후 진단 기준선 선택에는 사용하지 않습니다.
+- `hasRegionAverage` — 기존 지역 평균 비교와의 응답 호환을 위해 유지하는 필드입니다. 결정 C-29 이후 진단 기준선 선택에는 사용하지 않습니다.
 - 시군구 코드는 한전 API `cityCd` 와 겸용(`app_user.sigungu_code` COMMENT).
 - 코드·명칭의 출처는 행정안전부 [행정표준코드관리시스템](https://www.code.go.kr/stdcode/regCodeL.do)과 [행정표준코드 API](https://www.data.go.kr/data/15077871/openapi.do)이며, 외부 장애에 영향을 받지 않도록 실행 중에는 `backend/src/main/resources/data/seoul-regions.json`을 사용합니다.
 
@@ -425,7 +435,10 @@ MVP 서비스 지역은 서울특별시로 한정합니다(결정 C-15). `sidoCo
 {
   "email": "user@example.com",
   "password": "green1234",
-  "name": "김수현"
+  "name": "김수현",
+  "birthDate": "1998-03-15",
+  "gender": "FEMALE",
+  "phoneNumber": "01091740339"
 }
 ```
 
@@ -434,6 +447,9 @@ MVP 서비스 지역은 서울특별시로 한정합니다(결정 C-15). `sidoCo
 | `email` | string(255) | ✔ | `trim` 후 소문자 저장, 표준 이메일 형식, UNIQUE |
 | `password` | string | ✔ | 8자 이상·UTF-8 기준 72바이트 이하. 원문은 저장·응답·로그 금지 |
 | `name` | string(20) | ✔ | `trim` 후 1~20자. 공백·특수문자만이면 `NAME_INVALID` |
+| `birthDate` | date | ✔ | `YYYY-MM-DD`, 미래 날짜 불가. 본인인증 성공값으로 간주 |
+| `gender` | enum | ✔ | `MALE` 또는 `FEMALE` |
+| `phoneNumber` | string | ✔ | 국내 휴대전화번호. 구분기호 제거 후 숫자 10~11자리 저장, UNIQUE |
 
 **Response 201**
 
@@ -442,8 +458,8 @@ MVP 서비스 지역은 서울특별시로 한정합니다(결정 C-15). `sidoCo
   "userId": 1,
   "email": "user@example.com",
   "name": "김수현",
-  "onboardingCompleted": false,
-  "nextScreen": "ONB-02",
+  "onboardingCompleted": true,
+  "nextScreen": "WF-01",
   "accessToken": "eyJ...",
   "tokenType": "Bearer",
   "expiresIn": 1800
@@ -454,11 +470,11 @@ MVP 서비스 지역은 서울특별시로 한정합니다(결정 C-15). `sidoCo
 Set-Cookie: refreshToken=<opaque>; HttpOnly; SameSite=Lax; Path=/api/v1/auth; Max-Age=1209600
 ```
 
-- `app_user`와 `auth_account`는 한 트랜잭션에서 생성합니다.
+- 외부 본인인증 API는 붙이지 않고 이름·생년월일·성별·휴대전화번호를 모두 확인된 값으로 간주합니다. `app_user`와 `auth_account`는 한 트랜잭션에서 생성합니다.
 - 그린포켓 계좌번호와 예금주는 4.1절과 같은 규칙으로 생성합니다.
 - 운영 HTTPS에서는 Refresh 쿠키에 `Secure`를 반드시 붙입니다.
 
-**Errors** `EMAIL_INVALID(400)` · `PASSWORD_INVALID(400)` · `NAME_INVALID(400)` · `EMAIL_ALREADY_USED(409)`
+**Errors** `EMAIL_INVALID(400)` · `PASSWORD_INVALID(400)` · `NAME_INVALID(400)` · `BIRTH_DATE_INVALID(400)` · `GENDER_REQUIRED(400)` · `PHONE_NUMBER_INVALID(400)` · `EMAIL_ALREADY_USED(409)` · `PHONE_NUMBER_ALREADY_USED(409)`
 
 ---
 
@@ -486,7 +502,7 @@ Set-Cookie: refreshToken=<opaque>; HttpOnly; SameSite=Lax; Path=/api/v1/auth; Ma
 }
 ```
 
-응답 시 4.5절과 같은 속성의 `refreshToken` 쿠키를 설정합니다. `onboardingCompleted=false`면 `entryScreen`은 `ONB-02`, 완료면 `WF-06`입니다.
+응답 시 4.5절과 같은 속성의 `refreshToken` 쿠키를 설정합니다. `entryScreen`은 에코 연동 상태에 따라 `WF-01`, `WF-02`, `WF-06` 중 하나입니다.
 
 가입 여부 노출을 막기 위해 미가입 이메일과 비밀번호 불일치는 모두 아래 오류로 응답합니다.
 
@@ -538,51 +554,9 @@ Set-Cookie: refreshToken=<opaque>; HttpOnly; SameSite=Lax; Path=/api/v1/auth; Ma
 
 ---
 
-# 5. 프로필 API (A-1)
+# 5. 프로필·정책 추천 조건 API (A-1 · E-3)
 
-## 5.1 프로필 저장 (온보딩 완료)
-
-`POST /profile` · **P0** · A-1-01 · A-1-02 · A-1-03 · A-1-05 · ONB-02
-
-```json
-{
-  "sidoCode": "11",
-  "sidoName": "서울특별시",
-  "sigunguCode": "11620",
-  "sigunguName": "관악구",
-  "housingType": "APARTMENT",
-  "areaBand": "OVER_20"
-}
-```
-
-`sidoName`·`sigunguName`은 호환성을 위해 요청에 둘 수 있지만 저장 기준은 서버의 서울 자치구 목록입니다. 서버는 코드에 해당하는 명칭을 저장하며 요청의 명칭을 신뢰하지 않습니다.
-
-| 필드 | 필수 | 규칙 |
-|---|---|---|
-| `sidoCode` · `sigunguCode` | ✔ | 시도 먼저, 시군구는 시도 선택 후 (A-1-01) |
-| `housingType` | ✔ | `HousingType` |
-| `areaBand` | ✔ | `AreaBand` |
-
-**청년 조건(나이·소득·취업)은 받지 않습니다** — 결정 B-1로 ONB-03 화면 삭제.
-
-**Response 200**
-
-```json
-{
-  "onboardingCompleted": true,
-  "profileSummary": "서울 관악구 · 아파트 20평 이상",
-  "nextScreen": "WF-06",
-  "seoulResident": true
-}
-```
-
-- `seoulResident` = `sidoCode == "11"`. What-if 연동 가능 여부(B-1-09)를 FE가 바로 알 수 있게 함.
-
-**Errors** `PROFILE_INCOMPLETE(409)` · `REGION_NOT_FOUND(404)`
-
----
-
-## 5.2 프로필 조회
+## 5.1 프로필 조회
 
 `GET /profile` · **P0** · A-1-06 · A-1-07 · MY-01 · AN-07
 
@@ -591,51 +565,71 @@ Set-Cookie: refreshToken=<opaque>; HttpOnly; SameSite=Lax; Path=/api/v1/auth; Ma
 ```json
 {
   "name": "김수현",
-  "sidoCode": "11", "sidoName": "서울특별시",
-  "sigunguCode": "11620", "sigunguName": "관악구",
-  "housingType": "APARTMENT",
-  "areaBand": "OVER_20",
-  "profileSummary": "서울 관악구 · 아파트 20평 이상",
-  "seoulResident": true,
-  "onboardingCompleted": true
+  "birthDate": "1998-03-15",
+  "gender": "FEMALE",
+  "phoneNumber": "01091740339",
+  "currentStatus": "EMPLOYED",
+  "annualIncomeBand": "FROM_24M_TO_36M",
+  "householdStatus": "ONE_PERSON",
+  "ecoAddress": {
+    "label": "서울특별시 관악구",
+    "sidoCode": "11",
+    "sigunguCode": "11620",
+    "registeredAt": "2026-03"
+  },
+  "policyProfileCompleted": true
 }
 ```
 
-`profileSummary` 는 진단 헤더·마이페이지 카드가 같은 문자열을 쓰도록 서버가 조립합니다(A-1-07 "동일 값이 화면마다 다르게 표시되지 않는다").
+이름·생년월일·성별·휴대전화번호는 가입 시 본인인증 정보이며 이 API에서는 조회만 합니다. `ecoAddress`는 미연동이면 `null`이고 앱 안에서는 수정하지 않습니다.
 
 ---
 
-## 5.3 프로필 수정
+## 5.2 정책 추천 조건 조회
 
-`PUT /profile` · **P0** · A-1-06 · MY-02
-
-Request 본문은 5.1과 동일 + `name` 수정 가능.
-
-```json
-{
-  "name": "김수현",
-  "sidoCode": "11", "sigunguCode": "11620",
-  "housingType": "ONE_ROOM", "areaBand": "UNDER_10",
-  "confirmBaselineChange": true
-}
-```
-
-| 필드 | 설명 |
-|---|---|
-| `confirmBaselineChange` | 진행 중 평가 회차가 있는데 **지역이 바뀌면** 필수. `false`/누락이면 `409 CONFLICT` + `details.warning` 으로 경고 문구 반환 → FE가 확인 다이얼로그를 띄우고 재요청 (A-1-06 예외 처리) |
+`GET /profile/policy-preferences` · **P0** · E-3-05 · MY-06
 
 **Response 200**
 
 ```json
 {
-  "profileSummary": "서울 관악구 · 원룸 10평 이하",
-  "baselineRecalculated": true,
-  "affectedRoundId": 7
+  "birthDate": "1998-03-15",
+  "currentStatus": "FREELANCER",
+  "annualIncomeBand": "UNDER_24M",
+  "householdStatus": "ONE_PERSON",
+  "ecoAddress": { "label": "서울특별시 관악구", "sidoCode": "11", "sigunguCode": "11620" },
+  "birthDateEditable": false,
+  "regionEditable": false,
+  "completed": true
 }
 ```
 
-- 지역 변경은 프로필 요약과 서울 거주 판정에 반영합니다. 결정 C-22 이후 1인 가구 진단 기준선은 지역에 따라 달라지지 않습니다.
-- 화면 MY-01의 "에코마일리지 주소 · 2026-03 등록" 은 **프로필 주소가 아니라 누리집 등록 주소**입니다(결정 8). `GET /mypage` 의 `ecoAddress` 를 쓰고, 여기서 프로필 주소를 바꿔도 그 값은 바뀌지 않습니다 — 다음 연동 때 갱신됩니다.
+생년월일은 가입 정보, 지역은 에코 연동 정보이므로 읽기 전용입니다. 아직 선택 정보를 저장하지 않았다면 세 선택 필드는 `null`, `completed`는 `false`입니다.
+
+## 5.3 정책 추천 조건 저장
+
+`PUT /profile/policy-preferences` · **P0** · E-3-05 · MY-06
+
+```json
+{
+  "currentStatus": "FREELANCER",
+  "annualIncomeBand": "UNDER_24M",
+  "householdStatus": "ONE_PERSON"
+}
+```
+
+세 필드는 모두 필수입니다. 사용자가 마이 탭에서 **내 정보에 저장**을 눌렀을 때만 호출합니다. 생년월일·성별·휴대전화번호·지역·주거 형태·평수·관심 분야는 요청받지 않습니다.
+
+**Response 200**
+
+```json
+{ "policyProfileCompleted": true, "recommendationsUpdated": true }
+```
+
+**Errors** `PROFILE_INCOMPLETE(409)`
+
+- 결정 C-29 이후 1인 가구 진단 기준선은 지역에 따라 달라지지 않습니다.
+- 화면 MY-01의 "에코마일리지 주소 · 2026-03 등록"은 **프로필 주소가 아니라 누리집 등록 주소**입니다(결정 C-8). 앱에서는 직접 수정하지 않으며 다음 에코마일리지 연동 때 갱신됩니다.
 
 ---
 
@@ -1010,7 +1004,7 @@ CLOVA Template OCR의 고정 데모 템플릿은 관리비 통합(43341)·개별
 | `unavailableReason` | 현재 `NO_BASELINE` |
 | `differenceUsage` · `differenceRate` | **양수 = 평균 초과, 음수 = 평균 미만.** 부호 그대로 내려주고 표기는 FE (A-3-08) |
 | `calculationBasis` | `ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT`는 연간 에너지 집계의 월평균 환산, `DAILY_USAGE_MONTH_EQUIVALENT`는 일 사용량 × 조회 월 일수 |
-| `comparisonLabel` · `referencePeriod` · `note` | 비교군·기준 연도·자료 한계를 숨기지 않고 화면에 함께 표시 (결정 C-22) |
+| `comparisonLabel` · `referencePeriod` · `note` | 비교군·기준 연도·자료 한계를 숨기지 않고 화면에 함께 표시 (결정 C-29) |
 | `hasPreviousYear: false` | 작년 값 없음 → 배지·카드 숨김. 에코마일리지 연동 유도 (A-3-05 · A-3-06) |
 
 **Errors** `DIAGNOSIS_MONTH_EMPTY(404)` — 등록 안 된 월을 지정했을 때
@@ -1091,7 +1085,7 @@ CLOVA Template OCR의 고정 데모 템플릿은 관리비 통합(43341)·개별
 | `registeredUtilities` | **항상 3건 고정.** 세그먼트 3개 고정 규칙(B-2-02) |
 | `eligibleForRound` | 전기 등록 && 등록 요금 ≥ 2개 (B-1-04). `false` 면 "평가 대상 아님" 안내 |
 | `unregisteredReason` | `eco_round_utility.unregistered_reason` 문장 그대로 (WF-05에 노출) |
-| `ecoAddress` | **에코마일리지 누리집에 등록된 주소**를 연동 때 받아 저장한 값(결정 8). 프로필 주소와 다르면 `matchesProfile:false` → 이사 안내(B-1-08). 미연동이면 `null` |
+| `ecoAddress` | 에코마일리지 누리집 등록 주소를 연동 때 받아 저장한 값. 정책 추천·지역 진단의 단일 지역 기준이며 미연동이면 `null` |
 
 ---
 
@@ -2397,9 +2391,9 @@ requiredByUtility
 
 ---
 
-# 14. 마이페이지·보관함 API (E)
+# 14. 마이·보관함·청년정책 API (E)
 
-## 14.1 마이페이지 메인
+## 14.1 마이 메인
 
 `GET /mypage` · **P0** · E-1-01 · E-1-02 · MY-01
 
@@ -2407,9 +2401,9 @@ requiredByUtility
 {
   "profile": {
     "name": "김수현",
-    "sidoName": "서울특별시", "sigunguName": "관악구",
-    "housingType": "ONE_ROOM", "areaBand": "UNDER_10",
-    "profileSummary": "서울 관악구 · 원룸 · 10평 이하"
+    "birthDate": "1998-03-15",
+    "gender": "FEMALE",
+    "phoneNumber": "01091740339"
   },
   "links": {
     "billArchive": { "count": 14, "screen": "MY-03" },
@@ -2418,24 +2412,33 @@ requiredByUtility
   "ecoAddress": {
     "label": "서울 관악구",
     "registeredAt": "2026-03",
-    "matchesProfile": true,
-    "notice": "이사했다면 꼭 바꿔주세요. 바꾸지 않으면 지금 살지 않는 집의 사용량과 비교돼요"
+    "notice": "주소를 바꾸려면 에코마일리지 누리집에서 변경한 뒤 다시 연동해 주세요"
   },
   "integration": {
     "ecoLinkStatus": "LINKED", "ecoLinkedAt": "2026-09-01T09:00:00+09:00",
     "greenlifeParticipating": true, "greenlifeLinkedAt": "2026-09-01T09:12:00+09:00",
     "registeredUtilities": ["ELECTRICITY","GAS","WATER"]
   },
-  "pocketAccountNo": "1005-1234-5678-90"
+  "pocketAccountNo": "1005-1234-5678-90",
+  "youthPolicy": {
+    "profileCompleted": true,
+    "regionLinked": true,
+    "recommendedCount": 12,
+    "preview": [
+      { "policyId": "20260908005400213380", "title": "청년 지원 정책", "category": "EDUCATION", "matchStatus": "CHECK_REQUIRED" }
+    ],
+    "lastSyncedAt": "2026-09-08T19:30:00+09:00"
+  }
 }
 ```
 
 | 필드 | 설명 |
 |---|---|
-| `ecoAddress` | **프로필 주소가 아니라 에코마일리지 누리집에 등록된 주소**입니다(결정 8). 연동 때 받아 `app_user.eco_*` 에 저장한 값을 그대로 보여줍니다. 미연동이면 `null` |
-| `matchesProfile` | 프로필 주소와 시군구 코드가 같은지. `false` 면 이사 안내를 띄웁니다(B-1-08) |
+| `ecoAddress` | 에코마일리지 누리집에 등록된 주소입니다. 연동 때 받아 `app_user.eco_*`에 저장하며 미연동이면 `null` |
+| `youthPolicy.regionLinked` | `false`면 전국 정책만 추천하며 에코마일리지 연동 CTA를 표시 |
+| `youthPolicy.preview` | 마이 메인에 노출할 추천 정책 상위 최대 5개. 전체 결과는 14.3 사용 |
 
-**나이·소득 구간·취업 상태는 응답에 없습니다** — 결정 B-1로 제거(E-1-01).
+지역을 프로필 입력값으로 이중 관리하지 않습니다. 앱 내부 지역 수정 UI도 제공하지 않습니다(결정 C-25).
 
 ---
 
@@ -2477,16 +2480,150 @@ requiredByUtility
 
 ---
 
+## 14.3 맞춤 청년정책 추천
+
+`GET /policies/recommendations` · **P0** · E-3-01 · MY-01 · MY-05
+
+| 쿼리 | 기본값 | 설명 |
+|---|---|---|
+| `page` | 0 | 0-base |
+| `size` | 20 | 1~100 |
+
+**Response 200**
+
+```json
+{
+  "content": [
+    {
+      "policyId": "20260908005400213380",
+      "title": "경기도 대학혁신플랫폼 지원",
+      "category": "EDUCATION",
+      "subCategory": "미래역량강화",
+      "supportSummary": "수요 맞춤형 교육 및 현장실습 지원",
+      "applicationStatus": "OPEN",
+      "applicationEndDate": "2027-02-28",
+      "matchStatus": "CHECK_REQUIRED",
+      "matchScore": 60,
+      "matchReasons": ["전국 대상 정책이에요", "세부 학력 조건은 직접 확인해 주세요"],
+      "regionScope": "NATIONAL"
+    }
+  ],
+  "page": 0,
+  "size": 20,
+  "totalElements": 12,
+  "totalPages": 1,
+  "hasNext": false,
+  "region": { "linked": true, "label": "서울특별시 관악구", "appliedLevels": ["NATIONAL", "SIDO", "SIGUNGU"] },
+  "lastSyncedAt": "2026-09-08T19:30:00+09:00"
+}
+```
+
+- 명확한 나이·지역과 온통청년 코드로 정확히 대응되는 취업 상태·연소득 범위·혼인·한부모 조건만 서버가 자동 판정합니다.
+- 연소득 구간이 정책 범위에 일부만 겹치거나 원본 금액이 비정상인 경우, 사용자 선택값과 직접 대응하지 않는 상태·가구 조건, 자유 텍스트 소득·학력·전공·특화 조건은 탈락시키지 않고 `CHECK_REQUIRED`로 반환합니다.
+- `matchScore`는 0~100점이며 `CHECK_REQUIRED` 응답은 90점을 넘지 않습니다. 점수는 정렬용 보조값이고 자격 확정 점수가 아닙니다.
+- `ELIGIBLE`은 입력 조건상 신청 가능성이 높다는 뜻이며 실제 자격을 보증하지 않습니다.
+- 에코 미연동이면 `region.linked=false`, `appliedLevels=["NATIONAL"]`로 전국 정책만 반환합니다.
+
+**Errors** `UNAUTHENTICATED(401)` · `PROFILE_INCOMPLETE(409)` · `YOUTH_POLICY_DATA_UNAVAILABLE(503)`
+
+---
+
+## 14.4 임시 조건으로 다시 추천
+
+`POST /policies/recommendations/preview` · **P0** · E-3-04 · MY-06
+
+```json
+{
+  "currentStatus": "UNEMPLOYED",
+  "annualIncomeBand": "NO_INCOME",
+  "householdStatus": "ONE_PERSON",
+  "page": 0,
+  "size": 20
+}
+```
+
+Response는 14.3과 동일하며 `preview:true`가 추가됩니다. 생년월일과 에코 주소는 저장된 값을 사용하며, 이 호출은 `app_user`를 변경하지 않습니다.
+
+**Errors** `INVALID_REQUEST(400)` · `UNAUTHENTICATED(401)` · `PROFILE_INCOMPLETE(409)` · `YOUTH_POLICY_DATA_UNAVAILABLE(503)`
+
+---
+
+## 14.5 전체 청년정책 목록
+
+`GET /policies` · **P0** · E-3-02 · MY-05
+
+| 쿼리 | 값 | 설명 |
+|---|---|---|
+| `keyword` | string | 정책명·지원 내용 검색 |
+| `category` | `PolicyInterestCategory` | 분야 |
+| `regionCode` | 행정구역 코드 | 전국 정책은 항상 포함하지 않고, 지정 지역만 필터링 |
+| `applicationStatus` | `PolicyApplicationStatus` | 신청 상태 |
+| `page` · `size` | 0 · 20 | size 1~100 |
+
+Response의 페이징 구조와 카드 항목은 14.3과 같습니다. 사용자 조건이 완성돼 있으면 `matchStatus`·`matchReasons`를 포함하고, 아니면 해당 필드는 `null`입니다.
+
+**Errors** `UNAUTHENTICATED(401)` · `YOUTH_POLICY_DATA_UNAVAILABLE(503)`
+
+---
+
+## 14.6 청년정책 상세
+
+`GET /policies/{policyId}` · **P0** · E-3-03 · MY-06
+
+**Response 200**
+
+```json
+{
+  "policyId": "20260908005400213380",
+  "title": "경기도 대학혁신플랫폼 지원",
+  "category": "EDUCATION",
+  "subCategory": "미래역량강화",
+  "description": "정책 설명",
+  "supportContent": "지원 내용",
+  "application": {
+    "status": "OPEN",
+    "periodType": "LIMITED",
+    "startDate": "2026-01-01",
+    "endDate": "2027-02-28",
+    "method": "기관 문의 또는 홈페이지 신청",
+    "url": "https://example.go.kr"
+  },
+  "organizations": { "supervising": "경기도", "operating": "가천대학교" },
+  "conditions": {
+    "age": "제한 없음",
+    "income": "별도 확인",
+    "employment": "재직자·미취업자",
+    "education": "대학 재학",
+    "major": "제한 없음",
+    "special": "세부 공고 확인"
+  },
+  "match": {
+    "status": "CHECK_REQUIRED",
+    "score": 60,
+    "reasons": ["전국 대상 정책이에요", "세부 학력 조건은 직접 확인해 주세요"]
+  },
+  "referenceUrls": ["https://example.go.kr"],
+  "source": "온통청년",
+  "lastSyncedAt": "2026-09-08T19:30:00+09:00"
+}
+```
+
+외부 URL은 `http`·`https`만 허용하며 그 외 스킴은 응답에서 제외합니다.
+
+**Errors** `YOUTH_POLICY_NOT_FOUND(404)`
+
+---
+
 # 15. 매핑표
 
-## 15.1 API 65개 한눈에 보기
+## 15.1 API 69개 한눈에 보기
 
 P1만 표시하고 나머지는 P0입니다. 뒤 숫자는 이 문서의 절 번호. 표 형태 목록은 노션 「API 기본 명세서」 DB에도 있습니다.
 
 | 영역 | 엔드포인트 |
 |---|---|
 | 공통·인증 (8) | `POST /users` 4.1 (dev/demo) · `GET /users/me` 4.2 · `GET /meta/regions` 4.3 · `POST /demo/reset` 4.4 (dev/demo) · `POST /auth/signup` 4.5 · `POST /auth/login` 4.6 · `POST /auth/refresh` 4.7 · `POST /auth/logout` 4.8 |
-| 프로필 (3) | `POST /profile` 5.1 · `GET /profile` 5.2 · `PUT /profile` 5.3 |
+| 프로필 (3) | `GET /profile` 5.1 · `GET /profile/policy-preferences` 5.2 · `PUT /profile/policy-preferences` 5.3 |
 | 고지서 (9) | `GET /bills/target-month` 6.1 · `POST /bills/ocr` 6.2 · `GET /bills/ocr/{jobId}` 6.3 · `GET /bills/duplicate-check` 6.4 · `POST /bills` 6.5 · `GET /bills` 6.6 (P1) · `GET /bills/{recordId}` 6.7 (P1) · `PUT /bills/{recordId}` 6.8 (P1) · `DELETE /bills/{recordId}` 6.9 (P1) |
 | 진단 (3) | `GET /diagnosis/months` 7.1 (P1) · `GET /diagnosis` 7.2 · `GET /diagnosis/baseline` 7.3 |
 | 에코 연동 (5) | `GET /eco/status` 8.1 · `POST /eco/link` 8.2 · `GET /eco/link/{linkJobId}` 8.3 · `GET /eco/rounds/current` 8.4 · `GET /eco/rounds` 8.5 (P1) |
@@ -2495,13 +2632,13 @@ P1만 표시하고 나머지는 P0입니다. 뒤 숫자는 이 문서의 절 번
 | 평가 결과 (3) | `GET .../result` 11.1 · `GET .../settlement` 11.2 · `POST .../application` 11.3 (P1) |
 | 혜택 (5) | `GET /greenlife/status` 12.1 · `POST /greenlife/link` 12.2 · `GET /greenlife/items` 12.3 · `GET /greenlife/items/{itemId}` 12.4 (P1) · `POST /greenlife/settlements` 12.5 |
 | 포켓 (15) | `GET /pocket` 13.1 · `GET /pocket/balance` 13.2 · `GET /pocket/convertible-mileage` 13.3 · `GET /pocket/transactions` 13.4 · `POST /pocket/conversions` 13.5 · `POST .../conversions/{id}/complete` 13.6 · `GET /pocket/accounts` 13.7 · `POST /pocket/accounts` 13.8 · `PUT /pocket/accounts/{id}` 13.9 · `PUT .../{id}/default` 13.9 · `DELETE .../{id}` 13.9 (P1) · `POST /pocket/withdrawals` 13.10 · `GET /pocket/withdrawals` 13.11 (P1) · `GET /pocket/management` 13.12 (P1) · `GET /pocket/recommended-product` 13.13 (P1) |
-| 마이페이지 (2) | `GET /mypage` 14.1 · `GET /reports` 14.2 (P1) |
+| 마이·청년정책 (6) | `GET /mypage` 14.1 · `GET /reports` 14.2 (P1) · `GET /policies/recommendations` 14.3 · `POST /policies/recommendations/preview` 14.4 · `GET /policies` 14.5 · `GET /policies/{policyId}` 14.6 |
 
 각 엔드포인트 절 제목에 담당 기능 ID가 붙어 있습니다. 기능 ID로 역추적할 때는 문서에서 `A-2-11` 처럼 검색하세요.
 
 ## 15.2 API가 없는 기능 (FE 단독 · 비개발)
 
-P0·P1 107건 중 아래 12건은 서버 호출이 없습니다. 나머지 95건은 위 65개 API로 덮습니다.
+P0·P1 기능 중 아래 항목은 화면 동작·데이터 작업으로 별도 API가 없습니다. 나머지는 위 69개 API로 덮습니다.
 
 | 기능 ID | 내용 | 왜 API가 없나 |
 |---|---|---|
@@ -2510,20 +2647,20 @@ P0·P1 107건 중 아래 12건은 서버 호출이 없습니다. 나머지 95건
 | COM-07 | 예상·적립·입금 상태 표시 | FE 라벨. 서버는 `RewardStatus`·`TxStatus`·`isCash` 로 구분값만 |
 | COM-09 | 시드 데이터 적재 | 비개발(데이터). 적재 스크립트는 BE |
 | COM-11 | 개인정보·데모 안내 | 비개발(콘텐츠). 서버는 이미지 미저장·계좌 로그 금지로 준수 |
-| A-1-02 · A-1-03 | 주거 형태·평수 선택 | 칩·라디오 UI. 값은 `POST /profile` 에 실려 나감 |
+| A-1-02 · A-1-03 | 별도 온보딩 | 결정 C-26으로 제거. 가입 후 바로 에코 연동으로 이동 |
 | A-2-02 | 입력 방식 선택 | FE 세그먼트. 두 경로 모두 `POST /bills` 로 수렴 |
 | A-2-06 | 인식 내용 수정 | FE 3탭 폼. 저장은 `POST /bills` |
 | A-2-10 | 등록 전 요약·확정 | FE 화면. 확정 전에는 저장하지 않음 |
 | A-3-01 | 1인 가구 평균 사용량 기준선 데이터 | 비개발(데이터). `resources/data/single-household-utility-baselines.json` |
 | B-3-01 | 실천 미션 데이터 | 비개발(데이터). 근거 3종 NOT NULL 로 DB가 품질 강제 |
-| C-1-03 | 실천 항목 데이터 | 비개발(데이터). `greenlife_item` 17건 시드 |
 
 ## 15.3 화면 → API
 
 | 화면 ID | 화면명 | 진입 시 호출 |
 |---|---|---|
 | ONB-01 | 회원가입·로그인 | `POST /auth/signup` · `POST /auth/login` (`dev`·`demo`는 `POST /users` 사용 가능) |
-| ONB-02 | 주거 프로필 | `GET /meta/regions` → `POST /profile` |
+| ONB-02 | 사용하지 않음 | 별도 온보딩 제거 |
+| ONB-03 | 사용하지 않음 | 정책 추천 조건은 마이에서 선택 입력 |
 | AN-01 | 고지서 미등록 메인 | `GET /diagnosis` (`empty:true`) · `GET /bills/target-month` |
 | AN-02 | 사진·직접 입력 선택 | `GET /bills/target-month` |
 | AN-03 | OCR 분석 중 | `POST /bills/ocr` → `GET /bills/ocr/{jobId}` 폴링 |
@@ -2555,20 +2692,22 @@ P0·P1 107건 중 아래 12건은 서버 호출이 없습니다. 나머지 95건
 | PK-07 | 출금계좌 등록·변경 | `GET/POST/PUT /pocket/accounts` |
 | PK-08 | 출금 내역 | `GET /pocket/withdrawals` |
 | PK-09 | KB맑은하늘적금 상세 | `GET /pocket/recommended-product` → `applicationUrl` 외부 이동 |
-| MY-01 | 마이페이지 메인 | `GET /mypage` |
-| MY-02 | 기본 정보 수정 | `GET /profile` → `PUT /profile` |
+| MY-01 | 마이 메인 | `GET /mypage` · `GET /policies/recommendations?size=` |
+| MY-02 | 정책 추천 조건 설정 | `GET/PUT /profile/policy-preferences` |
 | MY-03 | 고지서 보관함 | `GET /bills?utility=&year=` |
 | MY-04 | 리포트 보관함 | `GET /reports?type=&year=` |
+| MY-05 | 청년정책 전체 목록 | `GET /policies?keyword=&category=&regionCode=&applicationStatus=` |
+| MY-06 | 청년정책 상세·다시 추천 | `GET /policies/{policyId}` · `POST /policies/recommendations/preview` · `GET/PUT /profile/policy-preferences` |
 
 ## 15.4 DB 테이블 → API
 
 | 테이블 | 읽는 API | 쓰는 API |
 |---|---|---|
-| `app_user` | `GET /users/me` · `/profile` · `/mypage` · `/eco/status` · `/greenlife/status` · `/pocket` | `POST /auth/signup` · `POST /users`(dev/demo) · `POST/PUT /profile` · `POST /eco/link`(연동 상태·등록 주소) · `POST /greenlife/link` · `POST /demo/reset`(dev/demo) |
+| `app_user` | `GET /users/me` · `/profile*` · `/mypage` · `/policies*` · `/eco/status` · `/greenlife/status` · `/pocket` | `POST /auth/signup` · `POST /users`(dev/demo) · `PUT /profile/policy-preferences` · `POST /eco/link`(연동 상태·등록 주소) · `POST /greenlife/link` · `POST /demo/reset`(dev/demo) |
 | `auth_account` | `POST /auth/login` | `POST /auth/signup` · `POST /auth/login`(last_login_at) |
 | `auth_refresh_token` | `POST /auth/refresh` · `/auth/logout` | `POST /auth/signup` · `/auth/login` · `/auth/refresh` · `/auth/logout` |
 | `utility_monthly_record` | `GET /diagnosis` · `/bills` · `/eco/monthly-report` · `/reports` | `POST/PUT/DELETE /bills` · `POST /eco/link`(ECO_BASELINE) |
-| `region_utility_snapshot` | `GET /meta/regions`의 하위 호환 `hasRegionAverage` | 시드만 (COM-09). 결정 C-22 이후 진단 API에서는 사용하지 않음 |
+| `region_utility_snapshot` | `GET /meta/regions`의 하위 호환 `hasRegionAverage` | 시드만 (COM-09). 결정 C-29 이후 진단 API에서는 사용하지 않음 |
 | `eco_round` | `GET /eco/rounds*` · `/eco/home` · `/pocket/convertible-mileage` | `POST /eco/link` · `POST/PUT .../goal` · `POST .../application` · `POST .../result/view` |
 | `eco_round_utility` | `GET /eco/rounds/current` · `.../goal*` · `.../result` | `POST /eco/link` · `POST/PUT .../goal` |
 | `eco_monthly_report` | `GET /eco/monthly-report` · `/eco/home` · `/reports` | `POST/PUT/DELETE /bills` 재계산 |
@@ -2579,6 +2718,11 @@ P0·P1 107건 중 아래 12건은 서버 호출이 없습니다. 나머지 95건
 | `greenlife_activity` | `GET /greenlife/status` · `/greenlife/items*` | `POST /greenlife/link` · `POST /greenlife/settlements`(PAID 전이) |
 | `withdrawal_account` | `GET /pocket*` | `POST/PUT/DELETE /pocket/accounts` |
 | `pocket_transaction` | `GET /pocket*` · `/eco/rounds/{id}/result` | `POST /greenlife/settlements` · `POST /pocket/conversions*` · `POST /pocket/withdrawals` |
+| `user_policy_interest` | 신규 API에서 사용하지 않는 레거시 테이블 | 신규 쓰기 없음 |
+| `youth_policy` | `GET /mypage` · `/policies*` | 온통청년 동기화 배치 |
+| `youth_policy_region` | `GET /policies*` | 온통청년 동기화 배치 |
+| `youth_policy_condition` | `GET /policies*` | 온통청년 동기화 배치 |
+| `youth_policy_sync` | `GET /mypage` · `/policies*`(lastSyncedAt) | 온통청년 동기화 배치 |
 
 ---
 
@@ -2591,13 +2735,13 @@ P0·P1 107건 중 아래 12건은 서버 호출이 없습니다. 나머지 95건
 | # | 결정 | 무엇을 했나 |
 |---|---|---|
 | **4** | FK·UNIQUE·CHECK·AUTO_INCREMENT를 **다시 붙인다** | `docs/database/schema.sql` 을 배포용 DDL로 새로 만들었습니다. 테이블 13 · **FK 16 · UNIQUE 16 · CHECK 9** · 전 테이블 AUTO_INCREMENT. `default_slot`은 MySQL 8.4의 생성 컬럼 기반 FK CASCADE 제한을 피하기 위해 일반 NULL 허용 컬럼으로 두고 앱이 값을 동기화하며 UNIQUE가 중복을 차단합니다. ERD Cloud export는 다이어그램 원본으로만 두고 저장소에는 두지 않습니다 |
-| **8** | 에코마일리지에 **등록된 주소를 조회해서 쓴다** | `app_user` 에 `eco_sido_code` · `eco_sigungu_code` · `eco_address_label` · `eco_address_registered_at` 4컬럼 추가. `POST /eco/link` 때 받아 저장하고, `GET /eco/status` · `GET /mypage` 가 `ecoAddress` 로 내려줍니다. 프로필 주소와 시군구가 다르면 `matchesProfile:false` → 이사 안내(B-1-08) |
+| **8** | 에코마일리지에 **등록된 주소를 조회해서 쓴다** | `app_user` 에 `eco_sido_code` · `eco_sigungu_code` · `eco_address_label` · `eco_address_registered_at` 4컬럼 추가. `POST /eco/link` 때 받아 저장하고 `GET /eco/status` · `GET /mypage`가 내려줍니다. C-25 이후에는 정책 추천·지역 진단의 단일 지역 기준입니다 |
 
 ## 16.2 만들지 않기로 한 것 (6건)
 
 | # | 결정 | 결과 |
 |---|---|---|
-| **1** | 마지막 방문 탭 복원 — **기능 자체 제외** | `PATCH /users/me/last-tab` 삭제(API 61→60). `GET /users/me` 의 `entryScreen` 은 온보딩 미완료면 `ONB-01`, 완료면 항상 홈 `WF-06` |
+| **1** | 마지막 방문 탭 복원 — **기능 자체 제외** | `PATCH /users/me/last-tab` 없음. C-26 이후 `GET /users/me`의 `entryScreen`은 에코 연동 상태에 따라 `WF-01`·`WF-02`·`WF-06` |
 | **2** | 포켓 이름 — **"그린포켓" 고정** | `pocket_name` 컬럼·변경 API 없음. PK-06 시안의 이름 수정 UI는 제거 |
 | **3** | 고지서 묶음·수정 이력 — **관리 안 함** | `upload_batch_id` · `revision_history` 없음. 조회·수정·삭제는 레코드 단위, 이력은 `updated_at` 뿐. A-2-13의 "수정 이력이 남고"는 미구현 |
 | **5** | 출처 링크 — **기관명만 노출** | `source_url` 없음. `region_utility_snapshot.source_name` · `mission_catalog.source_org` 를 텍스트로 표시 |
@@ -2611,7 +2755,7 @@ P0·P1 107건 중 아래 12건은 서버 호출이 없습니다. 나머지 95건
 | **9** | 데모 초기화 CASCADE | 결정 4로 해결. `DELETE FROM app_user WHERE id = :uid` 한 줄로 사용자 데이터 8개 테이블이 비고 마스터 3개가 남는 것을 실측 확인 |
 | **10** | 녹색생활 항목 상한 | 값이 확정될 때까지 `monthlyCapAmount` · `annualCapAmount` 를 `null` 로 내리고 FE는 상한을 표시하지 않음 (담당 아영) |
 | **11** | 지역난방 | **미지원 확정.** `utility_type` 은 전기·가스·수도 3종 유지. 데모 페르소나가 도시가스 사용이라 시연에 지장 없음 |
-| **12** | 수도·가스 지역 평균 | 2026-09-08 결정 C-22로 대체. 지역 평균 금액 비교를 폐기하고, 도시가스는 KESIS 전국 1인 가구 연간 집계 월환산값, 수도는 서울 아파트 1인 가구 일 사용량 월환산값을 사용함 |
+| **12** | 수도·가스 지역 평균 | 2026-09-09 결정 C-29로 대체. 지역 평균 금액 비교를 폐기하고, 도시가스는 KESIS 전국 1인 가구 연간 집계 월환산값, 수도는 서울 아파트 1인 가구 일 사용량 월환산값을 사용함 |
 
 ## 16.4 화면 문구를 고치기로 한 것 (1건)
 
@@ -2656,38 +2800,54 @@ FROM eco_round_utility WHERE eco_round_id = :rid AND is_registered = 1;
 
 > 원본 XLSX 동기화와 프론트엔드 구현은 별도 작업입니다. 백엔드는 인증 API·Bearer 공통 인증·Refresh 회전까지 구현했습니다.
 
+# 18. 2026-09-09 청년정책 추천·가입 정보 결정
+
+| 항목 | 결정 |
+|---|---|
+| 화면 | 하단 `마이페이지` 표기를 `마이`로 변경하고 기존 마이 기능 아래에 청년정책 추천을 추가 |
+| 회원가입 | 이름·생년월일·성별·휴대전화번호를 본인인증 성공값으로 모두 필수 저장. 외부 본인인증 API는 사용하지 않음 |
+| 온보딩 | ONB-02·03을 제거하고 가입 직후 `WF-01` 에코마일리지 연동 화면으로 이동 |
+| 선택 정보 | 현재 상태·연소득 구간·가구 상태는 원하는 사용자만 마이에서 저장. 관심 분야·주거 형태·평수는 수집하지 않음 |
+| 지역 | 에코마일리지 연동 주소가 단일 기준. 미연동은 전국 정책만 추천하고 연동 CTA 표시 |
+| 데이터 | 온통청년 OPEN API를 100건 단위로 동기화해 로컬 DB에 캐시. 사용자 조회 때 외부 API를 직접 호출하지 않음 |
+| 판정 | 생년월일·에코 연동 지역과 온통청년 코드로 명확히 대응되는 취업·연소득·혼인·한부모 조건만 자동 판정. 부분 중첩·비정상 금액·자유 텍스트·미수집 조건은 `CHECK_REQUIRED`, 자격 확정 표현 금지 |
+| 상세 필터 | 임시 추천은 저장하지 않고 `내 정보에 저장`을 누른 경우에만 프로필 갱신 |
+| 보안 | `YOUTH_POLICY_API_KEY` 환경변수 사용. 인증키·응답 개인정보를 저장소나 로그에 남기지 않음 |
+| 제외 | 신청 대행, 자격 확정, 온통청년 마이데이터 연동 |
+
 # 부록 A. 시연 흐름 API 호출 순서
 
 핵심 시연 흐름(개요 시트)을 그대로 API로 옮긴 것입니다. 발표 리허설·통합 테스트 체크리스트로 쓰세요.
 
 ```
  1. POST /auth/signup 또는 /auth/login            Access + Refresh 발급
- 2. GET  /meta/regions          → POST /profile  신규 가입자 주거 프로필
- 3. GET  /users/me              (Bearer)          → entryScreen: WF-06(여기선 WF-01)
- 4. GET  /eco/home                               WF_01_UNLINKED
- 5. POST /eco/link              → GET /eco/link/{id} 폴링   WF-02
- 6. GET  /eco/rounds/current                     WF-03 기준 사용량·비중
- 7. GET  /eco/rounds/7/goal-form                 WF-04
- 8. POST /eco/rounds/7/goal/preview  (칩·미션 바꿀 때마다)
- 9. POST /eco/rounds/7/goal                      목표 저장 → WF-06
-10. GET  /bills/target-month     → POST /bills/ocr → GET /bills/ocr/{id}   AN-02~04
-11. GET  /bills/duplicate-check  → POST /bills                             AN-05~06
-12. GET  /diagnosis?month=2026-08                AN-07
-13. GET  /eco/home                               WF-06 (누적 갱신)
-14. GET  /eco/monthly-report?month=2026-07       WF-07
-15. GET  /eco/rounds/7/mission-adjust?utility=ELECTRICITY → PUT .../missions   WF-08
-16. GET  /eco/rounds/7/result                    WF-10
-17. GET  /eco/rounds/7/settlement                WF-11
-18. POST /pocket/conversions     → POST /pocket/conversions/{id}/complete
-19. GET  /greenlife/status       → POST /greenlife/link → GET /greenlife/items   BN-01~02
-20. POST /greenlife/settlements                  월 지급분 → 포켓 입금
-21. GET  /pocket                 → POST /pocket/withdrawals                PK-02~04
-22. GET  /pocket/transactions                    PK-05
-23. GET  /pocket/recommended-product             PK-01·02 → PK-09
-24. GET  /mypage                 → GET /reports                            MY-01·MY-04
-25. POST /auth/logout                            Refresh 폐기
+ 2. GET  /users/me              (Bearer)          → entryScreen: WF-01
+ 3. GET  /eco/home                               WF_01_UNLINKED
+ 4. POST /eco/link              → GET /eco/link/{id} 폴링   WF-02
+ 5. GET  /eco/rounds/current                     WF-03 기준 사용량·비중
+ 6. GET  /eco/rounds/7/goal-form                 WF-04
+ 7. POST /eco/rounds/7/goal/preview  (칩·미션 바꿀 때마다)
+ 8. POST /eco/rounds/7/goal                      목표 저장 → WF-06
+ 9. GET  /bills/target-month     → POST /bills/ocr → GET /bills/ocr/{id}   AN-02~04
+10. GET  /bills/duplicate-check  → POST /bills                             AN-05~06
+11. GET  /diagnosis?month=2026-08                AN-07
+12. GET  /eco/home                               WF-06 (누적 갱신)
+13. GET  /eco/monthly-report?month=2026-07       WF-07
+14. GET  /eco/rounds/7/mission-adjust?utility=ELECTRICITY → PUT .../missions   WF-08
+15. GET  /eco/rounds/7/result                    WF-10
+16. GET  /eco/rounds/7/settlement                WF-11
+17. POST /pocket/conversions     → POST /pocket/conversions/{id}/complete
+18. GET  /greenlife/status       → POST /greenlife/link → GET /greenlife/items   BN-01~02
+19. POST /greenlife/settlements                  월 지급분 → 포켓 입금
+20. GET  /pocket                 → POST /pocket/withdrawals                PK-02~04
+21. GET  /pocket/transactions                    PK-05
+22. GET  /pocket/recommended-product             PK-01·02 → PK-09
+23. GET  /mypage                 → PUT /profile/policy-preferences          MY-01·MY-02
+24. GET  /policies/recommendations → GET /policies                         MY-01·MY-05
+25. GET  /reports                                                        MY-04
+26. POST /auth/logout                            Refresh 폐기
 
-개발·시연 프로필에서는 1번을 `POST /users`, 25번을 `POST /demo/reset`으로 대체할 수 있습니다.
+개발·시연 프로필에서는 1번을 `POST /users`, 마지막 로그아웃을 `POST /demo/reset`으로 대체할 수 있습니다.
 ```
 
 # 부록 B. 검증 체크리스트 (완료 조건 → 테스트)

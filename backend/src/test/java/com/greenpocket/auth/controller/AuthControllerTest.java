@@ -10,6 +10,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import jakarta.servlet.http.Cookie;
 
+import java.time.LocalDate;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
@@ -24,6 +26,7 @@ import com.greenpocket.auth.dto.TokenRefreshResponse;
 import com.greenpocket.auth.service.AuthService;
 import com.greenpocket.auth.service.AuthService.AuthSession;
 import com.greenpocket.global.exception.GlobalExceptionHandler;
+import com.greenpocket.user.entity.Gender;
 
 class AuthControllerTest {
 
@@ -41,16 +44,22 @@ class AuthControllerTest {
 
 	@Test
 	void signupReturnsAccessTokenAndHttpOnlyRefreshCookie() throws Exception {
-		SignupRequest request = new SignupRequest("green@example.com", "password123", "김그린");
+		SignupRequest request = new SignupRequest(
+			"green@example.com", "password123", "김그린",
+			LocalDate.of(1998, 3, 15), Gender.FEMALE, "01091740339"
+		);
 		SignupResponse response = new SignupResponse(
-			7L, "green@example.com", "김그린", false, "ONB-02", "access-token", "Bearer", 1800
+			7L, "green@example.com", "김그린", true, "WF-01", "access-token", "Bearer", 1800
 		);
 		when(authService.signup(request)).thenReturn(new AuthSession<>(response, "refresh-token"));
 
 		mockMvc.perform(post("/api/v1/auth/signup")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-					{"email":"green@example.com","password":"password123","name":"김그린"}
+					{
+					  "email":"green@example.com","password":"password123","name":"김그린",
+					  "birthDate":"1998-03-15","gender":"FEMALE","phoneNumber":"01091740339"
+					}
 					"""))
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.data.accessToken").value("access-token"))

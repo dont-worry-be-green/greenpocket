@@ -14,6 +14,9 @@ final class EcoMockData {
 	static final LocalDate PERIOD_END = LocalDate.of(2026, 9, 1);
 	static final LocalDateTime LINKED_AT = LocalDateTime.of(2026, 9, 1, 9, 0);
 	static final LocalDate ADDRESS_REGISTERED_AT = LocalDate.of(2026, 3, 1);
+	static final String ADDRESS_SIDO_CODE = "11";
+	static final String ADDRESS_SIGUNGU_CODE = "11620";
+	static final String ADDRESS_LABEL = "서울특별시 관악구";
 	static final Long TOTAL_AMOUNT = 420_600L;
 	static final BigDecimal TOTAL_CARBON_G = new BigDecimal("831992.000");
 

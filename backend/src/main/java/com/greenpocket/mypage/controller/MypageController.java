@@ -21,7 +21,7 @@ import com.greenpocket.mypage.dto.ReportType;
 import com.greenpocket.mypage.service.MypageService;
 import com.greenpocket.mypage.service.ReportService;
 
-@Tag(name = "Mypage", description = "마이페이지 및 보관함 API")
+@Tag(name = "My", description = "마이·보관함·청년정책 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1")
@@ -30,9 +30,9 @@ public class MypageController {
 	private final MypageService mypageService;
 	private final ReportService reportService;
 
-	@Operation(summary = "마이페이지 메인 조회", description = "프로필, 보관함, 제도 연동 및 그린포켓 정보를 조회합니다.")
+	@Operation(summary = "마이 메인 조회", description = "프로필, 보관함, 제도 연동, 그린포켓 및 청년정책 추천 요약을 조회합니다.")
 	@ApiResponses({
-		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "마이페이지 조회 성공"),
+		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "마이 조회 성공"),
 		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Demo Key 인증 실패")
 	})
 	@GetMapping("/mypage")

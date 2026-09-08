@@ -40,6 +40,15 @@ greenpocket:
     refresh-expiration-seconds: ${JWT_REFRESH_EXPIRATION_SECONDS:1209600}
     refresh-cookie-secure: ${JWT_REFRESH_COOKIE_SECURE:false}
     demo-enabled: ${DEMO_AUTH_ENABLED:false}
+  youth-policy:
+    endpoint: ${YOUTH_POLICY_API_ENDPOINT:https://www.youthcenter.go.kr/go/ythip/getPlcy}
+    api-key: ${YOUTH_POLICY_API_KEY:}
+    sync-enabled: ${YOUTH_POLICY_SYNC_ENABLED:false}
+    sync-on-startup: ${YOUTH_POLICY_SYNC_ON_STARTUP:true}
+    sync-cron: ${YOUTH_POLICY_SYNC_CRON:0 0 3 * * *}
+    page-size: ${YOUTH_POLICY_PAGE_SIZE:100}
+    connect-timeout-seconds: ${YOUTH_POLICY_CONNECT_TIMEOUT_SECONDS:5}
+    request-timeout-seconds: ${YOUTH_POLICY_REQUEST_TIMEOUT_SECONDS:20}
 
 server:
   port: ${SERVER_PORT:8080}

@@ -1,26 +1,28 @@
 package com.greenpocket.mypage.dto;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 
 import com.greenpocket.eco.entity.EcoLinkStatus;
 import com.greenpocket.global.type.UtilityType;
+import com.greenpocket.policy.dto.PolicyCardResponse;
+import com.greenpocket.user.entity.Gender;
 
 public record MypageResponse(
 	Profile profile,
 	Links links,
 	EcoAddress ecoAddress,
 	Integration integration,
-	String pocketAccountNo
+	String pocketAccountNo,
+	YouthPolicy youthPolicy
 ) {
 
 	public record Profile(
 		String name,
-		String sidoName,
-		String sigunguName,
-		String housingType,
-		String areaBand,
-		String profileSummary
+		LocalDate birthDate,
+		Gender gender,
+		String phoneNumber
 	) {
 	}
 
@@ -39,7 +41,6 @@ public record MypageResponse(
 	public record EcoAddress(
 		String label,
 		String registeredAt,
-		boolean matchesProfile,
 		String notice
 	) {
 	}
@@ -50,6 +51,15 @@ public record MypageResponse(
 		boolean greenlifeParticipating,
 		OffsetDateTime greenlifeLinkedAt,
 		List<UtilityType> registeredUtilities
+	) {
+	}
+
+	public record YouthPolicy(
+		boolean profileCompleted,
+		boolean regionLinked,
+		long recommendedCount,
+		List<PolicyCardResponse> preview,
+		OffsetDateTime lastSyncedAt
 	) {
 	}
 }

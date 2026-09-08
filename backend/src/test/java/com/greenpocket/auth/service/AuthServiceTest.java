@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Optional;
@@ -29,13 +30,17 @@ import com.greenpocket.auth.exception.AuthErrorCode;
 import com.greenpocket.auth.repository.AuthRepository;
 import com.greenpocket.auth.repository.AuthRepository.AuthAccountSnapshot;
 import com.greenpocket.auth.repository.AuthRepository.RefreshTokenSnapshot;
+import com.greenpocket.eco.entity.EcoLinkStatus;
 import com.greenpocket.global.exception.BusinessException;
 import com.greenpocket.user.service.UserService;
 import com.greenpocket.user.service.UserService.RegisteredUser;
+import com.greenpocket.user.entity.Gender;
 
 class AuthServiceTest {
 
 	private static final Long USER_ID = 7L;
+	private static final LocalDate BIRTH_DATE = LocalDate.of(1998, 3, 15);
+	private static final String PHONE_NUMBER = "01091740339";
 	private static final LocalDateTime NOW = LocalDateTime.of(2026, 9, 7, 9, 0);
 	private static final AuthProperties PROPERTIES = new AuthProperties(
 		"unused-in-mocked-jwt", 1800, 1209600, false, false
@@ -70,16 +75,18 @@ class AuthServiceTest {
 	@Test
 	void signupNormalizesEmailHashesPasswordAndIssuesSession() {
 		when(authRepository.existsByEmail("green@example.com")).thenReturn(false);
-		when(userService.createRegisteredUser("김그린"))
-			.thenReturn(new RegisteredUser(USER_ID, "김그린", false));
+		when(userService.createRegisteredUser("김그린", BIRTH_DATE, Gender.FEMALE, PHONE_NUMBER))
+			.thenReturn(new RegisteredUser(USER_ID, "김그린", true));
 		when(passwordEncoder.encode("password123")).thenReturn("bcrypt-hash");
 
 		AuthService.AuthSession<?> session = authService.signup(
-			new SignupRequest("  GREEN@Example.com ", "password123", "김그린")
+			new SignupRequest(
+				"  GREEN@Example.com ", "password123", "김그린", BIRTH_DATE, Gender.FEMALE, PHONE_NUMBER
+			)
 		);
 
 		assertEquals("green@example.com", ((com.greenpocket.auth.dto.SignupResponse) session.response()).email());
-		assertEquals("ONB-02", ((com.greenpocket.auth.dto.SignupResponse) session.response()).nextScreen());
+		assertEquals("WF-01", ((com.greenpocket.auth.dto.SignupResponse) session.response()).nextScreen());
 		verify(authRepository).createAccount(USER_ID, "green@example.com", "bcrypt-hash");
 		verify(authRepository).updateLastLoginAt(USER_ID, NOW);
 		verifyRefreshTokenStored(session.refreshToken());
@@ -91,18 +98,18 @@ class AuthServiceTest {
 
 		BusinessException exception = assertThrows(
 			BusinessException.class,
-			() -> authService.signup(new SignupRequest("green@example.com", "password123", "김그린"))
+			() -> authService.signup(signupRequest("green@example.com", "password123"))
 		);
 
 		assertEquals(AuthErrorCode.EMAIL_ALREADY_USED, exception.getErrorCode());
-		verify(userService, never()).createRegisteredUser(anyString());
+		verify(userService, never()).createRegisteredUser(anyString(), eq(BIRTH_DATE), eq(Gender.FEMALE), eq(PHONE_NUMBER));
 	}
 
 	@Test
 	void rejectsMalformedSignupEmailWithDomainCode() {
 		BusinessException exception = assertThrows(
 			BusinessException.class,
-			() -> authService.signup(new SignupRequest("not-an-email", "password123", "김그린"))
+			() -> authService.signup(signupRequest("not-an-email", "password123"))
 		);
 
 		assertEquals(AuthErrorCode.EMAIL_INVALID, exception.getErrorCode());
@@ -112,7 +119,7 @@ class AuthServiceTest {
 	void rejectsShortSignupPasswordWithDomainCode() {
 		BusinessException exception = assertThrows(
 			BusinessException.class,
-			() -> authService.signup(new SignupRequest("green@example.com", "short", "김그린"))
+			() -> authService.signup(signupRequest("green@example.com", "short"))
 		);
 
 		assertEquals(AuthErrorCode.PASSWORD_INVALID, exception.getErrorCode());
@@ -121,7 +128,9 @@ class AuthServiceTest {
 	@Test
 	void loginDoesNotRevealWhetherEmailOrPasswordWasWrong() {
 		when(authRepository.findAccountByEmail("green@example.com")).thenReturn(Optional.of(
-			new AuthAccountSnapshot(USER_ID, "green@example.com", "bcrypt-hash", "김그린", true)
+			new AuthAccountSnapshot(
+				USER_ID, "green@example.com", "bcrypt-hash", "김그린", true, EcoLinkStatus.LINKED
+			)
 		));
 		when(passwordEncoder.matches("wrong-password", "bcrypt-hash")).thenReturn(false);
 
@@ -131,6 +140,22 @@ class AuthServiceTest {
 		);
 
 		assertEquals(AuthErrorCode.AUTH_CREDENTIALS_INVALID, exception.getErrorCode());
+	}
+
+	@Test
+	void loginRoutesByEcoLinkStatus() {
+		when(authRepository.findAccountByEmail("green@example.com")).thenReturn(Optional.of(
+			new AuthAccountSnapshot(
+				USER_ID, "green@example.com", "bcrypt-hash", "김그린", true, EcoLinkStatus.LINKING
+			)
+		));
+		when(passwordEncoder.matches("password123", "bcrypt-hash")).thenReturn(true);
+
+		AuthService.AuthSession<?> session = authService.login(
+			new LoginRequest("green@example.com", "password123")
+		);
+
+		assertEquals("WF-02", ((com.greenpocket.auth.dto.LoginResponse)session.response()).entryScreen());
 	}
 
 	@Test
@@ -178,5 +203,9 @@ class AuthServiceTest {
 		);
 		assertEquals(64, hashCaptor.getValue().length());
 		assertNotEquals(rawRefreshToken, hashCaptor.getValue());
+	}
+
+	private SignupRequest signupRequest(String email, String password) {
+		return new SignupRequest(email, password, "김그린", BIRTH_DATE, Gender.FEMALE, PHONE_NUMBER);
 	}
 }

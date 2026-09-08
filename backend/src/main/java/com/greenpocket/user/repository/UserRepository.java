@@ -1,6 +1,7 @@
 package com.greenpocket.user.repository;
 
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -10,6 +11,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import com.greenpocket.eco.entity.EcoLinkStatus;
+import com.greenpocket.user.entity.Gender;
 
 @Repository
 @RequiredArgsConstructor
@@ -36,10 +38,17 @@ public class UserRepository {
 			.single() > 0;
 	}
 
+	public boolean existsByPhoneNumber(String phoneNumber) {
+		return jdbcClient.sql("SELECT COUNT(*) FROM app_user WHERE phone_number = :phoneNumber")
+			.param("phoneNumber", phoneNumber)
+			.query(Integer.class)
+			.single() > 0;
+	}
+
 	public void create(String demoKey, String name, String pocketAccountNo) {
 		jdbcClient.sql("""
-				INSERT INTO app_user (demo_key, name, pocket_account_no, pocket_holder)
-				VALUES (:demoKey, :name, :pocketAccountNo, :pocketHolder)
+				INSERT INTO app_user (demo_key, name, onboarding_completed, pocket_account_no, pocket_holder)
+				VALUES (:demoKey, :name, 1, :pocketAccountNo, :pocketHolder)
 				""")
 			.param("demoKey", demoKey)
 			.param("name", name)
@@ -48,12 +57,24 @@ public class UserRepository {
 			.update();
 	}
 
-	public void createRegistered(String name, String pocketAccountNo) {
+	public void createRegistered(
+		String name,
+		LocalDate birthDate,
+		Gender gender,
+		String phoneNumber,
+		String pocketAccountNo
+	) {
 		jdbcClient.sql("""
-				INSERT INTO app_user (demo_key, name, pocket_account_no, pocket_holder)
-				VALUES (NULL, :name, :pocketAccountNo, :pocketHolder)
+				INSERT INTO app_user (
+					demo_key, name, birth_date, gender, phone_number,
+					onboarding_completed, pocket_account_no, pocket_holder
+				)
+				VALUES (NULL, :name, :birthDate, :gender, :phoneNumber, 1, :pocketAccountNo, :pocketHolder)
 				""")
 			.param("name", name)
+			.param("birthDate", birthDate)
+			.param("gender", gender.name())
+			.param("phoneNumber", phoneNumber)
 			.param("pocketAccountNo", pocketAccountNo)
 			.param("pocketHolder", name)
 			.update();

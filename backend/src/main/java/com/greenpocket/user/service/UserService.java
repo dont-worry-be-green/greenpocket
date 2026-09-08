@@ -1,9 +1,11 @@
 package com.greenpocket.user.service;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import lombok.RequiredArgsConstructor;
 
@@ -12,12 +14,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.greenpocket.bill.service.BillExistenceQueryService;
+import com.greenpocket.eco.entity.EcoLinkStatus;
 import com.greenpocket.eco.service.EcoCurrentRoundQueryService;
 import com.greenpocket.global.exception.BusinessException;
 import com.greenpocket.global.exception.CommonErrorCode;
 import com.greenpocket.user.dto.UserBootstrapResponse;
 import com.greenpocket.user.dto.UserStartRequest;
 import com.greenpocket.user.dto.UserStartResponse;
+import com.greenpocket.user.entity.Gender;
 import com.greenpocket.user.exception.UserErrorCode;
 import com.greenpocket.user.repository.UserRepository;
 import com.greenpocket.user.repository.UserRepository.UserSnapshot;
@@ -28,8 +32,10 @@ public class UserService {
 
 	private static final ZoneId KOREA_ZONE_ID = ZoneId.of("Asia/Seoul");
 	private static final int MAX_ACCOUNT_NUMBER_ATTEMPTS = 20;
-	private static final String ONBOARDING_SCREEN = "ONB-02";
+	private static final String ECO_LINK_SCREEN = "WF-01";
+	private static final String ECO_LINKING_SCREEN = "WF-02";
 	private static final String HOME_SCREEN = "WF-06";
+	private static final Pattern PHONE_NUMBER_PATTERN = Pattern.compile("^01[016789][0-9]{7,8}$");
 
 	private final UserRepository userRepository;
 	private final PocketAccountNumberGenerator accountNumberGenerator;
@@ -86,13 +92,26 @@ public class UserService {
 			toOffsetDateTime(user.greenlifeLinkedAt()),
 			hasBill,
 			currentRoundId,
-			user.onboardingCompleted() ? HOME_SCREEN : ONBOARDING_SCREEN
+			entryScreen(user.ecoLinkStatus())
 		);
 	}
 
 	@Transactional
-	public RegisteredUser createRegisteredUser(String rawName) {
+	public RegisteredUser createRegisteredUser(
+		String rawName,
+		LocalDate birthDate,
+		Gender gender,
+		String rawPhoneNumber
+	) {
 		String name = normalizeAndValidateName(rawName);
+		validateBirthDate(birthDate);
+		if (gender == null) {
+			throw new BusinessException(UserErrorCode.GENDER_REQUIRED, "gender", null);
+		}
+		String phoneNumber = normalizeAndValidatePhoneNumber(rawPhoneNumber);
+		if (userRepository.existsByPhoneNumber(phoneNumber)) {
+			throw new BusinessException(UserErrorCode.PHONE_NUMBER_ALREADY_USED, "phoneNumber", null);
+		}
 		for (int attempt = 0; attempt < MAX_ACCOUNT_NUMBER_ATTEMPTS; attempt++) {
 			String accountNo = accountNumberGenerator.generate();
 			if (userRepository.existsByPocketAccountNo(accountNo)) {
@@ -100,7 +119,7 @@ public class UserService {
 			}
 
 			try {
-				userRepository.createRegistered(name, accountNo);
+				userRepository.createRegistered(name, birthDate, gender, phoneNumber, accountNo);
 				UserSnapshot createdUser = userRepository.findByPocketAccountNo(accountNo)
 					.orElseThrow(UserService::internalError);
 				return new RegisteredUser(
@@ -110,6 +129,11 @@ public class UserService {
 				);
 			}
 			catch (DuplicateKeyException exception) {
+				if (userRepository.existsByPhoneNumber(phoneNumber)) {
+					throw new BusinessException(
+						UserErrorCode.PHONE_NUMBER_ALREADY_USED, "phoneNumber", null
+					);
+				}
 				// 포켓 계좌번호 충돌은 새 번호를 생성해 다시 시도한다.
 			}
 		}
@@ -139,12 +163,26 @@ public class UserService {
 		return name;
 	}
 
+	private static void validateBirthDate(LocalDate birthDate) {
+		if (birthDate == null || birthDate.isAfter(LocalDate.now(KOREA_ZONE_ID))) {
+			throw new BusinessException(UserErrorCode.BIRTH_DATE_INVALID, "birthDate", null);
+		}
+	}
+
+	private static String normalizeAndValidatePhoneNumber(String rawPhoneNumber) {
+		String phoneNumber = rawPhoneNumber == null ? "" : rawPhoneNumber.replaceAll("[\\s-]", "");
+		if (!PHONE_NUMBER_PATTERN.matcher(phoneNumber).matches()) {
+			throw new BusinessException(UserErrorCode.PHONE_NUMBER_INVALID, "phoneNumber", null);
+		}
+		return phoneNumber;
+	}
+
 	private UserStartResponse toStartResponse(UserSnapshot user) {
 		return new UserStartResponse(
 			user.id(),
 			user.name(),
 			user.onboardingCompleted(),
-			ONBOARDING_SCREEN,
+			entryScreen(user.ecoLinkStatus()),
 			user.pocketAccountNo(),
 			user.pocketHolder(),
 			toOffsetDateTime(user.createdAt())
@@ -157,6 +195,14 @@ public class UserService {
 
 	private static BusinessException internalError() {
 		return new BusinessException(CommonErrorCode.INTERNAL_ERROR);
+	}
+
+	private static String entryScreen(EcoLinkStatus status) {
+		return switch (status) {
+			case LINKING -> ECO_LINKING_SCREEN;
+			case LINKED -> HOME_SCREEN;
+			case UNLINKED, FAILED -> ECO_LINK_SCREEN;
+		};
 	}
 
 	public record UserStartResult(UserStartResponse response, boolean created) {

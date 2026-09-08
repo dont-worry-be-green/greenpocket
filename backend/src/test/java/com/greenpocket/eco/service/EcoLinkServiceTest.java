@@ -41,8 +41,8 @@ class EcoLinkServiceTest {
 	}
 
 	@Test
-	void returnsUnlinkedSeoulStatusWithThreeFixedUtilities() {
-		when(ecoRepository.findUser(USER_ID)).thenReturn(Optional.of(seoulUser(EcoLinkStatus.UNLINKED)));
+	void returnsLinkableStatusBeforeEcoAddressIsKnown() {
+		when(ecoRepository.findUser(USER_ID)).thenReturn(Optional.of(userWithoutEcoAddress(EcoLinkStatus.UNLINKED)));
 		when(ecoRepository.findCurrentRound(USER_ID)).thenReturn(Optional.empty());
 
 		EcoStatusResponse response = ecoLinkService.getStatus(USER_ID);
@@ -59,7 +59,7 @@ class EcoLinkServiceTest {
 
 	@Test
 	void rejectsLinkForNonSeoulResident() {
-		when(ecoRepository.findUser(USER_ID)).thenReturn(Optional.of(nonSeoulUser()));
+		when(ecoRepository.findUser(USER_ID)).thenReturn(Optional.of(userWithNonSeoulEcoAddress()));
 
 		assertThatThrownBy(() -> ecoLinkService.startLink(USER_ID))
 			.isInstanceOf(BusinessException.class)
@@ -69,7 +69,7 @@ class EcoLinkServiceTest {
 
 	@Test
 	void completesMockLinkOnSecondPollAndPersistsBaseline() {
-		when(ecoRepository.findUser(USER_ID)).thenReturn(Optional.of(seoulUser(EcoLinkStatus.UNLINKED)));
+		when(ecoRepository.findUser(USER_ID)).thenReturn(Optional.of(userWithoutEcoAddress(EcoLinkStatus.UNLINKED)));
 		when(ecoRepository.upsertMockRound(anyLong(), any(), any(), anyLong(), any(), any()))
 			.thenReturn(7L);
 
@@ -86,6 +86,8 @@ class EcoLinkServiceTest {
 			.containsExactly(UtilityType.ELECTRICITY, UtilityType.GAS, UtilityType.WATER);
 		assertThat(completed.baselineMonthsLoaded()).isEqualTo(24);
 		assertThat(completed.nextScreen()).isEqualTo("WF-03");
+		assertThat(completed.ecoAddress().sidoCode()).isEqualTo("11");
+		assertThat(completed.ecoAddress().sigunguCode()).isEqualTo("11620");
 
 		verify(ecoRepository).markLinking(USER_ID);
 		verify(ecoRepository, times(3)).upsertMockUtility(anyLong(), any(), any(), anyLong(), any(), any());
@@ -104,17 +106,15 @@ class EcoLinkServiceTest {
 				.isEqualTo(EcoErrorCode.ECO_LINK_FAILED));
 	}
 
-	private EcoUserSnapshot seoulUser(EcoLinkStatus status) {
+	private EcoUserSnapshot userWithoutEcoAddress(EcoLinkStatus status) {
 		return new EcoUserSnapshot(
-			"11", "서울특별시", "11620", "관악구", status, null,
-			null, null, null, null
+			status, null, null, null, null, null
 		);
 	}
 
-	private EcoUserSnapshot nonSeoulUser() {
+	private EcoUserSnapshot userWithNonSeoulEcoAddress() {
 		return new EcoUserSnapshot(
-			"26", "부산광역시", "26440", "강서구", EcoLinkStatus.UNLINKED, null,
-			null, null, null, null
+			EcoLinkStatus.FAILED, null, "26", "26440", "부산광역시 강서구", LocalDate.of(2026, 3, 1)
 		);
 	}
 }

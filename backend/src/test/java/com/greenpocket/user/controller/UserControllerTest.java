@@ -59,7 +59,7 @@ class UserControllerTest {
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.userId").value(1))
-			.andExpect(jsonPath("$.data.nextScreen").value("ONB-02"))
+			.andExpect(jsonPath("$.data.nextScreen").value("WF-01"))
 			.andExpect(jsonPath("$.data.pocketAccountNo").value("1005-1234-5678-90"));
 	}
 
@@ -140,7 +140,7 @@ class UserControllerTest {
 			USER_ID,
 			"김수현",
 			false,
-			"ONB-02",
+			"WF-01",
 			"1005-1234-5678-90",
 			"김수현",
 			OffsetDateTime.parse("2026-09-03T18:30:00+09:00")

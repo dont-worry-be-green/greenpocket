@@ -2,15 +2,15 @@
 --  그린포켓 (GreenPocket) 스키마 기준 DDL
 --  2026 KB IT's Your Life 해커톤 · 돈워리, 비그린
 --
---  기준     : ERD Cloud export + 2026-09-07 팀 결정 (C-1 ~ C-17)
+--  기준     : ERD Cloud export + 2026-09-09 팀 결정 (C-1 ~ C-28)
 --  DBMS     : MySQL 8.4 · InnoDB · utf8mb4 · utf8mb4_0900_ai_ci
---  규모     : 테이블 15 · 외래키 18 · UNIQUE 19 · CHECK 9
+--  규모     : 테이블 20 · 외래키 21 · UNIQUE 24 · CHECK 9
 --
 --  ERD Cloud export 는 다이어그램 원본이라 PK 외 제약이 빠져 있습니다.
 --  이 파일이 스키마의 기준(단일 진실 공급원)입니다.
 --
 --  ⚠️ 이 파일을 DB에 직접 실행하지 마세요.
---     아래 DROP TABLE 15개가 기존 데이터를 전부 지웁니다.
+--     아래 DROP TABLE 20개가 기존 데이터를 전부 지웁니다.
 --     DB 적용은 backend/src/main/resources/db/migration/ 의 Flyway 마이그레이션으로 합니다.
 --     스키마를 바꿀 때는 이 파일과 새 마이그레이션을 함께 고치고,
 --     이미 적용된 마이그레이션 파일은 절대 수정하지 않습니다.
@@ -27,6 +27,10 @@
 --    7  eco_monthly_report.source_batch_id 미도입 ((user_id, report_month) 로 재계산)
 --   11  지역난방 미지원 (utility_type 은 전기·가스·수도 3종 유지)
 --   17  JWT 회원 인증 (auth_account · auth_refresh_token, demo_key NULL 허용)
+--   22~25 마이 청년정책 추천, 온보딩 추천 조건, 온통청년 API 동기화
+--   26  별도 온보딩 제거, 가입 직후 에코마일리지 연동 화면으로 이동
+--   27  가입 본인인증 정보(이름·생년월일·성별·휴대전화번호) 필수 저장
+--   28  정책 추천 선택 정보는 마이 탭에서만 저장, 관심 분야 필터 제거
 -- ============================================================
 
 SET NAMES utf8mb4;
@@ -46,6 +50,11 @@ DROP TABLE IF EXISTS `region_utility_snapshot`;
 DROP TABLE IF EXISTS `utility_monthly_record`;
 DROP TABLE IF EXISTS `auth_refresh_token`;
 DROP TABLE IF EXISTS `auth_account`;
+DROP TABLE IF EXISTS `user_policy_interest`;
+DROP TABLE IF EXISTS `youth_policy_condition`;
+DROP TABLE IF EXISTS `youth_policy_region`;
+DROP TABLE IF EXISTS `youth_policy_sync`;
+DROP TABLE IF EXISTS `youth_policy`;
 DROP TABLE IF EXISTS `app_user`;
 
 SET FOREIGN_KEY_CHECKS = 1;
@@ -53,19 +62,26 @@ SET FOREIGN_KEY_CHECKS = 1;
 CREATE TABLE `app_user` (
 	`id`	BIGINT	NOT NULL	AUTO_INCREMENT	COMMENT '사용자 ID | 사용자 내부 식별자',
 	`demo_key`	VARCHAR(50)	NULL	COMMENT '데모 사용자 키 | dev·demo 프로필에서만 사용하는 UUID v4, 일반 회원은 NULL',
-	`name`	VARCHAR(20)	NOT NULL	COMMENT '이름 | 온보딩에서 입력한 사용자 이름, 공백 제거 후 1~20자',
-	`sido_code`	VARCHAR(10)	NULL	COMMENT '시도 코드 | 거주 시도 행정구역 코드, 서울은 11',
-	`sido_name`	VARCHAR(30)	NULL	COMMENT '시도명 | 화면에 표시할 거주 시도명',
-	`sigungu_code`	VARCHAR(10)	NULL	COMMENT '시군구 코드 | 거주 시군구 행정구역 코드, 한전 API cityCd 겸용',
-	`sigungu_name`	VARCHAR(30)	NULL	COMMENT '시군구명 | 화면에 표시할 거주 시군구명',
-	`housing_type`	ENUM('ONE_ROOM', 'OFFICETEL', 'APARTMENT', 'MULTI_HOUSE')	NULL	COMMENT '주거 형태 | 원룸, 오피스텔, 아파트, 다세대',
-	`area_band`	ENUM('UNDER_10', 'FROM_10_TO_20', 'OVER_20')	NULL	COMMENT '평수 구간 | 10평 이하, 10~20평, 20평 이상',
-	`onboarding_completed`	TINYINT(1)	NOT NULL	DEFAULT 0	COMMENT '온보딩 완료 여부 | 0 미완료 시 ONB-01로 이동',
+	`name`	VARCHAR(20)	NOT NULL	COMMENT '이름 | 가입 본인인증 입력, 공백 제거 후 1~20자',
+	`sido_code`	VARCHAR(10)	NULL	COMMENT '레거시 거주 시도 코드 | 신규 입력·수정하지 않음',
+	`sido_name`	VARCHAR(30)	NULL	COMMENT '레거시 거주 시도명 | 신규 입력·수정하지 않음',
+	`sigungu_code`	VARCHAR(10)	NULL	COMMENT '레거시 거주 시군구 코드 | 신규 입력·수정하지 않음',
+	`sigungu_name`	VARCHAR(30)	NULL	COMMENT '레거시 거주 시군구명 | 신규 입력·수정하지 않음',
+	`housing_type`	ENUM('ONE_ROOM', 'OFFICETEL', 'APARTMENT', 'MULTI_HOUSE')	NULL	COMMENT '레거시 주거 형태 | 신규 입력·수정하지 않음',
+	`area_band`	ENUM('UNDER_10', 'FROM_10_TO_20', 'OVER_20')	NULL	COMMENT '레거시 평수 구간 | 신규 입력·수정하지 않음',
+	`birth_date`	DATE	NULL	COMMENT '생년월일 | 가입 본인인증 입력, 일반 회원 필수·데모 호환 NULL',
+	`gender`	ENUM('MALE', 'FEMALE')	NULL	COMMENT '성별 | 가입 본인인증 입력, 일반 회원 필수·데모 호환 NULL',
+	`phone_number`	VARCHAR(11)	NULL	COMMENT '휴대전화번호 | 숫자만 저장, 일반 회원 필수·데모 호환 NULL',
+	`current_status`	ENUM('EMPLOYED', 'SELF_EMPLOYED', 'UNEMPLOYED', 'FREELANCER', 'STUDENT', 'PREPARING_STARTUP', 'OTHER')	NULL	COMMENT '현재 상태 | 정책 추천용',
+	`annual_income_band`	ENUM('NO_INCOME', 'UNDER_24M', 'FROM_24M_TO_36M', 'FROM_36M_TO_50M', 'OVER_50M', 'UNKNOWN')	NULL	COMMENT '연소득 구간 | 상세 소득은 수집하지 않음',
+	`household_status`	ENUM('ONE_PERSON', 'WITH_PARENTS', 'MARRIED', 'SINGLE_PARENT', 'OTHER')	NULL	COMMENT '가구 상태 | 정책 추천용',
+	`policy_profile_completed`	TINYINT(1)	NOT NULL	DEFAULT 0	COMMENT '정책 추천 프로필 완료 여부',
+	`onboarding_completed`	TINYINT(1)	NOT NULL	DEFAULT 1	COMMENT '별도 온보딩 제거 | 항상 완료',
 	`eco_link_status`	ENUM('UNLINKED', 'LINKING', 'LINKED', 'FAILED')	NOT NULL	DEFAULT 'UNLINKED'	COMMENT '에코마일리지 연동 상태 | 미연동, 연동 중, 연동 완료, 실패',
 	`eco_linked_at`	DATETIME	NULL	COMMENT '에코마일리지 연동 일시 | 기준 사용량 조회일, WF-03에 표기',
-	`eco_sido_code`	VARCHAR(10)	NULL	COMMENT '에코마일리지 시도 코드 | 누리집에 등록된 주소의 시도 코드, 프로필 주소와 달라지면 이사 안내를 띄운다',
+	`eco_sido_code`	VARCHAR(10)	NULL	COMMENT '에코마일리지 시도 코드 | 정책 추천·지역 진단의 단일 지역 기준',
 	`eco_sigungu_code`	VARCHAR(10)	NULL	COMMENT '에코마일리지 시군구 코드 | 누리집에 등록된 주소의 시군구 코드',
-	`eco_address_label`	VARCHAR(60)	NULL	COMMENT '에코마일리지 주소 표기 | 마이페이지에 그대로 노출할 문구, 예: 서울 관악구',
+	`eco_address_label`	VARCHAR(60)	NULL	COMMENT '에코마일리지 주소 표기 | 마이에 그대로 노출할 문구, 예: 서울 관악구',
 	`eco_address_registered_at`	DATE	NULL	COMMENT '에코마일리지 주소 등록 월 | 누리집에 주소가 등록된 시점의 첫째 날, 예: 2026-03-01',
 	`greenlife_participating`	TINYINT(1)	NOT NULL	DEFAULT 0	COMMENT '녹색생활실천 참여 여부 | 0 미참여 시 BN-01 제도 소개 화면',
 	`greenlife_linked_at`	DATETIME	NULL	COMMENT '녹색생활실천 연동 일시 | 최근 실적 연동에 성공한 시각',
@@ -75,8 +91,101 @@ CREATE TABLE `app_user` (
 	`updated_at`	TIMESTAMP	NOT NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '수정 일시 | 사용자 데이터 최종 수정 시각',
 	PRIMARY KEY (`id`),
 	UNIQUE KEY `uq_app_user_demo_key` (`demo_key`),
+	UNIQUE KEY `uq_app_user_phone_number` (`phone_number`),
 	UNIQUE KEY `uq_app_user_pocket_account_no` (`pocket_account_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='사용자';
+
+CREATE TABLE `user_policy_interest` (
+	`id`	BIGINT	NOT NULL	AUTO_INCREMENT	COMMENT '사용자 관심 분야 ID',
+	`user_id`	BIGINT	NOT NULL	COMMENT '사용자 ID',
+	`category`	ENUM('JOB', 'HOUSING', 'EDUCATION', 'WELFARE_CULTURE', 'PARTICIPATION_RIGHTS')	NOT NULL	COMMENT '정책 관심 분야 | 사용자당 최대 3개는 애플리케이션 검증',
+	`created_at`	TIMESTAMP	NOT NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '생성 일시',
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `uq_user_policy_interest` (`user_id`,`category`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='레거시 사용자 관심 분야 | 신규 저장·추천 필터에 사용하지 않음';
+
+CREATE TABLE `youth_policy` (
+	`id`	BIGINT	NOT NULL	AUTO_INCREMENT	COMMENT '청년정책 내부 ID',
+	`external_policy_id`	VARCHAR(30)	NOT NULL	COMMENT '온통청년 정책번호 plcyNo',
+	`title`	VARCHAR(300)	NOT NULL	COMMENT '정책명 plcyNm',
+	`keyword_name`	VARCHAR(200)	NULL	COMMENT '정책 키워드 plcyKywdNm',
+	`description`	MEDIUMTEXT	NULL	COMMENT '정책 설명 plcyExplnCn',
+	`large_category_name`	VARCHAR(100)	NULL	COMMENT '대분류 lclsfNm',
+	`medium_category_name`	VARCHAR(100)	NULL	COMMENT '중분류 mclsfNm',
+	`interest_category`	ENUM('JOB', 'HOUSING', 'EDUCATION', 'WELFARE_CULTURE', 'PARTICIPATION_RIGHTS')	NULL	COMMENT '그린포켓 추천 분야로 정규화한 값',
+	`support_content`	MEDIUMTEXT	NULL	COMMENT '지원 내용 plcySprtCn',
+	`supervising_org_name`	VARCHAR(200)	NULL	COMMENT '주관 기관 sprvsnInstCdNm',
+	`operating_org_name`	VARCHAR(200)	NULL	COMMENT '운영 기관 operInstCdNm',
+	`application_period_code`	VARCHAR(20)	NULL	COMMENT '신청기간 구분 aplyPrdSeCd',
+	`business_start_date`	DATE	NULL	COMMENT '사업 시작일 bizPrdBgngYmd',
+	`business_end_date`	DATE	NULL	COMMENT '사업 종료일 bizPrdEndYmd',
+	`application_date_text`	VARCHAR(500)	NULL	COMMENT '별도 신청일 안내 aplyYmd',
+	`application_method`	MEDIUMTEXT	NULL	COMMENT '신청 방법 plcyAplyMthdCn',
+	`application_url`	VARCHAR(1000)	NULL	COMMENT '신청 URL aplyUrlAddr | http·https만 응답',
+	`reference_url1`	VARCHAR(1000)	NULL	COMMENT '참고 URL 1',
+	`reference_url2`	VARCHAR(1000)	NULL	COMMENT '참고 URL 2',
+	`age_limit_yn`	CHAR(1)	NULL	COMMENT '연령 제한 여부 sprtTrgtAgeLmtYn',
+	`min_age`	SMALLINT	NULL	COMMENT '최소 지원 연령 | 유효 숫자만 저장',
+	`max_age`	SMALLINT	NULL	COMMENT '최대 지원 연령 | 유효 숫자만 저장',
+	`marriage_status_code`	VARCHAR(20)	NULL	COMMENT '혼인 상태 코드 mrgSttsCd',
+	`income_condition_code`	VARCHAR(20)	NULL	COMMENT '소득 조건 코드 earnCndSeCd',
+	`income_min_amount`	BIGINT	NULL	COMMENT '최소 소득 | API의 유효한 구조화 값만 저장',
+	`income_max_amount`	BIGINT	NULL	COMMENT '최대 소득 | API의 유효한 구조화 값만 저장',
+	`income_condition_text`	TEXT	NULL	COMMENT '자유 텍스트 소득 조건 earnEtcCn',
+	`additional_condition_text`	MEDIUMTEXT	NULL	COMMENT '추가 신청 자격 addAplyQlfcCndCn',
+	`participant_target_text`	MEDIUMTEXT	NULL	COMMENT '참여 대상 ptcpPrpTrgtCn',
+	`major_codes`	VARCHAR(500)	NULL	COMMENT '전공 코드 plcyMajorCd 원문',
+	`employment_codes`	VARCHAR(500)	NULL	COMMENT '취업 상태 코드 jobCd 원문',
+	`school_codes`	VARCHAR(500)	NULL	COMMENT '학력 코드 schoolCd 원문',
+	`special_codes`	VARCHAR(500)	NULL	COMMENT '특화 대상 코드 sbizCd 원문',
+	`application_status`	ENUM('OPEN', 'UPCOMING', 'CLOSED', 'UNKNOWN')	NOT NULL	DEFAULT 'UNKNOWN'	COMMENT '신청 상태 | 기간과 기준일로 정규화',
+	`is_active`	TINYINT(1)	NOT NULL	DEFAULT 1	COMMENT '최신 동기화에서 존재하는 정책 여부',
+	`source_registered_at`	DATETIME	NULL	COMMENT '온통청년 최초 등록일 frstRegDt',
+	`source_modified_at`	DATETIME	NULL	COMMENT '온통청년 최종 수정일 lastMdfcnDt',
+	`synced_at`	DATETIME	NOT NULL	COMMENT '마지막 정상 동기화 시각',
+	`created_at`	TIMESTAMP	NOT NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '생성 일시',
+	`updated_at`	TIMESTAMP	NOT NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '수정 일시',
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `uq_youth_policy_external` (`external_policy_id`),
+	KEY `ix_youth_policy_search` (`interest_category`,`application_status`,`is_active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='온통청년 청년정책 캐시';
+
+CREATE TABLE `youth_policy_region` (
+	`id`	BIGINT	NOT NULL	AUTO_INCREMENT	COMMENT '정책 지역 ID',
+	`youth_policy_id`	BIGINT	NOT NULL	COMMENT '청년정책 내부 ID',
+	`region_level`	ENUM('NATIONAL', 'SIDO', 'SIGUNGU')	NOT NULL	COMMENT '적용 지역 수준',
+	`region_code`	VARCHAR(10)	NOT NULL	COMMENT '행정구역 코드 | 전국은 00000',
+	`region_name`	VARCHAR(100)	NULL	COMMENT '표시용 지역명',
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `uq_youth_policy_region` (`youth_policy_id`,`region_level`,`region_code`),
+	KEY `ix_youth_policy_region_code` (`region_code`,`region_level`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='청년정책 적용 지역';
+
+CREATE TABLE `youth_policy_condition` (
+	`id`	BIGINT	NOT NULL	AUTO_INCREMENT	COMMENT '정책 조건 ID',
+	`youth_policy_id`	BIGINT	NOT NULL	COMMENT '청년정책 내부 ID',
+	`condition_type`	ENUM('AGE', 'INCOME', 'EMPLOYMENT', 'EDUCATION', 'MAJOR', 'MARRIAGE', 'SPECIAL', 'OTHER')	NOT NULL	COMMENT '정책 조건 유형',
+	`condition_code`	VARCHAR(50)	NOT NULL	DEFAULT ''	COMMENT '온통청년 코드 | 자유 텍스트 조건은 빈 문자열',
+	`condition_value`	VARCHAR(500)	NOT NULL	DEFAULT ''	COMMENT '정규화 값 또는 원문 일부',
+	`machine_readable`	TINYINT(1)	NOT NULL	DEFAULT 0	COMMENT '자동 판정 가능 여부',
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `uq_youth_policy_condition` (`youth_policy_id`,`condition_type`,`condition_code`,`condition_value`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='청년정책 정규화 조건';
+
+CREATE TABLE `youth_policy_sync` (
+	`id`	BIGINT	NOT NULL	AUTO_INCREMENT	COMMENT '정책 동기화 실행 ID',
+	`status`	ENUM('RUNNING', 'SUCCEEDED', 'FAILED')	NOT NULL	COMMENT '동기화 상태',
+	`started_at`	DATETIME	NOT NULL	COMMENT '동기화 시작 시각',
+	`finished_at`	DATETIME	NULL	COMMENT '동기화 종료 시각',
+	`source_total_count`	INT	NOT NULL	DEFAULT 0	COMMENT 'API가 알린 전체 정책 수',
+	`fetched_count`	INT	NOT NULL	DEFAULT 0	COMMENT '가져온 정책 수',
+	`upserted_count`	INT	NOT NULL	DEFAULT 0	COMMENT '저장·갱신한 정책 수',
+	`last_page`	INT	NOT NULL	DEFAULT 0	COMMENT '마지막 처리 페이지',
+	`error_code`	VARCHAR(50)	NULL	COMMENT '실패 코드 | 인증키 원문 금지',
+	`error_message`	VARCHAR(500)	NULL	COMMENT '실패 요약 | 응답 본문·인증키 원문 금지',
+	PRIMARY KEY (`id`),
+	KEY `ix_youth_policy_sync_status` (`status`,`started_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='온통청년 정책 동기화 이력';
 CREATE TABLE `auth_account` (
 	`id`	BIGINT	NOT NULL	AUTO_INCREMENT	COMMENT '인증 계정 ID',
 	`user_id`	BIGINT	NOT NULL	COMMENT '사용자 ID | app_user 1:1',
@@ -338,7 +447,10 @@ CREATE TABLE `withdrawal_account` (
 	UNIQUE KEY `uq_withdrawal_account_default` (`default_slot`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='출금 계좌';
 
--- ── 외래키 18 ────────────────────────────────────────────────
+-- ── 외래키 21 ────────────────────────────────────────────────
+ALTER TABLE `user_policy_interest` ADD CONSTRAINT `fk_user_policy_interest_user` FOREIGN KEY (`user_id`) REFERENCES `app_user` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT;
+ALTER TABLE `youth_policy_region` ADD CONSTRAINT `fk_youth_policy_region_policy` FOREIGN KEY (`youth_policy_id`) REFERENCES `youth_policy` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT;
+ALTER TABLE `youth_policy_condition` ADD CONSTRAINT `fk_youth_policy_condition_policy` FOREIGN KEY (`youth_policy_id`) REFERENCES `youth_policy` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT;
 ALTER TABLE `auth_account` ADD CONSTRAINT `fk_auth_account_user` FOREIGN KEY (`user_id`) REFERENCES `app_user` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT;
 ALTER TABLE `auth_refresh_token` ADD CONSTRAINT `fk_auth_refresh_token_user` FOREIGN KEY (`user_id`) REFERENCES `app_user` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT;
 ALTER TABLE `utility_monthly_record` ADD CONSTRAINT `fk_umr_user` FOREIGN KEY (`user_id`) REFERENCES `app_user` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT;
@@ -365,7 +477,7 @@ ALTER TABLE `pocket_transaction` ADD CONSTRAINT `fk_pt_account` FOREIGN KEY (`wi
 --  애플리케이션이 동기화하고 UNIQUE가 사용자당 기본 계좌 1건을 강제합니다.
 --
 --  데모 초기화(COM-10) — 아래 한 줄이면 CASCADE 로 사용자 데이터가 전부 정리되고
---  마스터(mission_catalog · greenlife_item · region_utility_snapshot)만 남습니다.
+--  마스터(mission_catalog · greenlife_item · region_utility_snapshot · youth_policy*)만 남습니다.
 --    DELETE FROM app_user WHERE id = :uid;
 
 -- ── DB가 강제하는 규칙 (MariaDB 10.11 에 올려 실제 차단 확인, 2026-09-03) ──

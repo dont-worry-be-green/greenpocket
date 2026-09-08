@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.stream.Stream;
 
 import lombok.RequiredArgsConstructor;
 
@@ -19,6 +18,8 @@ import com.greenpocket.eco.service.EcoReportQueryService;
 import com.greenpocket.global.exception.BusinessException;
 import com.greenpocket.global.exception.CommonErrorCode;
 import com.greenpocket.mypage.dto.MypageResponse;
+import com.greenpocket.policy.dto.PolicyMypageSummary;
+import com.greenpocket.policy.service.PolicyQueryService;
 import com.greenpocket.user.repository.UserMypageQueryRepository.UserMypageSnapshot;
 import com.greenpocket.user.service.UserMypageQueryService;
 
@@ -32,12 +33,14 @@ public class MypageService {
 	private static final String BILL_ARCHIVE_SCREEN = "MY-03";
 	private static final String REPORT_ARCHIVE_SCREEN = "MY-04";
 	private static final String MOVING_NOTICE =
-		"이사했다면 꼭 바꿔주세요. 바꾸지 않으면 지금 살지 않는 집의 사용량과 비교돼요";
+		"주소를 바꾸려면 에코마일리지 누리집에서 변경한 뒤 다시 연동해 주세요";
+	private static final int POLICY_PREVIEW_SIZE = 5;
 
 	private final UserMypageQueryService userMypageQueryService;
 	private final BillReportQueryService billReportQueryService;
 	private final EcoReportQueryService ecoReportQueryService;
 	private final EcoLinkService ecoLinkService;
+	private final PolicyQueryService policyQueryService;
 
 	public MypageResponse getMypage(Long userId) {
 		UserMypageSnapshot user = userMypageQueryService.findMypageUser(userId)
@@ -46,15 +49,14 @@ public class MypageService {
 		long reportCount = billReportQueryService.findMonthlyDiagnosisReports(userId).size()
 			+ ecoReportQueryService.findMonthlyReports(userId).size()
 			+ ecoReportQueryService.findResultReports(userId).size();
+		PolicyMypageSummary policySummary = policyQueryService.getMypageSummary(userId, POLICY_PREVIEW_SIZE);
 
 		return new MypageResponse(
 			new MypageResponse.Profile(
 				user.name(),
-				user.sidoName(),
-				user.sigunguName(),
-				user.housingType(),
-				user.areaBand(),
-				profileSummary(user)
+				user.birthDate(),
+				user.gender(),
+				user.phoneNumber()
 			),
 			new MypageResponse.Links(
 				new MypageResponse.ArchiveLink(
@@ -74,7 +76,14 @@ public class MypageService {
 					.map(EcoStatusResponse.RegisteredUtility::utilityType)
 					.toList()
 			),
-			user.pocketAccountNo()
+			user.pocketAccountNo(),
+			new MypageResponse.YouthPolicy(
+				policySummary.profileCompleted(),
+				policySummary.regionLinked(),
+				policySummary.recommendedCount(),
+				policySummary.preview(),
+				policySummary.lastSyncedAt()
+			)
 		);
 	}
 
@@ -82,67 +91,13 @@ public class MypageService {
 		if (user.ecoLinkStatus() != EcoLinkStatus.LINKED || user.ecoAddressLabel() == null) {
 			return null;
 		}
-		boolean matchesProfile = equals(user.ecoSidoCode(), user.sidoCode())
-			&& equals(user.ecoSigunguCode(), user.sigunguCode());
 		return new MypageResponse.EcoAddress(
 			user.ecoAddressLabel(),
 			user.ecoAddressRegisteredAt() == null
 				? null
 				: YEAR_MONTH_FORMATTER.format(user.ecoAddressRegisteredAt()),
-			matchesProfile,
 			MOVING_NOTICE
 		);
-	}
-
-	private String profileSummary(UserMypageSnapshot user) {
-		return Stream.of(
-			joinNonBlank(shortSidoName(user.sidoName()), user.sigunguName()),
-			housingTypeLabel(user.housingType()),
-			areaBandLabel(user.areaBand())
-		)
-			.filter(value -> value != null && !value.isBlank())
-			.reduce((left, right) -> left + " · " + right)
-			.orElse("");
-	}
-
-	private String shortSidoName(String value) {
-		return "서울특별시".equals(value) ? "서울" : value;
-	}
-
-	private String housingTypeLabel(String value) {
-		if (value == null) {
-			return null;
-		}
-		return switch (value) {
-			case "ONE_ROOM" -> "원룸";
-			case "OFFICETEL" -> "오피스텔";
-			case "APARTMENT" -> "아파트";
-			case "MULTI_HOUSE" -> "다세대";
-			default -> null;
-		};
-	}
-
-	private String areaBandLabel(String value) {
-		if (value == null) {
-			return null;
-		}
-		return switch (value) {
-			case "UNDER_10" -> "10평 이하";
-			case "FROM_10_TO_20" -> "10~20평";
-			case "OVER_20" -> "20평 이상";
-			default -> null;
-		};
-	}
-
-	private String joinNonBlank(String left, String right) {
-		if (left == null || left.isBlank()) {
-			return right == null ? "" : right;
-		}
-		return right == null || right.isBlank() ? left : left + " " + right;
-	}
-
-	private boolean equals(String left, String right) {
-		return left != null && left.equals(right);
 	}
 
 	private OffsetDateTime toOffsetDateTime(LocalDateTime value) {

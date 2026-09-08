@@ -1,20 +1,30 @@
 package com.greenpocket.profile.dto;
 
+import java.time.LocalDate;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import com.greenpocket.profile.entity.AreaBand;
-import com.greenpocket.profile.entity.HousingType;
+import com.greenpocket.profile.entity.AnnualIncomeBand;
+import com.greenpocket.profile.entity.CurrentStatus;
+import com.greenpocket.profile.entity.HouseholdStatus;
+import com.greenpocket.user.entity.Gender;
 
 public record ProfileResponse(
 	@Schema(example = "김수현") String name,
-	@Schema(example = "11") String sidoCode,
-	@Schema(example = "서울특별시") String sidoName,
-	@Schema(example = "11620") String sigunguCode,
-	@Schema(example = "관악구") String sigunguName,
-	@Schema(example = "APARTMENT") HousingType housingType,
-	@Schema(example = "OVER_20") AreaBand areaBand,
-	@Schema(example = "서울 관악구 · 아파트 20평 이상") String profileSummary,
-	@Schema(example = "true") boolean seoulResident,
-	@Schema(example = "true") boolean onboardingCompleted
+	@Schema(example = "1998-03-15") LocalDate birthDate,
+	@Schema(example = "FEMALE") Gender gender,
+	@Schema(example = "01091740339") String phoneNumber,
+	@Schema(example = "EMPLOYED") CurrentStatus currentStatus,
+	@Schema(example = "FROM_24M_TO_36M") AnnualIncomeBand annualIncomeBand,
+	@Schema(example = "ONE_PERSON") HouseholdStatus householdStatus,
+	EcoAddress ecoAddress,
+	@Schema(example = "true") boolean policyProfileCompleted
 ) {
+
+	public record EcoAddress(
+		@Schema(example = "서울특별시 관악구") String label,
+		@Schema(example = "11") String sidoCode,
+		@Schema(example = "11620") String sigunguCode,
+		@Schema(example = "2026-03") String registeredAt
+	) {
+	}
 }

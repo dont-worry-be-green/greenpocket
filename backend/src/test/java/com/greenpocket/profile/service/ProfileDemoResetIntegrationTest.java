@@ -3,6 +3,7 @@ package com.greenpocket.profile.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -11,9 +12,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.greenpocket.profile.dto.ProfileSaveRequest;
-import com.greenpocket.profile.entity.AreaBand;
-import com.greenpocket.profile.entity.HousingType;
+import com.greenpocket.profile.dto.PolicyPreferencesRequest;
+import com.greenpocket.profile.entity.AnnualIncomeBand;
+import com.greenpocket.profile.entity.CurrentStatus;
+import com.greenpocket.profile.entity.HouseholdStatus;
 import com.greenpocket.user.dto.DemoResetRequest;
 import com.greenpocket.user.service.DemoResetService;
 
@@ -31,18 +33,17 @@ class ProfileDemoResetIntegrationTest {
 	private DemoResetService demoResetService;
 
 	@Test
-	void savesProfileWithCatalogNamesAndResetCascadesUserData() {
+	void savesPolicyProfileAndResetCascadesUserData() {
 		String demoKey = UUID.randomUUID().toString();
 		Long userId = createUser(demoKey);
 
-		var saved = profileService.save(userId, new ProfileSaveRequest(
-			"11", "변조된 시도명", "11620", "변조된 구명", HousingType.APARTMENT, AreaBand.OVER_20
+		var saved = profileService.updatePolicyPreferences(userId, new PolicyPreferencesRequest(
+			CurrentStatus.EMPLOYED, AnnualIncomeBand.FROM_24M_TO_36M, HouseholdStatus.ONE_PERSON
 		));
 		createBill(userId);
 
-		assertThat(saved.profileSummary()).isEqualTo("서울 관악구 · 아파트 20평 이상");
-		assertThat(profileService.find(userId).sidoName()).isEqualTo("서울특별시");
-		assertThat(profileService.find(userId).sigunguName()).isEqualTo("관악구");
+		assertThat(saved.policyProfileCompleted()).isTrue();
+		assertThat(profileService.find(userId).birthDate()).isEqualTo(LocalDate.of(1998, 3, 15));
 
 		var reset = demoResetService.reset(new DemoResetRequest(demoKey));
 
@@ -60,8 +61,8 @@ class ProfileDemoResetIntegrationTest {
 			Math.abs((demoKey + "reset").hashCode()) % 100
 		);
 		jdbcClient.sql("""
-				INSERT INTO app_user (demo_key, name, pocket_account_no, pocket_holder)
-				VALUES (:demoKey, '김그린', :accountNo, '김그린')
+				INSERT INTO app_user (demo_key, name, birth_date, pocket_account_no, pocket_holder)
+				VALUES (:demoKey, '김그린', '1998-03-15', :accountNo, '김그린')
 				""")
 			.param("demoKey", demoKey)
 			.param("accountNo", accountNo)
