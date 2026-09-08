@@ -9,17 +9,14 @@
  * ── 이름을 여기서 받지 않는다 ───────────────────────────────────────────
  * 예전에는 이 화면이 이름을 받아 `POST /users` 를 불렀다. 서비스에 로그인·회원가입이
  * 들어오면서 이름은 회원가입으로 옮겼고(이슈 #121), 이 화면은 **두 갈래로 갈라 주기만 한다.**
- * 데모 키를 서버에 등록하는 것도 회원가입 쪽이다 — 자세한 것은 `stores/auth.js` 주석.
+ * 계정 생성과 로그인은 실제 인증 API가 담당한다.
  */
 import { useRouter } from 'vue-router'
 
 import GpButton from '@/components/ui/GpButton.vue'
-import IconInfo from '@/components/ui/icons/IconInfo.vue'
 import IconPlant from '@/components/ui/icons/IconPlant.vue'
-import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
-const store = useAuthStore()
 </script>
 
 <template>
@@ -42,15 +39,9 @@ const store = useAuthStore()
     <div class="space-y-2 pt-2 pb-[max(12px,env(safe-area-inset-bottom))]">
       <GpButton @click="router.push('/onboarding/signup')">회원가입</GpButton>
 
-      <!-- 이 기기에 가입한 적이 있으면 로그인이 먼저 눈에 들어와야 한다 -->
       <GpButton variant="wide" size="wide" class="w-full" @click="router.push('/onboarding/login')">
-        {{ store.savedLoginId ? `${store.savedLoginId} 로 로그인` : '이미 계정이 있어요' }}
+        이미 계정이 있어요
       </GpButton>
-
-      <p class="text-caption text-muted bg-surface-sub mt-3 mb-0 flex gap-2 rounded-md p-3">
-        <IconInfo :size="16" class="text-icon-off mt-0.5 shrink-0" aria-hidden="true" />
-        <span>발표용 데모예요. 입력한 정보는 이 기기에만 저장돼요.</span>
-      </p>
     </div>
   </div>
 </template>

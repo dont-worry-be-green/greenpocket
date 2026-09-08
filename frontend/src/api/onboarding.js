@@ -1,58 +1,13 @@
-/*
- * 온보딩 API — api-spec.md 4·5절. 화면 ONB-01 · ONB-02.
- *
- * ── 데이터 소스 ──────────────────────────────────────────────────────────
- * 세 엔드포인트가 모두 백엔드에 있다(`UserController` · `RegionController` · `ProfileController`,
- * 커밋 4a4b3ee). 기본값은 실 호출이고, `src/fixtures/` 는 서버 없이 걸어 볼 때만 쓴다.
- *
- * **실 API 로 연동을 마쳤다.** 목데이터로 되돌리는 스위치는 `api/dataSource.js` 하나이고,
- * 개발 빌드의 데모 도구(우하단 버튼)가 그 값을 바꾼다. 스토어·뷰는 어느 쪽이든 그대로 산다.
- *
- * `fake()` 를 async + 지연으로 둔 이유는 로딩 스피너와 await 순서를 **실제로 돌리기** 위해서다.
- * 스토어에 분기를 두면 즉시 return 이라 로딩 경로가 한 번도 실행되지 않는다.
- *
- * **`src/fixtures/` 를 import 할 수 있는 파일은 `src/api/` 아래뿐이다.**
- * (`api/__tests__/eco.spec.js` 가 `src/` 전체를 훑어 확인한다)
- */
+import { buildProfileResult, SEOUL_SIGUNGUS, SIDOS } from '@/fixtures/onboarding'
 
-import { buildProfileResult, buildUserStart, SEOUL_SIGUNGUS, SIDOS } from '@/fixtures/onboarding'
-
-import client, { ApiError, getDemoKey } from './client'
+import client from './client'
 import { isFixtureMode } from './dataSource'
 
-/** 실제 호출처럼 지연을 준다. 값 대신 함수를 넘기면 호출 시점에 계산한다 */
 const fake = async (value, ms = 220) => {
   await new Promise((resolve) => setTimeout(resolve, ms))
   return typeof value === 'function' ? value() : value
 }
 
-/**
- * POST /users — 데모 사용자 시작 (COM-01 · ONB-01).
- *
- * ⚠️ **픽스처 모드에서도 실제로 서버를 부르는 유일한 함수다.**
- * `X-Demo-Key` 는 FE 가 만들어 `localStorage` 에 넣지만, 이 호출로 서버에 등록하지 않으면
- * `DemoKeyAuthenticationInterceptor` 가 나머지 API 를 전부 401 로 막는다. 온보딩을 한 번 걸으면
- * 포켓·What-if 가 401 없이 뜨는 것이 이 한 줄 때문이다.
- *
- * 서버가 꺼져 있으면 실패를 **삼키고** 픽스처로 넘어간다 — 실패를 삼키는 곳은 앱 전체에서
- * 여기 하나뿐이다. 나머지 실패는 전부 화면에 뜬다(COM-08).
- */
-export async function startUser({ name }) {
-  const payload = { demoKey: getDemoKey(), name: String(name ?? '').trim() }
-  if (!isFixtureMode()) return client.post('/users', payload)
-
-  assertNameValid(payload.name)
-  const registered = await registerQuietly(payload)
-  return fake(() => registered ?? buildUserStart(payload))
-}
-
-/**
- * GET /meta/regions — 행정구역 목록 (A-1-01 · ONB-02).
- * `sidoCode` 가 없으면 시도, 있으면 그 시도의 시군구다.
- *
- * 서울 밖 시도는 **빈 배열**이다. 시군구 목록을 상상해서 만들면 그 코드가 그대로 진단
- * 기준선 조회 키가 되어 없는 지역을 가리키게 된다. 빈 배열은 에러가 아니라 안내다(핵심 규칙 8).
- */
 export function getRegions({ sidoCode } = {}) {
   if (isFixtureMode()) {
     if (!sidoCode) return fake({ level: 'SIDO', items: SIDOS })
@@ -61,34 +16,7 @@ export function getRegions({ sidoCode } = {}) {
   return client.get('/meta/regions', { params: sidoCode ? { sidoCode } : {} })
 }
 
-/** POST /profile — 프로필 저장·온보딩 완료 (A-1-05 · ONB-02) */
 export function saveProfile(payload) {
   if (isFixtureMode()) return fake(() => buildProfileResult(payload), 400)
   return client.post('/profile', payload)
-}
-
-// ── 픽스처 전용 헬퍼. 실 API 모드에서는 아래를 아무도 부르지 않는다 ──
-
-/**
- * 이름 검증을 shim 이 **실제로 던진다**(api-spec.md 4.1 `NAME_INVALID`).
- * 뷰도 같은 조건으로 CTA 를 막지만, 여기서 통과시켜 버리면 연동 후 처음 보는 에러가 된다.
- * shim 이 도메인 에러를 던지는 것은 `api/eco.js` 의 `getRoundResult` 선례가 있다.
- */
-function assertNameValid(name) {
-  if (name.length >= 1 && name.length <= 20 && /[\p{L}\p{N}]/u.test(name)) return
-  throw new ApiError({
-    code: 'NAME_INVALID',
-    message: '이름을 1~20자로 입력해 주세요.',
-    field: 'name',
-    status: 400,
-  })
-}
-
-/** 서버가 떠 있으면 데모 키를 등록하고, 꺼져 있으면 null 을 돌려준다 */
-async function registerQuietly(payload) {
-  try {
-    return await client.post('/users', payload)
-  } catch {
-    return null
-  }
 }

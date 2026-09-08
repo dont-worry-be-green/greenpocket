@@ -2,11 +2,10 @@
  * 온보딩 화면 미리보기 데이터 — **API 연동 전까지만 쓴다.**
  *
  * 필드명·타입은 docs/api/api-spec.md 4·5절 응답 예시를 그대로 따른다.
- *   buildUserStart      ← POST /users        4.1 (COM-01)
  *   SIDOS · SEOUL_SIGUNGUS ← GET /meta/regions 4.3 (A-1-01)
  *   buildProfileResult  ← POST /profile      5.1 (A-1-05)
  *
- * 백엔드 대조(커밋 4a4b3ee 기준): **셋 다 구현되어 있다.** 기본 동작은 실 호출이고
+ * 백엔드의 지역 조회와 프로필 저장 계약을 따라가며, 기본 동작은 실 호출이고
  * 이 파일은 데모 도구로 목데이터 모드를 골랐을 때만 쓰인다(`api/dataSource.js`).
  *
  * **값이나 필드를 임의로 만들지 않는다.** 새 필드가 필요하면 api-spec.md 를 먼저 고친다
@@ -96,31 +95,6 @@ const AREA_BAND_LABELS = {
   UNDER_10: '10평 이하',
   FROM_10_TO_20: '10~20평',
   OVER_20: '20평 이상',
-}
-
-/*
- * 그린포켓 계좌번호 `1005-####-####-##` (결정 C-14).
- * demoKey 에서 뽑아 **같은 키면 같은 번호**가 나오게 한다 — 재진입 시 번호가 바뀌면
- * 서버가 사용자별 고유 번호를 발급한다는 약속(api-spec.md 4.1)과 어긋난다.
- */
-function pocketAccountNo(demoKey) {
-  let hash = 0
-  for (const char of String(demoKey)) hash = (hash * 31 + char.codePointAt(0)) % 1_000_000_000
-  const digits = String(hash).padStart(10, '0').slice(-10)
-  return `1005-${digits.slice(0, 4)}-${digits.slice(4, 8)}-${digits.slice(8, 10)}`
-}
-
-/** POST /users 201 — ONB-01 (COM-01). 서버가 꺼져 있을 때만 쓰인다 */
-export function buildUserStart({ demoKey, name }) {
-  return {
-    userId: 1,
-    name,
-    onboardingCompleted: false,
-    nextScreen: 'ONB-02',
-    pocketAccountNo: pocketAccountNo(demoKey),
-    pocketHolder: name,
-    createdAt: new Date().toISOString(),
-  }
 }
 
 /*
