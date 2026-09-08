@@ -143,6 +143,22 @@ class AuthServiceTest {
 	}
 
 	@Test
+	void loginRoutesByEcoLinkStatus() {
+		when(authRepository.findAccountByEmail("green@example.com")).thenReturn(Optional.of(
+			new AuthAccountSnapshot(
+				USER_ID, "green@example.com", "bcrypt-hash", "김그린", true, EcoLinkStatus.LINKING
+			)
+		));
+		when(passwordEncoder.matches("password123", "bcrypt-hash")).thenReturn(true);
+
+		AuthService.AuthSession<?> session = authService.login(
+			new LoginRequest("green@example.com", "password123")
+		);
+
+		assertEquals("WF-02", ((com.greenpocket.auth.dto.LoginResponse)session.response()).entryScreen());
+	}
+
+	@Test
 	void refreshRevokesOldTokenAndStoresRotatedToken() {
 		when(authRepository.findRefreshTokenByHash(anyString())).thenReturn(Optional.of(
 			new RefreshTokenSnapshot(10L, USER_ID, NOW.plusDays(1), null)
