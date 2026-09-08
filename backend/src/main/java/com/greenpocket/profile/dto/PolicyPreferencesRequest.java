@@ -12,8 +12,7 @@ import com.greenpocket.profile.entity.HouseholdStatus;
 import com.greenpocket.profile.entity.HousingType;
 import com.greenpocket.profile.entity.PolicyInterestCategory;
 
-public record ProfileUpdateRequest(
-	@Schema(example = "김수현") String name,
+public record PolicyPreferencesRequest(
 	@Schema(example = "1998-03-15") LocalDate birthDate,
 	@Schema(example = "ONE_ROOM") HousingType housingType,
 	@Schema(example = "UNDER_10") AreaBand areaBand,

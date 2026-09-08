@@ -3,6 +3,8 @@ package com.greenpocket.profile.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -12,8 +14,12 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.greenpocket.profile.dto.ProfileSaveRequest;
+import com.greenpocket.profile.entity.AnnualIncomeBand;
 import com.greenpocket.profile.entity.AreaBand;
+import com.greenpocket.profile.entity.CurrentStatus;
+import com.greenpocket.profile.entity.HouseholdStatus;
 import com.greenpocket.profile.entity.HousingType;
+import com.greenpocket.profile.entity.PolicyInterestCategory;
 import com.greenpocket.user.dto.DemoResetRequest;
 import com.greenpocket.user.service.DemoResetService;
 
@@ -31,24 +37,28 @@ class ProfileDemoResetIntegrationTest {
 	private DemoResetService demoResetService;
 
 	@Test
-	void savesProfileWithCatalogNamesAndResetCascadesUserData() {
+	void savesPolicyProfileAndResetCascadesUserData() {
 		String demoKey = UUID.randomUUID().toString();
 		Long userId = createUser(demoKey);
 
 		var saved = profileService.save(userId, new ProfileSaveRequest(
-			"11", "변조된 시도명", "11620", "변조된 구명", HousingType.APARTMENT, AreaBand.OVER_20
+			LocalDate.of(1998, 3, 15), HousingType.APARTMENT, AreaBand.OVER_20,
+			CurrentStatus.EMPLOYED, AnnualIncomeBand.FROM_24M_TO_36M,
+			HouseholdStatus.ONE_PERSON, List.of(PolicyInterestCategory.JOB, PolicyInterestCategory.HOUSING)
 		));
 		createBill(userId);
 
-		assertThat(saved.profileSummary()).isEqualTo("서울 관악구 · 아파트 20평 이상");
-		assertThat(profileService.find(userId).sidoName()).isEqualTo("서울특별시");
-		assertThat(profileService.find(userId).sigunguName()).isEqualTo("관악구");
+		assertThat(saved.profileSummary()).isEqualTo("아파트 · 20평 이상");
+		assertThat(profileService.find(userId).birthDate()).isEqualTo(LocalDate.of(1998, 3, 15));
+		assertThat(profileService.find(userId).interestCategories())
+			.containsExactly(PolicyInterestCategory.JOB, PolicyInterestCategory.HOUSING);
 
 		var reset = demoResetService.reset(new DemoResetRequest(demoKey));
 
 		assertThat(reset.nextScreen()).isEqualTo("ONB-01");
 		assertThat(count("app_user", "demo_key", demoKey)).isZero();
 		assertThat(count("utility_monthly_record", "user_id", userId)).isZero();
+		assertThat(count("user_policy_interest", "user_id", userId)).isZero();
 
 		assertThat(demoResetService.reset(new DemoResetRequest(demoKey)).nextScreen()).isEqualTo("ONB-01");
 	}

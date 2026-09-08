@@ -4,130 +4,146 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
-
-import tools.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.greenpocket.eco.service.EcoCurrentRoundQueryService;
+import com.greenpocket.eco.entity.EcoLinkStatus;
 import com.greenpocket.global.exception.BusinessException;
+import com.greenpocket.profile.dto.PolicyPreferencesRequest;
 import com.greenpocket.profile.dto.ProfileSaveRequest;
-import com.greenpocket.profile.dto.ProfileSaveResponse;
 import com.greenpocket.profile.dto.ProfileUpdateRequest;
-import com.greenpocket.profile.dto.ProfileUpdateResponse;
+import com.greenpocket.profile.entity.AnnualIncomeBand;
 import com.greenpocket.profile.entity.AreaBand;
+import com.greenpocket.profile.entity.CurrentStatus;
+import com.greenpocket.profile.entity.HouseholdStatus;
 import com.greenpocket.profile.entity.HousingType;
+import com.greenpocket.profile.entity.PolicyInterestCategory;
 import com.greenpocket.profile.repository.ProfileRepository;
 import com.greenpocket.profile.repository.ProfileRepository.ProfileSnapshot;
 
 class ProfileServiceTest {
 
 	private ProfileRepository profileRepository;
-	private EcoCurrentRoundQueryService ecoRoundQueryService;
 	private ProfileService profileService;
 
 	@BeforeEach
 	void setUp() {
 		profileRepository = mock(ProfileRepository.class);
-		ecoRoundQueryService = mock(EcoCurrentRoundQueryService.class);
-		profileService = new ProfileService(
-			profileRepository,
-			new com.greenpocket.user.service.SeoulRegionCatalog(new ObjectMapper()),
-			ecoRoundQueryService
-		);
+		profileService = new ProfileService(profileRepository);
 	}
 
 	@Test
-	void savesCatalogNamesAndCompletesOnboarding() {
+	void savesRequiredProfileAndInterestsWithoutResidenceInput() {
 		when(profileRepository.findByUserId(1L)).thenReturn(Optional.of(incompleteProfile()));
 		when(profileRepository.update(any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(1);
 
-		ProfileSaveResponse response = profileService.save(1L, new ProfileSaveRequest(
-			"11", "임의 이름", "11620", "임의 구", HousingType.APARTMENT, AreaBand.OVER_20
-		));
+		var response = profileService.save(1L, saveRequest());
 
 		assertThat(response.onboardingCompleted()).isTrue();
-		assertThat(response.profileSummary()).isEqualTo("서울 관악구 · 아파트 20평 이상");
+		assertThat(response.policyProfileCompleted()).isTrue();
+		assertThat(response.profileSummary()).isEqualTo("아파트 · 20평 이상");
 		assertThat(response.nextScreen()).isEqualTo("WF-06");
-		assertThat(response.seoulResident()).isTrue();
-		verify(profileRepository).update(
-			1L, "김그린", "11", "서울특별시", "11620", "관악구", HousingType.APARTMENT, AreaBand.OVER_20
+		assertThat(response.policyRegionLinked()).isFalse();
+		verify(profileRepository).replaceInterests(
+			1L, List.of(PolicyInterestCategory.JOB, PolicyInterestCategory.HOUSING)
 		);
 	}
 
 	@Test
-	void rejectsIncompleteOrUnknownRegion() {
-		assertThatThrownBy(() -> profileService.save(1L,
-			new ProfileSaveRequest("11", null, null, null, HousingType.APARTMENT, AreaBand.OVER_20)))
+	void rejectsMissingFutureBirthDateAndTooManyInterests() {
+		assertThatThrownBy(() -> profileService.save(1L, new ProfileSaveRequest(
+			null, HousingType.APARTMENT, AreaBand.OVER_20, CurrentStatus.EMPLOYED,
+			AnnualIncomeBand.UNDER_24M, HouseholdStatus.ONE_PERSON, List.of()
+		)))
 			.isInstanceOfSatisfying(BusinessException.class,
 				exception -> assertThat(exception.getErrorCode().code()).isEqualTo("PROFILE_INCOMPLETE"));
 
-		when(profileRepository.findByUserId(1L)).thenReturn(Optional.of(incompleteProfile()));
-		assertThatThrownBy(() -> profileService.save(1L,
-			new ProfileSaveRequest("11", null, "99999", null, HousingType.APARTMENT, AreaBand.OVER_20)))
+		assertThatThrownBy(() -> profileService.save(1L, new ProfileSaveRequest(
+			LocalDate.now().plusDays(1), HousingType.APARTMENT, AreaBand.OVER_20, CurrentStatus.EMPLOYED,
+			AnnualIncomeBand.UNDER_24M, HouseholdStatus.ONE_PERSON, List.of()
+		)))
 			.isInstanceOfSatisfying(BusinessException.class,
-				exception -> assertThat(exception.getErrorCode().code()).isEqualTo("REGION_NOT_FOUND"));
+				exception -> assertThat(exception.getErrorCode().code()).isEqualTo("BIRTH_DATE_INVALID"));
+
+		assertThatThrownBy(() -> profileService.save(1L, new ProfileSaveRequest(
+			LocalDate.of(1998, 3, 15), HousingType.APARTMENT, AreaBand.OVER_20, CurrentStatus.EMPLOYED,
+			AnnualIncomeBand.UNDER_24M, HouseholdStatus.ONE_PERSON,
+			List.of(
+				PolicyInterestCategory.JOB, PolicyInterestCategory.HOUSING,
+				PolicyInterestCategory.EDUCATION, PolicyInterestCategory.WELFARE_CULTURE
+			)
+		)))
+			.isInstanceOfSatisfying(BusinessException.class,
+				exception -> assertThat(exception.getErrorCode().code())
+					.isEqualTo("POLICY_INTEREST_LIMIT_EXCEEDED"));
 	}
 
 	@Test
-	void findsCompletedProfile() {
-		when(profileRepository.findByUserId(1L)).thenReturn(Optional.of(completedProfile()));
+	void findsCompletedProfileWithReadOnlyEcoAddress() {
+		when(profileRepository.findByUserId(1L)).thenReturn(Optional.of(completedLinkedProfile()));
+		when(profileRepository.findInterestsByUserId(1L))
+			.thenReturn(List.of(PolicyInterestCategory.JOB, PolicyInterestCategory.HOUSING));
 
 		var response = profileService.find(1L);
 
-		assertThat(response.sigunguName()).isEqualTo("관악구");
-		assertThat(response.profileSummary()).isEqualTo("서울 관악구 · 아파트 20평 이상");
-		assertThat(response.seoulResident()).isTrue();
+		assertThat(response.birthDate()).isEqualTo(LocalDate.of(1998, 3, 15));
+		assertThat(response.profileSummary()).isEqualTo("아파트 · 20평 이상");
+		assertThat(response.ecoAddress().label()).isEqualTo("서울특별시 관악구");
+		assertThat(response.ecoAddress().registeredAt()).isEqualTo("2026-03");
+		assertThat(response.interestCategories())
+			.containsExactly(PolicyInterestCategory.JOB, PolicyInterestCategory.HOUSING);
 	}
 
 	@Test
-	void warnsBeforeChangingRegionDuringActiveRound() {
-		when(profileRepository.findByUserId(1L)).thenReturn(Optional.of(completedProfile()));
-		when(ecoRoundQueryService.findGoalActiveRoundId(1L)).thenReturn(Optional.of(7L));
-
-		assertThatThrownBy(() -> profileService.update(1L, updateRequest("11710", false)))
-			.isInstanceOfSatisfying(BusinessException.class, exception -> {
-				assertThat(exception.getErrorCode().code()).isEqualTo("CONFLICT");
-				assertThat(exception.getField()).isEqualTo("confirmBaselineChange");
-				assertThat(exception.getDetails()).containsEntry("affectedRoundId", 7L);
-			});
-		verify(profileRepository, never()).update(any(), any(), any(), any(), any(), any(), any(), any());
-	}
-
-	@Test
-	void changesRegionAfterExplicitConfirmation() {
-		when(profileRepository.findByUserId(1L)).thenReturn(Optional.of(completedProfile()));
-		when(ecoRoundQueryService.findGoalActiveRoundId(1L)).thenReturn(Optional.of(7L));
+	void updatesProfileAndPolicyPreferences() {
+		when(profileRepository.findByUserId(1L)).thenReturn(Optional.of(completedLinkedProfile()));
 		when(profileRepository.update(any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(1);
+		ProfileUpdateRequest updateRequest = new ProfileUpdateRequest(
+			"김그린", LocalDate.of(1998, 3, 15), HousingType.ONE_ROOM, AreaBand.UNDER_10,
+			CurrentStatus.FREELANCER, AnnualIncomeBand.UNDER_24M, HouseholdStatus.ONE_PERSON,
+			List.of(PolicyInterestCategory.HOUSING)
+		);
 
-		ProfileUpdateResponse response = profileService.update(1L, updateRequest("11710", true));
+		var updated = profileService.update(1L, updateRequest);
+		var preferencesUpdated = profileService.updatePolicyPreferences(1L, new PolicyPreferencesRequest(
+			LocalDate.of(1998, 3, 15), HousingType.ONE_ROOM, AreaBand.UNDER_10,
+			CurrentStatus.FREELANCER, AnnualIncomeBand.UNDER_24M, HouseholdStatus.ONE_PERSON,
+			List.of(PolicyInterestCategory.HOUSING)
+		));
 
-		assertThat(response.baselineRecalculated()).isTrue();
-		assertThat(response.affectedRoundId()).isEqualTo(7L);
-		assertThat(response.profileSummary()).startsWith("서울 송파구");
+		assertThat(updated.profileSummary()).isEqualTo("원룸 · 10평 이하");
+		assertThat(updated.recommendationsUpdated()).isTrue();
+		assertThat(preferencesUpdated.policyProfileCompleted()).isTrue();
 	}
 
-	private ProfileUpdateRequest updateRequest(String sigunguCode, boolean confirm) {
-		return new ProfileUpdateRequest(
-			"김그린", "11", null, sigunguCode, null,
-			HousingType.APARTMENT, AreaBand.OVER_20, confirm
+	private ProfileSaveRequest saveRequest() {
+		return new ProfileSaveRequest(
+			LocalDate.of(1998, 3, 15), HousingType.APARTMENT, AreaBand.OVER_20,
+			CurrentStatus.EMPLOYED, AnnualIncomeBand.FROM_24M_TO_36M, HouseholdStatus.ONE_PERSON,
+			List.of(PolicyInterestCategory.JOB, PolicyInterestCategory.HOUSING)
 		);
 	}
 
 	private ProfileSnapshot incompleteProfile() {
-		return new ProfileSnapshot("김그린", null, null, null, null, null, null, false);
+		return new ProfileSnapshot(
+			"김그린", null, null, null, null, null, null, false, false,
+			EcoLinkStatus.UNLINKED, null, null, null, null
+		);
 	}
 
-	private ProfileSnapshot completedProfile() {
+	private ProfileSnapshot completedLinkedProfile() {
 		return new ProfileSnapshot(
-			"김그린", "11", "서울특별시", "11620", "관악구",
-			HousingType.APARTMENT, AreaBand.OVER_20, true
+			"김그린", LocalDate.of(1998, 3, 15), HousingType.APARTMENT, AreaBand.OVER_20,
+			CurrentStatus.EMPLOYED, AnnualIncomeBand.FROM_24M_TO_36M, HouseholdStatus.ONE_PERSON,
+			true, true, EcoLinkStatus.LINKED, "11", "11620", "서울특별시 관악구",
+			LocalDate.of(2026, 3, 1)
 		);
 	}
 }

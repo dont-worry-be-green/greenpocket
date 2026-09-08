@@ -1,54 +1,60 @@
 package com.greenpocket.profile.service;
 
-import java.util.Map;
-import java.util.Optional;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashSet;
+import java.util.List;
 
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.greenpocket.eco.service.EcoCurrentRoundQueryService;
+import com.greenpocket.eco.entity.EcoLinkStatus;
 import com.greenpocket.global.exception.BusinessException;
 import com.greenpocket.global.exception.CommonErrorCode;
+import com.greenpocket.profile.dto.PolicyPreferencesRequest;
+import com.greenpocket.profile.dto.PolicyPreferencesResponse;
+import com.greenpocket.profile.dto.PolicyPreferencesUpdateResponse;
 import com.greenpocket.profile.dto.ProfileResponse;
 import com.greenpocket.profile.dto.ProfileSaveRequest;
 import com.greenpocket.profile.dto.ProfileSaveResponse;
 import com.greenpocket.profile.dto.ProfileUpdateRequest;
 import com.greenpocket.profile.dto.ProfileUpdateResponse;
+import com.greenpocket.profile.entity.AnnualIncomeBand;
 import com.greenpocket.profile.entity.AreaBand;
+import com.greenpocket.profile.entity.CurrentStatus;
+import com.greenpocket.profile.entity.HouseholdStatus;
 import com.greenpocket.profile.entity.HousingType;
+import com.greenpocket.profile.entity.PolicyInterestCategory;
 import com.greenpocket.profile.exception.ProfileErrorCode;
 import com.greenpocket.profile.repository.ProfileRepository;
 import com.greenpocket.profile.repository.ProfileRepository.ProfileSnapshot;
 import com.greenpocket.user.exception.UserErrorCode;
-import com.greenpocket.user.service.SeoulRegionCatalog;
 
 @Service
 @RequiredArgsConstructor
 public class ProfileService {
 
 	private static final String NEXT_SCREEN = "WF-06";
-	private static final String BASELINE_CHANGE_WARNING =
-		"지역을 변경하면 진행 중인 평가 기준과 진단 비교 지역이 바뀔 수 있어요. 계속하시겠어요?";
+	private static final DateTimeFormatter YEAR_MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
 
 	private final ProfileRepository profileRepository;
-	private final SeoulRegionCatalog regionCatalog;
-	private final EcoCurrentRoundQueryService ecoCurrentRoundQueryService;
 
 	@Transactional
 	public ProfileSaveResponse save(Long userId, ProfileSaveRequest request) {
-		validateRequired(request.sidoCode(), request.sigunguCode(), request.housingType(), request.areaBand());
+		ValidatedProfile profile = validate(
+			request.birthDate(), request.housingType(), request.areaBand(), request.currentStatus(),
+			request.annualIncomeBand(), request.householdStatus(), request.interestCategories()
+		);
 		ProfileSnapshot current = findUser(userId);
-		SeoulRegionCatalog.Sigungu sigungu = resolveRegion(request.sidoCode(), request.sigunguCode());
-		SeoulRegionCatalog.Sido sido = regionCatalog.sido();
-
-		update(current.name(), userId, sido, sigungu, request.housingType(), request.areaBand());
+		update(userId, current.name(), profile);
 		return new ProfileSaveResponse(
 			true,
-			profileSummary(sigungu.name(), request.housingType(), request.areaBand()),
+			true,
+			profileSummary(profile.housingType(), profile.areaBand()),
 			NEXT_SCREEN,
-			true
+			policyRegionLinked(current)
 		);
 	}
 
@@ -56,95 +62,134 @@ public class ProfileService {
 	public ProfileResponse find(Long userId) {
 		ProfileSnapshot profile = findUser(userId);
 		validateComplete(profile);
-		return toResponse(profile);
+		return new ProfileResponse(
+			profile.name(), profile.birthDate(), profile.housingType(), profile.areaBand(),
+			profile.currentStatus(), profile.annualIncomeBand(), profile.householdStatus(),
+			profileRepository.findInterestsByUserId(userId),
+			toProfileEcoAddress(profile),
+			profileSummary(profile.housingType(), profile.areaBand()),
+			profile.policyProfileCompleted(), profile.onboardingCompleted()
+		);
 	}
 
 	@Transactional
 	public ProfileUpdateResponse update(Long userId, ProfileUpdateRequest request) {
-		validateRequired(request.sidoCode(), request.sigunguCode(), request.housingType(), request.areaBand());
+		ValidatedProfile profile = validate(
+			request.birthDate(), request.housingType(), request.areaBand(), request.currentStatus(),
+			request.annualIncomeBand(), request.householdStatus(), request.interestCategories()
+		);
 		ProfileSnapshot current = findUser(userId);
-		validateComplete(current);
-		SeoulRegionCatalog.Sigungu sigungu = resolveRegion(request.sidoCode(), request.sigunguCode());
-		SeoulRegionCatalog.Sido sido = regionCatalog.sido();
 		String name = request.name() == null ? current.name() : normalizeAndValidateName(request.name());
-		boolean regionChanged = !request.sidoCode().equals(current.sidoCode())
-			|| !request.sigunguCode().equals(current.sigunguCode());
-		Optional<Long> activeRoundId = regionChanged
-			? ecoCurrentRoundQueryService.findGoalActiveRoundId(userId)
-			: Optional.empty();
-		if (activeRoundId.isPresent() && !Boolean.TRUE.equals(request.confirmBaselineChange())) {
-			throw new BusinessException(
-				CommonErrorCode.CONFLICT,
-				BASELINE_CHANGE_WARNING,
-				"confirmBaselineChange",
-				Map.of("warning", BASELINE_CHANGE_WARNING, "affectedRoundId", activeRoundId.get())
-			);
-		}
-
-		update(name, userId, sido, sigungu, request.housingType(), request.areaBand());
+		update(userId, name, profile);
 		return new ProfileUpdateResponse(
-			profileSummary(sigungu.name(), request.housingType(), request.areaBand()),
-			regionChanged,
-			activeRoundId.orElse(null)
+			profileSummary(profile.housingType(), profile.areaBand()),
+			true,
+			true
 		);
 	}
 
-	private void update(
-		String name,
-		Long userId,
-		SeoulRegionCatalog.Sido sido,
-		SeoulRegionCatalog.Sigungu sigungu,
-		HousingType housingType,
-		AreaBand areaBand
-	) {
+	@Transactional(readOnly = true)
+	public PolicyPreferencesResponse findPolicyPreferences(Long userId) {
+		ProfileSnapshot profile = findUser(userId);
+		validateComplete(profile);
+		return new PolicyPreferencesResponse(
+			profile.birthDate(), profile.housingType(), profile.areaBand(), profile.currentStatus(),
+			profile.annualIncomeBand(), profile.householdStatus(),
+			profileRepository.findInterestsByUserId(userId),
+			toPreferencesEcoAddress(profile),
+			false
+		);
+	}
+
+	@Transactional
+	public PolicyPreferencesUpdateResponse updatePolicyPreferences(Long userId, PolicyPreferencesRequest request) {
+		ValidatedProfile profile = validate(
+			request.birthDate(), request.housingType(), request.areaBand(), request.currentStatus(),
+			request.annualIncomeBand(), request.householdStatus(), request.interestCategories()
+		);
+		ProfileSnapshot current = findUser(userId);
+		update(userId, current.name(), profile);
+		return new PolicyPreferencesUpdateResponse(true, true);
+	}
+
+	private void update(Long userId, String name, ValidatedProfile profile) {
 		if (profileRepository.update(
-			userId, name, sido.code(), sido.name(), sigungu.code(), sigungu.name(), housingType, areaBand
+			userId, name, profile.birthDate(), profile.housingType(), profile.areaBand(),
+			profile.currentStatus(), profile.annualIncomeBand(), profile.householdStatus()
 		) != 1) {
 			throw unauthenticated();
 		}
+		profileRepository.replaceInterests(userId, profile.interestCategories());
 	}
 
-	private ProfileResponse toResponse(ProfileSnapshot profile) {
-		return new ProfileResponse(
-			profile.name(),
-			profile.sidoCode(),
-			profile.sidoName(),
-			profile.sigunguCode(),
-			profile.sigunguName(),
-			profile.housingType(),
-			profile.areaBand(),
-			profileSummary(profile.sigunguName(), profile.housingType(), profile.areaBand()),
-			"11".equals(profile.sidoCode()),
-			profile.onboardingCompleted()
+	private static ValidatedProfile validate(
+		LocalDate birthDate,
+		HousingType housingType,
+		AreaBand areaBand,
+		CurrentStatus currentStatus,
+		AnnualIncomeBand annualIncomeBand,
+		HouseholdStatus householdStatus,
+		List<PolicyInterestCategory> interestCategories
+	) {
+		if (birthDate == null || housingType == null || areaBand == null || currentStatus == null
+			|| annualIncomeBand == null || householdStatus == null) {
+			throw new BusinessException(ProfileErrorCode.PROFILE_INCOMPLETE);
+		}
+		if (birthDate.isAfter(LocalDate.now())) {
+			throw new BusinessException(ProfileErrorCode.BIRTH_DATE_INVALID, "birthDate", null);
+		}
+
+		List<PolicyInterestCategory> interests = interestCategories == null ? List.of() : interestCategories;
+		if (interests.size() > 3) {
+			throw new BusinessException(ProfileErrorCode.POLICY_INTEREST_LIMIT_EXCEEDED, "interestCategories", null);
+		}
+		if (interests.stream().anyMatch(java.util.Objects::isNull)
+			|| new LinkedHashSet<>(interests).size() != interests.size()) {
+			throw new BusinessException(CommonErrorCode.INVALID_REQUEST, "interestCategories", null);
+		}
+		return new ValidatedProfile(
+			birthDate, housingType, areaBand, currentStatus, annualIncomeBand, householdStatus,
+			List.copyOf(interests)
 		);
 	}
 
-	private SeoulRegionCatalog.Sigungu resolveRegion(String sidoCode, String sigunguCode) {
-		return regionCatalog.findSigungu(sidoCode, sigunguCode)
-			.orElseThrow(() -> new BusinessException(ProfileErrorCode.REGION_NOT_FOUND, "sigunguCode", null));
+	private static void validateComplete(ProfileSnapshot profile) {
+		if (!profile.onboardingCompleted() || !profile.policyProfileCompleted() || profile.birthDate() == null
+			|| profile.housingType() == null || profile.areaBand() == null || profile.currentStatus() == null
+			|| profile.annualIncomeBand() == null || profile.householdStatus() == null) {
+			throw new BusinessException(ProfileErrorCode.PROFILE_INCOMPLETE);
+		}
 	}
 
 	private ProfileSnapshot findUser(Long userId) {
 		return profileRepository.findByUserId(userId).orElseThrow(ProfileService::unauthenticated);
 	}
 
-	private static void validateRequired(
-		String sidoCode,
-		String sigunguCode,
-		HousingType housingType,
-		AreaBand areaBand
-	) {
-		if (sidoCode == null || sidoCode.isBlank() || sigunguCode == null || sigunguCode.isBlank()
-			|| housingType == null || areaBand == null) {
-			throw new BusinessException(ProfileErrorCode.PROFILE_INCOMPLETE);
+	private static ProfileResponse.EcoAddress toProfileEcoAddress(ProfileSnapshot profile) {
+		if (!policyRegionLinked(profile)) {
+			return null;
 		}
+		return new ProfileResponse.EcoAddress(
+			profile.ecoAddressLabel(), profile.ecoSidoCode(), profile.ecoSigunguCode(),
+			profile.ecoAddressRegisteredAt() == null
+				? null
+				: YEAR_MONTH_FORMATTER.format(profile.ecoAddressRegisteredAt())
+		);
 	}
 
-	private static void validateComplete(ProfileSnapshot profile) {
-		if (!profile.onboardingCompleted() || profile.sidoCode() == null || profile.sigunguCode() == null
-			|| profile.housingType() == null || profile.areaBand() == null) {
-			throw new BusinessException(ProfileErrorCode.PROFILE_INCOMPLETE);
+	private static PolicyPreferencesResponse.EcoAddress toPreferencesEcoAddress(ProfileSnapshot profile) {
+		if (!policyRegionLinked(profile)) {
+			return null;
 		}
+		return new PolicyPreferencesResponse.EcoAddress(
+			profile.ecoAddressLabel(), profile.ecoSidoCode(), profile.ecoSigunguCode()
+		);
+	}
+
+	private static boolean policyRegionLinked(ProfileSnapshot profile) {
+		return profile.ecoLinkStatus() == EcoLinkStatus.LINKED
+			&& profile.ecoSidoCode() != null
+			&& profile.ecoSigunguCode() != null;
 	}
 
 	private static String normalizeAndValidateName(String rawName) {
@@ -157,11 +202,22 @@ public class ProfileService {
 		return name;
 	}
 
-	private static String profileSummary(String sigunguName, HousingType housingType, AreaBand areaBand) {
-		return "서울 " + sigunguName + " · " + housingType.label() + " " + areaBand.label();
+	private static String profileSummary(HousingType housingType, AreaBand areaBand) {
+		return housingType.label() + " · " + areaBand.label();
 	}
 
 	private static BusinessException unauthenticated() {
 		return new BusinessException(CommonErrorCode.UNAUTHENTICATED);
+	}
+
+	private record ValidatedProfile(
+		LocalDate birthDate,
+		HousingType housingType,
+		AreaBand areaBand,
+		CurrentStatus currentStatus,
+		AnnualIncomeBand annualIncomeBand,
+		HouseholdStatus householdStatus,
+		List<PolicyInterestCategory> interestCategories
+	) {
 	}
 }
