@@ -1,0 +1,46 @@
+{
+  "items": [
+    {
+      "utilityType": "ELECTRICITY",
+      "comparisonLabel": "전국 1인 가구",
+      "usageUnit": "kWh",
+      "sourceName": "산업통상자원부·에너지경제연구원 2022년 기준 13차 가구에너지패널조사",
+      "sourceUrl": "https://kesis.keei.re.kr/pdfOpenG.es?bid=0001&list_no=95&seq=1",
+      "referencePeriod": "2022",
+      "calculationBasis": "ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT",
+      "annualTotalEnergyMcal": 7912.000,
+      "energyShareRate": 32.300,
+      "mcalPerUsageUnit": 0.860,
+      "dailyUsage": null,
+      "note": "전국 1인 가구 연간 에너지소비량과 전기 비중을 월평균 사용량으로 환산한 참고값입니다. 월별·서울 표본 평균은 아닙니다."
+    },
+    {
+      "utilityType": "GAS",
+      "comparisonLabel": "전국 1인 가구",
+      "usageUnit": "m3",
+      "sourceName": "산업통상자원부·에너지경제연구원 2022년 기준 13차 가구에너지패널조사",
+      "sourceUrl": "https://kesis.keei.re.kr/pdfOpenG.es?bid=0001&list_no=95&seq=1",
+      "referencePeriod": "2022",
+      "calculationBasis": "ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT",
+      "annualTotalEnergyMcal": 7912.000,
+      "energyShareRate": 39.300,
+      "mcalPerUsageUnit": 10.190,
+      "dailyUsage": null,
+      "note": "전국 1인 가구 연간 에너지소비량과 도시가스 비중을 월평균 사용량으로 환산한 참고값입니다. 난방 계절성과 도시가스 미사용 가구가 포함된 집계의 한계가 있습니다."
+    },
+    {
+      "utilityType": "WATER",
+      "comparisonLabel": "서울 아파트 1인 가구",
+      "usageUnit": "m3",
+      "sourceName": "서울특별시 서울물연구원 수돗물 사용량 분석",
+      "sourceUrl": "https://news.seoul.go.kr/env/archives/514374",
+      "referencePeriod": "2018",
+      "calculationBasis": "DAILY_USAGE_MONTH_EQUIVALENT",
+      "annualTotalEnergyMcal": null,
+      "energyShareRate": null,
+      "mcalPerUsageUnit": null,
+      "dailyUsage": 0.438,
+      "note": "서울 아파트 조사에서 확인한 1인 가구의 가정 내 하루 438L를 조회 월 일수로 환산한 참고값입니다. 전체 주거유형 평균은 아닙니다."
+    }
+  ]
+}

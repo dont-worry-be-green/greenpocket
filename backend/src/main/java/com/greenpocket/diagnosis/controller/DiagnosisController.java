@@ -2,7 +2,6 @@ package com.greenpocket.diagnosis.controller;
 
 import java.time.YearMonth;
 
-import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -47,7 +46,7 @@ public class DiagnosisController {
 		return ApiResponse.success(diagnosisResultService.findMonths(userId));
 	}
 
-	@Operation(summary = "월별 진단 결과 조회", description = "선택 월의 합계, 작년 동월, 지역 평균과 What-if 연결 정보를 조회합니다. 월을 생략하면 최신 등록 월을 조회합니다.")
+	@Operation(summary = "월별 진단 결과 조회", description = "선택 월의 합계, 작년 동월, 1인 가구 평균 사용량과 What-if 연결 정보를 조회합니다. 월을 생략하면 최신 등록 월을 조회합니다.")
 	@ApiResponses({
 		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "진단 결과 또는 빈 상태 조회 성공"),
 		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "조회 월 형식 오류"),
@@ -63,7 +62,7 @@ public class DiagnosisController {
 		return ApiResponse.success(diagnosisResultService.findDiagnosis(userId, month));
 	}
 
-	@Operation(summary = "지역 기준선 단건 조회", description = "요청 월 이하의 최신 시군구 기준선을 조회하고 없으면 시도 기준선으로 대체합니다.")
+	@Operation(summary = "1인 가구 사용량 기준선 조회", description = "요청 월의 1인 가구 평균 사용량과 출처·산출 기준을 조회합니다.")
 	@ApiResponses({
 		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "기준선 조회 성공 또는 기준선 없음"),
 		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "필수 쿼리 누락 또는 쿼리 형식 오류"),
@@ -72,19 +71,12 @@ public class DiagnosisController {
 	@GetMapping("/baseline")
 	public ApiResponse<DiagnosisBaselineResponse> getBaseline(
 		@Parameter(hidden = true) @CurrentUserId Long userId,
-		@Parameter(description = "시군구 코드", example = "11620", required = true)
-		@RequestParam @NotBlank String sigunguCode,
 		@Parameter(description = "조회 기준 월(YYYY-MM)", example = "2026-08", required = true)
 		@RequestParam @DateTimeFormat(pattern = "yyyy-MM") YearMonth month,
 		@Parameter(description = "에너지원", example = "ELECTRICITY", required = true)
 		@RequestParam(name = "utility") UtilityType utilityType
 	) {
-		DiagnosisBaselineResponse response = diagnosisBaselineService.findBaseline(
-			userId,
-			sigunguCode,
-			month,
-			utilityType
-		);
+		DiagnosisBaselineResponse response = diagnosisBaselineService.findBaseline(month, utilityType);
 		return ApiResponse.success(response);
 	}
 }

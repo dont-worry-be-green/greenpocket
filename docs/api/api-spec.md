@@ -248,7 +248,7 @@ GET   /bills/ocr/{jobId}   200           → { status, progress, result | error 
 | | `CONVERSION_DAILY_LIMIT` | 429 | 오늘 이미 전환함 (1일 1회) | D-2-02 |
 | | `CONVERSION_NOT_RETURNED` | 409 | 외부 이동 기록 없이 완료 요청 | D-2-02 |
 
-> **비교 데이터 부재는 에러가 아닙니다.** 지역 평균이 없거나(A-3-03) 작년 값이 없으면(A-3-06) `200` + `available: false` + `unavailableReason` 으로 내려서 화면이 "비교 데이터 준비 중"을 띄우게 합니다. 임의 값을 만들지 않습니다(비즈니스 규칙 8).
+> **비교 데이터 부재는 에러가 아닙니다.** 1인 가구 기준이 없거나(A-3-03) 작년 값이 없으면(A-3-06) `200` + `available: false` + `unavailableReason` 으로 내려서 화면이 "비교 데이터 준비 중"을 띄우게 합니다. 임의 값을 만들지 않습니다(비즈니스 규칙 8).
 
 ---
 
@@ -286,6 +286,7 @@ GET   /bills/ocr/{jobId}   200           → { status, progress, result | error 
 | `WhatIfScreen` | `WF_01_UNLINKED` · `WF_02_LINKING` · `WF_03_NO_GOAL` · `WF_06_IN_PROGRESS` · `WF_09_RESULT_READY` | `GET /eco/home` 이 FE에 알려주는 렌더 상태 |
 | `JobStatus` | `PENDING` · `RUNNING` · `SUCCEEDED` · `PARTIAL` · `FAILED` · `TIMEOUT` | OCR·연동 비동기 작업 |
 | `Tab` | `DIAGNOSIS` · `BENEFIT` · `WHATIF` · `POCKET` · `MYPAGE` | 하단 탭 5개 (COM-02) |
+| `BaselineCalculationBasis` | `ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT` · `DAILY_USAGE_MONTH_EQUIVALENT` | 1인 가구 기준의 연간 집계 월평균 환산 / 일 사용량 월 일수 환산 |
 
 ---
 
@@ -384,7 +385,7 @@ MVP 서비스 지역은 서울특별시로 한정합니다(결정 C-15). `sidoCo
 }
 ```
 
-- `hasRegionAverage` — `region_utility_snapshot` 에 해당 지역 행이 있는지. FE가 "비교 자료가 없는 지역은 더 넓은 범위의 평균을 써요" 안내를 미리 띄우는 데 씁니다(A-1-01).
+- `hasRegionAverage` — 기존 지역 평균 비교와의 응답 호환을 위해 유지하는 필드입니다. 결정 C-22 이후 진단 기준선 선택에는 사용하지 않습니다.
 - 시군구 코드는 한전 API `cityCd` 와 겸용(`app_user.sigungu_code` COMMENT).
 - 코드·명칭의 출처는 행정안전부 [행정표준코드관리시스템](https://www.code.go.kr/stdcode/regCodeL.do)과 [행정표준코드 API](https://www.data.go.kr/data/15077871/openapi.do)이며, 외부 장애에 영향을 받지 않도록 실행 중에는 `backend/src/main/resources/data/seoul-regions.json`을 사용합니다.
 
@@ -633,7 +634,7 @@ Request 본문은 5.1과 동일 + `name` 수정 가능.
 }
 ```
 
-- 지역이 바뀌면 서버가 진단 기준선(`region_utility_snapshot`)을 다시 조회하도록 캐시를 무효화합니다(A-1-06 완료 조건).
+- 지역 변경은 프로필 요약과 서울 거주 판정에 반영합니다. 결정 C-22 이후 1인 가구 진단 기준선은 지역에 따라 달라지지 않습니다.
 - 화면 MY-01의 "에코마일리지 주소 · 2026-03 등록" 은 **프로필 주소가 아니라 누리집 등록 주소**입니다(결정 8). `GET /mypage` 의 `ecoAddress` 를 쓰고, 여기서 프로필 주소를 바꿔도 그 값은 바뀌지 않습니다 — 다음 연동 때 갱신됩니다.
 
 ---
@@ -954,32 +955,48 @@ CLOVA Template OCR의 고정 데모 템플릿은 관리비 통합(43341)·개별
     ]
   },
 
-  "regionComparison": {
-    "regionLevel": "SIGUNGU",
-    "regionLabel": "서울 관악구",
-    "fallbackApplied": false,
-    "sourceName": "한국전력공사 전력데이터 개방포털",
-    "baseMonth": "2026-07",
-    "extractedAt": "2026-08-28T00:00:00+09:00",
+  "singleHouseholdComparison": {
+    "comparisonLabel": "1인 가구 평균 사용량",
     "tabs": [
       {
         "utilityType": "ELECTRICITY",
         "available": true,
         "unavailableReason": null,
-        "myAmount": 43200,
-        "regionAvgAmount": 38900,
-        "diffRegion": 4300,
-        "series": [
-          { "yearMonth": "2026-03", "mine": 39100, "regionAvg": 37200 },
-          { "yearMonth": "2026-04", "mine": 40500, "regionAvg": 37800 },
-          { "yearMonth": "2026-05", "mine": 41200, "regionAvg": 38100 },
-          { "yearMonth": "2026-06", "mine": 42000, "regionAvg": 38400 },
-          { "yearMonth": "2026-07", "mine": 40100, "regionAvg": 38600 },
-          { "yearMonth": "2026-08", "mine": 43200, "regionAvg": 38900 }
-        ]
+        "myUsage": 210.000,
+        "averageUsage": 247.633,
+        "differenceUsage": -37.633,
+        "differenceRate": -15.197,
+        "usageUnit": "kWh",
+        "comparisonLabel": "전국 1인 가구",
+        "sourceName": "산업통상자원부·에너지경제연구원 2022년 기준 13차 가구에너지패널조사",
+        "referencePeriod": "2022",
+        "calculationBasis": "ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT",
+        "note": "전국 1인 가구 연간 에너지소비량과 전기 비중을 월평균 사용량으로 환산한 참고값입니다. 월별·서울 표본 평균은 아닙니다."
       },
-      { "utilityType": "GAS",   "available": false, "unavailableReason": "REGION_DATA_NOT_PUBLISHED", "myAmount": 12400 },
-      { "utilityType": "WATER", "available": false, "unavailableReason": "REGION_DATA_NOT_PUBLISHED", "myAmount": 8900 }
+      {
+        "utilityType": "GAS",
+        "available": true,
+        "myUsage": 14.000,
+        "averageUsage": 25.429,
+        "differenceUsage": -11.429,
+        "differenceRate": -44.945,
+        "usageUnit": "m3",
+        "comparisonLabel": "전국 1인 가구",
+        "referencePeriod": "2022",
+        "calculationBasis": "ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT"
+      },
+      {
+        "utilityType": "WATER",
+        "available": true,
+        "myUsage": 10.000,
+        "averageUsage": 13.578,
+        "differenceUsage": -3.578,
+        "differenceRate": -26.351,
+        "usageUnit": "m3",
+        "comparisonLabel": "서울 아파트 1인 가구",
+        "referencePeriod": "2018",
+        "calculationBasis": "DAILY_USAGE_MONTH_EQUIVALENT"
+      }
     ]
   },
 
@@ -989,50 +1006,48 @@ CLOVA Template OCR의 고정 데모 템플릿은 관리비 통합(43341)·개별
 
 | 규칙 | 내용 |
 |---|---|
-| `available: false` | 지역 평균 행이 없으면 **임의 값을 만들지 않고** 이 플래그로 "비교 데이터 준비 중"을 띄움 (A-3-03 · 비즈니스 규칙 8) |
-| `unavailableReason` | `REGION_DATA_NOT_PUBLISHED`(수도·가스 미확보) · `SAMPLE_TOO_SMALL` · `NO_BASELINE` |
-| `fallbackApplied` | 시군구 표본 부족 → 시도 평균 대체. `regionLabel` 이 `"서울"` 로 바뀌고 FE가 범위 배지 표시 (A-3-02) |
-| `diffRegion` · `diff` | **양수 = 초과, 음수 = 미만.** 부호 그대로 내려주고 표기는 FE (A-3-08) |
+| `available: false` | 해당 에너지원의 1인 가구 기준이 없으면 **임의 값을 만들지 않고** 이 플래그로 "비교 데이터 준비 중"을 띄움 (A-3-03 · 비즈니스 규칙 8) |
+| `unavailableReason` | 현재 `NO_BASELINE` |
+| `differenceUsage` · `differenceRate` | **양수 = 평균 초과, 음수 = 평균 미만.** 부호 그대로 내려주고 표기는 FE (A-3-08) |
+| `calculationBasis` | `ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT`는 연간 에너지 집계의 월평균 환산, `DAILY_USAGE_MONTH_EQUIVALENT`는 일 사용량 × 조회 월 일수 |
+| `comparisonLabel` · `referencePeriod` · `note` | 비교군·기준 연도·자료 한계를 숨기지 않고 화면에 함께 표시 (결정 C-22) |
 | `hasPreviousYear: false` | 작년 값 없음 → 배지·카드 숨김. 에코마일리지 연동 유도 (A-3-05 · A-3-06) |
-| `series` | 최근 6개월. 데이터 없는 달은 `null` (A-3-07) |
 
 **Errors** `DIAGNOSIS_MONTH_EMPTY(404)` — 등록 안 된 월을 지정했을 때
 
 ---
 
-## 7.3 지역 기준선 단건 조회 (내부·검증용)
+## 7.3 1인 가구 사용량 기준선 단건 조회 (내부·검증용)
 
 `GET /diagnosis/baseline` · **P0** · A-3-02 · A-3-03
 
 | 쿼리 | 예 |
 |---|---|
-| `sigunguCode` | `11620` |
 | `month` | `2026-07` |
 | `utility` | `ELECTRICITY` |
 
-- `sidoCode` 는 인증 사용자의 `app_user.sido_code` 를 사용합니다. 진단 도메인은 사용자 Repository를 직접 호출하지 않고 사용자 조회 Service를 거칩니다.
-- `month` 와 정확히 같은 월만 찾지 않고 **요청 월 이하에서 가장 최근에 공개된 사용 가능한 기준선**을 선택합니다. 실제 선택된 월은 `baseMonth` 로 반환합니다.
-- 사용 가능한 기준선은 `avg_usage` 와 `avg_amount` 가 모두 있는 행입니다. 시군구 행이 없으면 같은 시도의 행을 한 번 조회합니다.
-- 표본 부족 최소 가구 수는 아직 확정되지 않았으므로 숫자를 하드코딩하지 않습니다. 데이터 담당자가 기준을 확정하면 설정값으로 추가합니다.
+- 지역·주거형태 파라미터는 받지 않습니다. 전기·도시가스는 KESIS 전국 1인 가구 연간 집계, 수도는 서울 아파트 1인 가구 조사값을 사용합니다.
+- 수도는 `month` 의 실제 일수에 따라 월 환산값이 달라집니다. 전기·도시가스는 월별 마이크로데이터가 아닌 연간 집계의 월평균 환산값입니다.
+- 런타임 외부 API를 호출하지 않고 `resources/data/single-household-utility-baselines.json`을 읽습니다.
 
 **Response 200**
 
 ```json
 {
   "found": true,
-  "regionLevel": "SIGUNGU",
-  "sidoCode": "11", "sigunguCode": "11620",
-  "baseMonth": "2026-07",
+  "targetYearMonth": "2026-07",
   "utilityType": "ELECTRICITY",
-  "householdCount": 132840,
-  "avgUsage": 289.400,
-  "avgAmount": 38900,
-  "sourceName": "한국전력공사 전력데이터 개방포털",
-  "extractedAt": "2026-08-28T00:00:00+09:00"
+  "comparisonLabel": "전국 1인 가구",
+  "averageUsage": 247.633,
+  "usageUnit": "kWh",
+  "sourceName": "산업통상자원부·에너지경제연구원 2022년 기준 13차 가구에너지패널조사",
+  "referencePeriod": "2022",
+  "calculationBasis": "ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT",
+  "note": "전국 1인 가구 연간 에너지소비량과 전기 비중을 월평균 사용량으로 환산한 참고값입니다. 월별·서울 표본 평균은 아닙니다."
 }
 ```
 
-시군구 기준선이 없으면 시도 평균으로 한 번 더 조회하고, 그것도 없으면 `found: false` · `regionLevel: null` — A-3-03 "임의 값을 만들지 않는다". 이때 요청 맥락인 `sidoCode` · `sigunguCode` · `utilityType` 은 유지하고 기준선 값은 `null` 로 반환합니다.
+해당 에너지원 기준이 없으면 `found: false` — A-3-03 "임의 값을 만들지 않는다". 이때 요청 맥락인 `targetYearMonth` · `utilityType` 은 유지하고 기준선 값은 `null` 로 반환합니다.
 7.2가 이 로직을 내부에서 쓰므로 FE는 보통 호출하지 않습니다. **시드·출처 검증용**으로 남깁니다.
 
 ---
@@ -2499,7 +2514,7 @@ P0·P1 107건 중 아래 12건은 서버 호출이 없습니다. 나머지 95건
 | A-2-02 | 입력 방식 선택 | FE 세그먼트. 두 경로 모두 `POST /bills` 로 수렴 |
 | A-2-06 | 인식 내용 수정 | FE 3탭 폼. 저장은 `POST /bills` |
 | A-2-10 | 등록 전 요약·확정 | FE 화면. 확정 전에는 저장하지 않음 |
-| A-3-01 | 지역 평균 기준선 데이터 | 비개발(데이터). `region_utility_snapshot` 시드 |
+| A-3-01 | 1인 가구 평균 사용량 기준선 데이터 | 비개발(데이터). `resources/data/single-household-utility-baselines.json` |
 | B-3-01 | 실천 미션 데이터 | 비개발(데이터). 근거 3종 NOT NULL 로 DB가 품질 강제 |
 | C-1-03 | 실천 항목 데이터 | 비개발(데이터). `greenlife_item` 17건 시드 |
 
@@ -2553,7 +2568,7 @@ P0·P1 107건 중 아래 12건은 서버 호출이 없습니다. 나머지 95건
 | `auth_account` | `POST /auth/login` | `POST /auth/signup` · `POST /auth/login`(last_login_at) |
 | `auth_refresh_token` | `POST /auth/refresh` · `/auth/logout` | `POST /auth/signup` · `/auth/login` · `/auth/refresh` · `/auth/logout` |
 | `utility_monthly_record` | `GET /diagnosis` · `/bills` · `/eco/monthly-report` · `/reports` | `POST/PUT/DELETE /bills` · `POST /eco/link`(ECO_BASELINE) |
-| `region_utility_snapshot` | `GET /diagnosis` · `/diagnosis/baseline` · `/meta/regions` | 시드만 (COM-09) |
+| `region_utility_snapshot` | `GET /meta/regions`의 하위 호환 `hasRegionAverage` | 시드만 (COM-09). 결정 C-22 이후 진단 API에서는 사용하지 않음 |
 | `eco_round` | `GET /eco/rounds*` · `/eco/home` · `/pocket/convertible-mileage` | `POST /eco/link` · `POST/PUT .../goal` · `POST .../application` · `POST .../result/view` |
 | `eco_round_utility` | `GET /eco/rounds/current` · `.../goal*` · `.../result` | `POST /eco/link` · `POST/PUT .../goal` |
 | `eco_monthly_report` | `GET /eco/monthly-report` · `/eco/home` · `/reports` | `POST/PUT/DELETE /bills` 재계산 |
@@ -2596,7 +2611,7 @@ P0·P1 107건 중 아래 12건은 서버 호출이 없습니다. 나머지 95건
 | **9** | 데모 초기화 CASCADE | 결정 4로 해결. `DELETE FROM app_user WHERE id = :uid` 한 줄로 사용자 데이터 8개 테이블이 비고 마스터 3개가 남는 것을 실측 확인 |
 | **10** | 녹색생활 항목 상한 | 값이 확정될 때까지 `monthlyCapAmount` · `annualCapAmount` 를 `null` 로 내리고 FE는 상한을 표시하지 않음 (담당 아영) |
 | **11** | 지역난방 | **미지원 확정.** `utility_type` 은 전기·가스·수도 3종 유지. 데모 페르소나가 도시가스 사용이라 시연에 지장 없음 |
-| **12** | 수도·가스 지역 평균 | 데이터 미확보, 추후 확보 예정. 그때까지 `available:false` + `unavailableReason: "REGION_DATA_NOT_PUBLISHED"` (7.2절). 데이터가 들어오면 API 변경 없이 `true` 로 바뀜 |
+| **12** | 수도·가스 지역 평균 | 2026-09-08 결정 C-22로 대체. 지역 평균 금액 비교를 폐기하고, 도시가스는 KESIS 전국 1인 가구 연간 집계 월환산값, 수도는 서울 아파트 1인 가구 일 사용량 월환산값을 사용함 |
 
 ## 16.4 화면 문구를 고치기로 한 것 (1건)
 
@@ -2619,7 +2634,7 @@ FROM eco_round_utility WHERE eco_round_id = :rid AND is_registered = 1;
 
 | 값 | 담당 | 들어갈 자리 |
 |---|---|---|
-| 한전 가구평균 API 인증키 · 최신 제공 월 | 유현 | `region_utility_snapshot` |
+| KESIS 1인 가구 전기·도시가스 월별 마이크로데이터 | 유현 | 확보 전에는 공개 연간 집계의 월평균 환산값 사용. 확보 시 `single-household-utility-baselines.json` 교체 |
 | 녹색생활실천 나머지 항목 단가·상한 | 아영 | `greenlife_item.unit_price` · `monthly_cap_amount` · `annual_cap_amount` |
 | 실천 미션 출처 수치·산출 근거·기관 | — | `mission_catalog` (세 값 없으면 INSERT 실패) |
 | 에코마일리지 시드(2024·2025년 4~9월) | 민철 | `utility_monthly_record(record_source='ECO_BASELINE')` |
@@ -2702,7 +2717,7 @@ FROM eco_round_utility WHERE eco_round_id = :rid AND is_registered = 1;
 | 잔액 제외 | 예상 마일리지·`PENDING` 포인트·`savedAmount` 미포함 | 비즈니스 규칙 3 |
 | 기본 계좌 | 두 계좌를 기본으로 지정 시도 → 1건만 유지 | D-3-01 |
 | 실패 처리 | 전환·출금 `FAILED` → 잔액 불변, 완료 화면 미표시 | D-2-03 · 비즈니스 규칙 11 |
-| 기준선 부재 | 지역 평균 없음 → `available:false`, **임의 값 생성 금지** | A-3-03 |
+| 기준선 부재 | 1인 가구 사용량 기준 없음 → `available:false`, **임의 값 생성 금지** | A-3-03 |
 | 결산 모달 | 닫은 뒤 재진입 → 다시 뜨지 않음 | B-5-01 |
 | 데모 초기화 | 초기화 후 사용자 데이터 0건, 마스터 유지 | COM-10 |
 
