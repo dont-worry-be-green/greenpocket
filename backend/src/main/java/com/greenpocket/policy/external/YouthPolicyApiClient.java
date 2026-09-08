@@ -29,6 +29,7 @@ public class YouthPolicyApiClient {
 
 	private static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(5);
 	private static final Duration DEFAULT_REQUEST_TIMEOUT = Duration.ofSeconds(20);
+	private static final String USER_AGENT = "Mozilla/5.0";
 	private static final DateTimeFormatter SOURCE_DATE_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
 	private final ObjectMapper objectMapper;
@@ -77,6 +78,7 @@ public class YouthPolicyApiClient {
 		HttpRequest request = HttpRequest.newBuilder(buildUri(pageNumber, pageSize))
 			.timeout(requestTimeout)
 			.header("Accept", "application/json")
+			.header("User-Agent", USER_AGENT)
 			.GET()
 			.build();
 		try {
