@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import com.greenpocket.eco.entity.EcoLinkStatus;
+
 @Repository
 @RequiredArgsConstructor
 public class AuthRepository {
@@ -35,7 +37,8 @@ public class AuthRepository {
 
 	public Optional<AuthAccountSnapshot> findAccountByEmail(String email) {
 		return jdbcClient.sql("""
-				SELECT a.user_id, a.email, a.password_hash, u.name, u.onboarding_completed
+				SELECT a.user_id, a.email, a.password_hash, u.name,
+				       u.onboarding_completed, u.eco_link_status
 				FROM auth_account a
 				JOIN app_user u ON u.id = a.user_id
 				WHERE a.email = :email
@@ -46,7 +49,8 @@ public class AuthRepository {
 				resultSet.getString("email"),
 				resultSet.getString("password_hash"),
 				resultSet.getString("name"),
-				resultSet.getBoolean("onboarding_completed")
+				resultSet.getBoolean("onboarding_completed"),
+				EcoLinkStatus.valueOf(resultSet.getString("eco_link_status"))
 			))
 			.optional();
 	}
@@ -117,7 +121,8 @@ public class AuthRepository {
 		String email,
 		String passwordHash,
 		String name,
-		boolean onboardingCompleted
+		boolean onboardingCompleted,
+		EcoLinkStatus ecoLinkStatus
 	) {
 	}
 

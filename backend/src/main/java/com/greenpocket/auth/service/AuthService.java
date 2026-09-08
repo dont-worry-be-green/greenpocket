@@ -29,6 +29,7 @@ import com.greenpocket.auth.exception.AuthErrorCode;
 import com.greenpocket.auth.repository.AuthRepository;
 import com.greenpocket.auth.repository.AuthRepository.AuthAccountSnapshot;
 import com.greenpocket.auth.repository.AuthRepository.RefreshTokenSnapshot;
+import com.greenpocket.eco.entity.EcoLinkStatus;
 import com.greenpocket.global.exception.BusinessException;
 import com.greenpocket.user.service.UserService;
 import com.greenpocket.user.service.UserService.RegisteredUser;
@@ -38,7 +39,8 @@ import com.greenpocket.user.service.UserService.RegisteredUser;
 public class AuthService {
 
 	private static final String TOKEN_TYPE = "Bearer";
-	private static final String ONBOARDING_SCREEN = "ONB-02";
+	private static final String ECO_LINK_SCREEN = "WF-01";
+	private static final String ECO_LINKING_SCREEN = "WF-02";
 	private static final String HOME_SCREEN = "WF-06";
 	private static final int REFRESH_TOKEN_BYTES = 32;
 	private static final int BCRYPT_MAX_BYTES = 72;
@@ -63,7 +65,9 @@ public class AuthService {
 			throw new BusinessException(AuthErrorCode.EMAIL_ALREADY_USED, "email", null);
 		}
 
-		RegisteredUser user = userService.createRegisteredUser(request.name());
+		RegisteredUser user = userService.createRegisteredUser(
+			request.name(), request.birthDate(), request.gender(), request.phoneNumber()
+		);
 		try {
 			authRepository.createAccount(user.userId(), email, passwordEncoder.encode(request.password()));
 		}
@@ -78,7 +82,7 @@ public class AuthService {
 			email,
 			user.name(),
 			user.onboardingCompleted(),
-			user.onboardingCompleted() ? HOME_SCREEN : ONBOARDING_SCREEN,
+			ECO_LINK_SCREEN,
 			tokens.accessToken(),
 			TOKEN_TYPE,
 			jwtTokenService.accessExpirationSeconds()
@@ -103,7 +107,7 @@ public class AuthService {
 			account.userId(),
 			account.name(),
 			account.onboardingCompleted(),
-			account.onboardingCompleted() ? HOME_SCREEN : ONBOARDING_SCREEN,
+			entryScreen(account.ecoLinkStatus()),
 			tokens.accessToken(),
 			TOKEN_TYPE,
 			jwtTokenService.accessExpirationSeconds()
@@ -213,6 +217,14 @@ public class AuthService {
 
 	private static BusinessException invalidCredentials() {
 		return new BusinessException(AuthErrorCode.AUTH_CREDENTIALS_INVALID);
+	}
+
+	private static String entryScreen(EcoLinkStatus status) {
+		return switch (status) {
+			case LINKING -> ECO_LINKING_SCREEN;
+			case LINKED -> HOME_SCREEN;
+			case UNLINKED, FAILED -> ECO_LINK_SCREEN;
+		};
 	}
 
 	private record SessionTokens(String accessToken, String refreshToken) {

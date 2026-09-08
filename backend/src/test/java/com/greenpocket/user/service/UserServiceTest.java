@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.Optional;
@@ -22,6 +23,7 @@ import com.greenpocket.eco.service.EcoCurrentRoundQueryService;
 import com.greenpocket.global.exception.BusinessException;
 import com.greenpocket.user.dto.UserBootstrapResponse;
 import com.greenpocket.user.dto.UserStartRequest;
+import com.greenpocket.user.entity.Gender;
 import com.greenpocket.user.repository.UserRepository;
 import com.greenpocket.user.repository.UserRepository.UserSnapshot;
 
@@ -64,7 +66,7 @@ class UserServiceTest {
 		assertThat(result.response().name()).isEqualTo("김수현");
 		assertThat(result.response().pocketAccountNo()).isEqualTo(ACCOUNT_NO);
 		assertThat(result.response().pocketHolder()).isEqualTo("김수현");
-		assertThat(result.response().nextScreen()).isEqualTo("ONB-02");
+		assertThat(result.response().nextScreen()).isEqualTo("WF-06");
 		verify(userRepository).create(DEMO_KEY, "김수현", ACCOUNT_NO);
 	}
 
@@ -126,6 +128,36 @@ class UserServiceTest {
 	}
 
 	@Test
+	void createsRegisteredUserWithVerifiedIdentity() {
+		when(accountNumberGenerator.generate()).thenReturn(ACCOUNT_NO);
+		when(userRepository.existsByPocketAccountNo(ACCOUNT_NO)).thenReturn(false);
+		when(userRepository.existsByPhoneNumber("01091740339")).thenReturn(false);
+		when(userRepository.findByPocketAccountNo(ACCOUNT_NO)).thenReturn(Optional.of(user(true)));
+
+		UserService.RegisteredUser result = userService.createRegisteredUser(
+			" 김수현 ", LocalDate.of(1998, 3, 15), Gender.FEMALE, "010-9174-0339"
+		);
+
+		assertThat(result.onboardingCompleted()).isTrue();
+		verify(userRepository).createRegistered(
+			"김수현", LocalDate.of(1998, 3, 15), Gender.FEMALE, "01091740339", ACCOUNT_NO
+		);
+	}
+
+	@Test
+	void rejectsInvalidVerifiedIdentity() {
+		assertThatThrownBy(() -> userService.createRegisteredUser(
+			"김수현", LocalDate.now().plusDays(1), Gender.FEMALE, "01091740339"
+		)).isInstanceOfSatisfying(BusinessException.class,
+			exception -> assertThat(exception.getErrorCode().code()).isEqualTo("BIRTH_DATE_INVALID"));
+
+		assertThatThrownBy(() -> userService.createRegisteredUser(
+			"김수현", LocalDate.of(1998, 3, 15), Gender.FEMALE, "1234"
+		)).isInstanceOfSatisfying(BusinessException.class,
+			exception -> assertThat(exception.getErrorCode().code()).isEqualTo("PHONE_NUMBER_INVALID"));
+	}
+
+	@Test
 	void returnsCompletedBootstrapWithBillAndCurrentRound() {
 		when(userRepository.findById(1L)).thenReturn(Optional.of(user(true)));
 		when(billExistenceQueryService.existsByUserId(1L)).thenReturn(true);
@@ -141,7 +173,7 @@ class UserServiceTest {
 
 	@Test
 	void returnsOnboardingBootstrapWithoutBillOrRound() {
-		when(userRepository.findById(1L)).thenReturn(Optional.of(user(false)));
+		when(userRepository.findById(1L)).thenReturn(Optional.of(user(false, EcoLinkStatus.UNLINKED)));
 		when(billExistenceQueryService.existsByUserId(1L)).thenReturn(false);
 		when(ecoCurrentRoundQueryService.findCurrentRoundId(1L)).thenReturn(Optional.empty());
 
@@ -149,7 +181,7 @@ class UserServiceTest {
 
 		assertThat(response.hasBill()).isFalse();
 		assertThat(response.currentRoundId()).isNull();
-		assertThat(response.entryScreen()).isEqualTo("ONB-02");
+		assertThat(response.entryScreen()).isEqualTo("WF-01");
 	}
 
 	private void assertNameInvalid(String name) {
@@ -161,12 +193,16 @@ class UserServiceTest {
 	}
 
 	private UserSnapshot user(boolean onboardingCompleted) {
+		return user(onboardingCompleted, EcoLinkStatus.LINKED);
+	}
+
+	private UserSnapshot user(boolean onboardingCompleted, EcoLinkStatus ecoLinkStatus) {
 		return new UserSnapshot(
 			1L,
 			DEMO_KEY,
 			"김수현",
 			onboardingCompleted,
-			EcoLinkStatus.LINKED,
+			ecoLinkStatus,
 			LocalDateTime.of(2026, 9, 1, 9, 0),
 			true,
 			LocalDateTime.of(2026, 9, 1, 9, 12),
