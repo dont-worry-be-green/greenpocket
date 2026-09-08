@@ -23,6 +23,8 @@ import com.greenpocket.eco.service.EcoReportQueryService.EcoMonthlyReport;
 import com.greenpocket.eco.service.EcoReportQueryService.EcoResultReport;
 import com.greenpocket.global.type.UtilityType;
 import com.greenpocket.mypage.dto.MypageResponse;
+import com.greenpocket.policy.dto.PolicyMypageSummary;
+import com.greenpocket.policy.service.PolicyQueryService;
 import com.greenpocket.user.repository.UserMypageQueryRepository.UserMypageSnapshot;
 import com.greenpocket.user.service.UserMypageQueryService;
 
@@ -34,6 +36,7 @@ class MypageServiceTest {
 	private BillReportQueryService billReportQueryService;
 	private EcoReportQueryService ecoReportQueryService;
 	private EcoLinkService ecoLinkService;
+	private PolicyQueryService policyQueryService;
 	private MypageService mypageService;
 
 	@BeforeEach
@@ -42,11 +45,13 @@ class MypageServiceTest {
 		billReportQueryService = mock(BillReportQueryService.class);
 		ecoReportQueryService = mock(EcoReportQueryService.class);
 		ecoLinkService = mock(EcoLinkService.class);
+		policyQueryService = mock(PolicyQueryService.class);
 		mypageService = new MypageService(
 			userMypageQueryService,
 			billReportQueryService,
 			ecoReportQueryService,
-			ecoLinkService
+			ecoLinkService,
+			policyQueryService
 		);
 	}
 
@@ -69,24 +74,26 @@ class MypageServiceTest {
 			)
 		));
 		when(ecoLinkService.getStatus(USER_ID)).thenReturn(linkedEcoStatus());
+		when(policyQueryService.getMypageSummary(USER_ID, 3))
+			.thenReturn(new PolicyMypageSummary(true, true, 12, List.of(), null));
 
 		MypageResponse response = mypageService.getMypage(USER_ID);
 
-		assertThat(response.profile().profileSummary()).isEqualTo("서울 관악구 · 원룸 · 10평 이하");
+		assertThat(response.profile().profileSummary()).isEqualTo("원룸 · 10평 이하");
 		assertThat(response.links().billArchive().count()).isEqualTo(14L);
 		assertThat(response.links().reportArchive().count()).isEqualTo(3L);
 		assertThat(response.ecoAddress().registeredAt()).isEqualTo("2026-03");
-		assertThat(response.ecoAddress().matchesProfile()).isTrue();
-		assertThat(response.ecoAddress().notice()).contains("이사했다면");
+		assertThat(response.ecoAddress().notice()).contains("에코마일리지 누리집");
 		assertThat(response.integration().registeredUtilities())
 			.containsExactly(UtilityType.ELECTRICITY, UtilityType.GAS, UtilityType.WATER);
 		assertThat(response.pocketAccountNo()).isEqualTo("1005-1234-5678-90");
+		assertThat(response.youthPolicy().recommendedCount()).isEqualTo(12);
 	}
 
 	@Test
 	void returnsNullEcoAddressWhenNotLinked() {
 		UserMypageSnapshot user = new UserMypageSnapshot(
-			"김수현", "11", "서울특별시", "11620", "관악구", "ONE_ROOM", "UNDER_10",
+			"김수현", LocalDate.of(1998, 3, 15), "ONE_ROOM", "UNDER_10", true,
 			EcoLinkStatus.UNLINKED, null, null, null, null, null, false, null, "1005-1234-5678-90"
 		);
 		when(userMypageQueryService.findMypageUser(USER_ID)).thenReturn(Optional.of(user));
@@ -97,6 +104,8 @@ class MypageServiceTest {
 			EcoLinkStatus.UNLINKED, null, true, true, null, List.of(), false, null,
 			"https://ecomileage.seoul.go.kr"
 		));
+		when(policyQueryService.getMypageSummary(USER_ID, 3))
+			.thenReturn(new PolicyMypageSummary(true, false, 3, List.of(), null));
 
 		MypageResponse response = mypageService.getMypage(USER_ID);
 
@@ -106,7 +115,7 @@ class MypageServiceTest {
 
 	private UserMypageSnapshot linkedUser() {
 		return new UserMypageSnapshot(
-			"김수현", "11", "서울특별시", "11620", "관악구", "ONE_ROOM", "UNDER_10",
+			"김수현", LocalDate.of(1998, 3, 15), "ONE_ROOM", "UNDER_10", true,
 			EcoLinkStatus.LINKED, LocalDateTime.of(2026, 9, 1, 9, 0), "11", "11620",
 			"서울 관악구", LocalDate.of(2026, 3, 1), true,
 			LocalDateTime.of(2026, 9, 1, 9, 12), "1005-1234-5678-90"

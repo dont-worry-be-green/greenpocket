@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
+import java.time.LocalDate;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,8 +43,8 @@ class MypageControllerTest {
 	void returnsMypageMain() throws Exception {
 		when(mypageService.getMypage(USER_ID)).thenReturn(new MypageResponse(
 			new MypageResponse.Profile(
-				"김수현", "서울특별시", "관악구", "ONE_ROOM", "UNDER_10",
-				"서울 관악구 · 원룸 · 10평 이하"
+				"김수현", LocalDate.of(1998, 3, 15), "ONE_ROOM", "UNDER_10",
+				"원룸 · 10평 이하"
 			),
 			new MypageResponse.Links(
 				new MypageResponse.ArchiveLink(14, "MY-03"),
@@ -51,7 +52,8 @@ class MypageControllerTest {
 			),
 			null,
 			null,
-			"1005-1234-5678-90"
+			"1005-1234-5678-90",
+			new MypageResponse.YouthPolicy(true, false, 3, List.of(), null)
 		));
 
 		mockMvc.perform(get("/api/v1/mypage")
@@ -59,7 +61,8 @@ class MypageControllerTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.data.profile.name").value("김수현"))
 			.andExpect(jsonPath("$.data.links.billArchive.count").value(14))
-			.andExpect(jsonPath("$.data.pocketAccountNo").value("1005-1234-5678-90"));
+			.andExpect(jsonPath("$.data.pocketAccountNo").value("1005-1234-5678-90"))
+			.andExpect(jsonPath("$.data.youthPolicy.recommendedCount").value(3));
 	}
 
 	@Test

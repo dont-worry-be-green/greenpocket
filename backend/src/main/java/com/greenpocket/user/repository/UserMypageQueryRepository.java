@@ -21,8 +21,7 @@ public class UserMypageQueryRepository {
 
 	public Optional<UserMypageSnapshot> findByUserId(Long userId) {
 		return jdbcClient.sql("""
-				SELECT name, sido_code, sido_name, sigungu_code, sigungu_name,
-				       housing_type, area_band,
+				SELECT name, birth_date, housing_type, area_band, policy_profile_completed,
 				       eco_link_status, eco_linked_at,
 				       eco_sido_code, eco_sigungu_code,
 				       eco_address_label, eco_address_registered_at,
@@ -34,12 +33,10 @@ public class UserMypageQueryRepository {
 			.param("userId", userId)
 			.query((resultSet, rowNum) -> new UserMypageSnapshot(
 				resultSet.getString("name"),
-				resultSet.getString("sido_code"),
-				resultSet.getString("sido_name"),
-				resultSet.getString("sigungu_code"),
-				resultSet.getString("sigungu_name"),
+				toLocalDate(resultSet.getDate("birth_date")),
 				resultSet.getString("housing_type"),
 				resultSet.getString("area_band"),
+				resultSet.getBoolean("policy_profile_completed"),
 				EcoLinkStatus.valueOf(resultSet.getString("eco_link_status")),
 				toLocalDateTime(resultSet.getTimestamp("eco_linked_at")),
 				resultSet.getString("eco_sido_code"),
@@ -63,12 +60,10 @@ public class UserMypageQueryRepository {
 
 	public record UserMypageSnapshot(
 		String name,
-		String sidoCode,
-		String sidoName,
-		String sigunguCode,
-		String sigunguName,
+		LocalDate birthDate,
 		String housingType,
 		String areaBand,
+		boolean policyProfileCompleted,
 		EcoLinkStatus ecoLinkStatus,
 		LocalDateTime ecoLinkedAt,
 		String ecoSidoCode,
