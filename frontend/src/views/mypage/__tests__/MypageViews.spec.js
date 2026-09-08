@@ -49,7 +49,6 @@ const MYPAGE = {
     birthDate: '1998-03-14',
     currentStatus: '재직 중',
     annualIncomeBand: '3,000만원 이하',
-    householdHousingSituation: '1인 가구 · 월세',
     interestAreas: ['주거', '취업', '생활비', '교육'],
   },
   links: {
@@ -222,14 +221,13 @@ describe('MY-01 마이페이지 메인', () => {
     expect(text).toContain('생년월일1998.03.14')
     expect(text).toContain('현재 상태재직 중')
     expect(text).toContain('연소득 구간3,000만원 이하')
-    expect(text).toContain('가구·주거 상황1인 가구 · 월세')
     expect(text).toContain('관심 분야주거 · 취업 · 생활비')
     expect(text).not.toContain('주거 · 취업 · 생활비 · 교육')
     expect(toggle.text()).toContain('접기')
     expect(toggle.attributes('aria-expanded')).toBe('true')
   })
 
-  it('맞춤 정보 값이 없어도 다섯 항목을 펼쳐 확인할 수 있다', async () => {
+  it('맞춤 정보 값이 없어도 네 항목을 펼쳐 확인할 수 있다', async () => {
     getMypage.mockResolvedValueOnce({
       ...MYPAGE,
       profile: {
@@ -237,7 +235,6 @@ describe('MY-01 마이페이지 메인', () => {
         birthDate: null,
         currentStatus: null,
         annualIncomeBand: null,
-        householdHousingSituation: null,
         interestAreas: [],
       },
     })
@@ -249,7 +246,6 @@ describe('MY-01 마이페이지 메인', () => {
     expect(info.text()).toContain('생년월일-')
     expect(info.text()).toContain('현재 상태-')
     expect(info.text()).toContain('연소득 구간-')
-    expect(info.text()).toContain('가구·주거 상황-')
     expect(info.text()).toContain('관심 분야-')
   })
 

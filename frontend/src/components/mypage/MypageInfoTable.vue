@@ -39,10 +39,6 @@ const detailRows = () => [
   { label: '생년월일', value: formatBirthDate(props.profile.birthDate) },
   { label: '현재 상태', value: valueOrDash(props.profile.currentStatus) },
   { label: '연소득 구간', value: valueOrDash(props.profile.annualIncomeBand) },
-  {
-    label: '가구·주거 상황',
-    value: valueOrDash(props.profile.householdHousingSituation),
-  },
   { label: '관심 분야', value: formatInterests(props.profile.interestAreas) },
 ]
 
