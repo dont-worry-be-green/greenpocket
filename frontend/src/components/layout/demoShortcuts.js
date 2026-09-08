@@ -31,9 +31,9 @@ export const DEMO_SHORTCUTS = [
     ],
   },
   {
-    group: '마이페이지 · 보관함',
+    group: '마이 · 보관함',
     items: [
-      { label: 'MY-01 마이페이지', to: '/mypage' },
+      { label: 'MY-01 마이', to: '/mypage' },
       { label: 'MY-02 기본 정보 수정', to: '/mypage/profile' },
       { label: 'MY-03 고지서 보관함', to: '/mypage/bills' },
       { label: 'MY-03 전기 탭', to: '/mypage/bills?utility=ELECTRICITY' },

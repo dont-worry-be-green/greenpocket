@@ -93,8 +93,16 @@ const SERIES_COLOR = {
       </div>
 
       <ul class="mt-3 mb-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0">
-        <li v-for="item in registeredItems" :key="item.utilityType" class="flex items-center gap-1.5">
-          <span class="size-2.5 rounded-full" :class="SERIES_COLOR[item.utilityType]" aria-hidden="true" />
+        <li
+          v-for="item in registeredItems"
+          :key="item.utilityType"
+          class="flex items-center gap-1.5"
+        >
+          <span
+            class="size-2.5 rounded-full"
+            :class="SERIES_COLOR[item.utilityType]"
+            aria-hidden="true"
+          />
           <span class="text-caption text-ink-soft">{{ formatUtilityType(item.utilityType) }}</span>
           <span class="text-caption text-ink-soft tabular-nums font-semibold">
             {{ formatPercent(item.shareRate) }}
@@ -110,8 +118,9 @@ const SERIES_COLOR = {
 
     <!-- B-1-08 이사 안내 -->
     <p v-if="showMovingNotice" class="text-caption text-muted m-0 px-1">
-      이사했다면 <RouterLink to="/mypage" class="text-primary-on-soft underline">마이페이지</RouterLink>에서
-      주소를 바꿔주세요. 바꾸지 않으면 지금 살지 않는 집의 사용량과 비교돼요.
+      이사했다면
+      <RouterLink to="/mypage" class="text-primary-on-soft underline">마이</RouterLink>에서 주소를
+      바꿔주세요. 바꾸지 않으면 지금 살지 않는 집의 사용량과 비교돼요.
     </p>
 
     <GpButton @click="$emit('set-goal')">평가 기간 목표 정하기</GpButton>
