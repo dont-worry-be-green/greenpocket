@@ -69,7 +69,7 @@ cd backend
 
 ## 4. 패키지 구조와 레이어
 
-도메인 구분은 `docs/api/api-spec.md` 15.1 「API 64개 한눈에 보기」의 영역과 1:1이다.
+도메인 구분은 `docs/api/api-spec.md` 15.1 「API 65개 한눈에 보기」의 영역과 1:1이다.
 
 ```
 com.greenpocket
@@ -81,7 +81,7 @@ com.greenpocket
 ├── eco/          에코마일리지 연동·목표·진행·평가 결과       API 20 · 8~11절
 │   └── mission/  실천 미션 선택·일일 기록·재조정
 ├── greenlife/    탄소중립포인트 녹색생활실천                API 5  · 12절
-├── pocket/       잔액·적립 내역·마일리지 전환·출금 계좌      API 14 · 13절
+├── pocket/       잔액·적립 내역·마일리지 전환·출금 계좌·상품 추천 API 15 · 13절
 ├── mypage/       마이페이지, 리포트 보관함                  API 2  · 14절
 └── global/       config, exception, entity, response  ← 공통
 ```
