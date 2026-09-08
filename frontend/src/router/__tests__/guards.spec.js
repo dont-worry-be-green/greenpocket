@@ -43,14 +43,13 @@ describe('서버 세션 기반 진입 가드', () => {
     },
   )
 
-  it('로그인했지만 프로필 전이면 프로필 화면으로 보낸다', async () => {
+  it('예전 계정의 온보딩 플래그가 false여도 폐기된 프로필 화면으로 보내지 않는다', async () => {
     const auth = useAuthStore()
     auth.sessionChecked = true
     auth.authenticated = true
     auth.onboardingCompleted = false
 
-    await expect(at('/whatif')).resolves.toBe('/onboarding/profile')
-    await expect(at('/onboarding/profile')).resolves.toBe(true)
+    await expect(at('/whatif')).resolves.toBe(true)
   })
 
   it('온보딩까지 끝난 사용자가 인증 화면으로 가면 홈으로 보낸다', async () => {

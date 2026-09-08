@@ -14,19 +14,25 @@ import client, { clearAccessToken, refreshAccessToken, setAccessToken } from '@/
 beforeEach(() => vi.clearAllMocks())
 
 describe('실제 인증 API 계약', () => {
-  it('회원가입은 이메일·비밀번호·이름을 보내고 access token을 메모리에 둔다', async () => {
-    client.post.mockResolvedValue({ accessToken: 'signup-token', nextScreen: 'ONB-02' })
+  it('회원가입은 계정·본인인증 정보를 보내고 access token을 메모리에 둔다', async () => {
+    client.post.mockResolvedValue({ accessToken: 'signup-token', nextScreen: 'WF-01' })
 
     await authApi.signup({
       email: ' user@example.com ',
       password: 'password1234',
       name: ' 이아영 ',
+      birthDate: '1998-03-15',
+      gender: 'FEMALE',
+      phoneNumber: '010-1111-1111',
     })
 
     expect(client.post).toHaveBeenCalledWith('/auth/signup', {
       email: 'user@example.com',
       password: 'password1234',
       name: '이아영',
+      birthDate: '1998-03-15',
+      gender: 'FEMALE',
+      phoneNumber: '01011111111',
     })
     expect(setAccessToken).toHaveBeenCalledWith('signup-token')
   })

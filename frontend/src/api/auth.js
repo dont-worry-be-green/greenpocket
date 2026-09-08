@@ -21,11 +21,14 @@ function rememberAccessToken(data) {
   return data
 }
 
-export async function signup({ email, password, name }) {
+export async function signup({ email, password, name, birthDate, gender, phoneNumber }) {
   const data = await client.post('/auth/signup', {
     email: String(email ?? '').trim(),
     password,
     name: String(name ?? '').trim(),
+    birthDate,
+    gender,
+    phoneNumber: String(phoneNumber ?? '').replace(/\D/g, ''),
   })
   return rememberAccessToken(data)
 }

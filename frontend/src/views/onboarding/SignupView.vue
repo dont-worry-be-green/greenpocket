@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router'
 
 import AppSubLayout from '@/components/layout/AppSubLayout.vue'
 import OnbAccountFields from '@/components/onboarding/OnbAccountFields.vue'
-import OnbProgress from '@/components/onboarding/OnbProgress.vue'
 import OnbVerifyFields from '@/components/onboarding/OnbVerifyFields.vue'
 import GpButton from '@/components/ui/GpButton.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -13,6 +12,9 @@ const router = useRouter()
 const store = useAuthStore()
 
 const name = ref('')
+const birthDate = ref('')
+const gender = ref('')
+const phoneNumber = ref('')
 const email = ref('')
 const password = ref('')
 const passwordConfirm = ref('')
@@ -37,6 +39,17 @@ const nameMessage = computed(() => {
   if (!nameValid.value) return '이름에 글자나 숫자를 하나 이상 넣어 주세요.'
   return ''
 })
+const today = (() => {
+  const now = new Date()
+  const offset = now.getTimezoneOffset() * 60_000
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10)
+})()
+const birthDateMessage = computed(() => {
+  if (!birthDate.value) return '생년월일을 입력해 주세요.'
+  if (birthDate.value > today) return '생년월일은 오늘보다 이후일 수 없어요.'
+  return ''
+})
+const genderMessage = computed(() => (gender.value ? '' : '성별을 선택해 주세요.'))
 const emailMessage = computed(() => {
   if (!trimmedEmail.value) return '이메일을 입력해 주세요.'
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail.value)) return '이메일 형식을 확인해 주세요.'
@@ -54,6 +67,9 @@ const canSubmit = computed(
   () =>
     verified.value &&
     !nameMessage.value &&
+    !birthDateMessage.value &&
+    !genderMessage.value &&
+    Boolean(phoneNumber.value) &&
     !emailMessage.value &&
     !passwordMessage.value &&
     !store.isSigningUp,
@@ -96,21 +112,27 @@ async function submit() {
 
   const created = await store.signup({
     name: trimmedName.value,
+    birthDate: birthDate.value,
+    gender: gender.value,
+    phoneNumber: phoneNumber.value,
     email: trimmedEmail.value,
     password: password.value,
   })
-  if (created) router.replace('/onboarding/profile')
+  if (created) router.replace('/whatif')
 }
 </script>
 
 <template>
   <AppSubLayout title="회원가입" back="/onboarding/start">
-    <OnbProgress :step="1" :total="2" />
-
-    <form class="space-y-6 pt-5" @submit.prevent="submit">
+    <form class="space-y-6 pt-2" @submit.prevent="submit">
       <OnbVerifyFields
         v-model:name="name"
+        v-model:birth-date="birthDate"
+        v-model:gender="gender"
+        v-model:phone-number="phoneNumber"
         :name-valid="nameValid"
+        :birth-date-valid="!birthDateMessage"
+        :max-birth-date="today"
         :sent="smsSent"
         :verified="verified"
         :expires-in-seconds="store.smsExpiresInSeconds"
@@ -118,6 +140,8 @@ async function submit() {
         :verifying="store.isVerifyingCode"
         :error-message="codeError"
         :name-error="nameTouched ? nameMessage : ''"
+        :birth-date-error="touched ? birthDateMessage : ''"
+        :gender-error="touched ? genderMessage : ''"
         @request="requestCode"
         @verify="verifyCode"
         @resend="resendCode"

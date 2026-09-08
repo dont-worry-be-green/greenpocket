@@ -17,7 +17,7 @@ async function submit() {
   if (!canSubmit.value) return
   const result = await store.login({ email: email.value, password: password.value })
   if (!result) return
-  router.replace(result.entryScreen === 'ONB-02' ? '/onboarding/profile' : '/whatif')
+  router.replace('/whatif')
 }
 </script>
 

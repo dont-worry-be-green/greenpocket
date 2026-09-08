@@ -3,13 +3,12 @@
  *   ONB-01  랜딩 (로그인 / 회원가입 두 갈래)
  *   ONB-01a 로그인
  *   ONB-01b 회원가입 (본인확인 + 계정 만들기 — 한 화면)
- *   ONB-02  주거 프로필
  *
- * 네 화면 모두 탭바가 없다. ONB-01 은 첫 화면이라 뒤로가기도 없어서 셸을 쓰지 않고,
+ * 세 화면 모두 탭바가 없다. ONB-01 은 첫 화면이라 뒤로가기도 없어서 셸을 쓰지 않고,
  * 나머지는 `AppSubLayout` 으로 앞 화면으로 돌아간다.
  *
- * 진입 가드(COM-02)는 `router/guards.js` 에 있고 **두 단계다** — 로그인했나 · 온보딩 마쳤나.
- * 그 판정이 서버가 아니라 로컬 플래그인 이유도 거기 적어 두었다.
+ * 별도 온보딩은 제거됐다(결정 C-26). 가입·로그인 후에는 `/whatif` 한 경로에서
+ * 서버가 내려주는 에코 연동 상태에 따라 WF-01·WF-02·WF-06을 그린다.
  */
 export default [
   {
@@ -40,13 +39,8 @@ export default [
     component: () => import('@/views/onboarding/SignupView.vue'),
   },
   {
+    // 예전 ONB-02 주소로 들어와도 폐기된 주거 프로필을 다시 노출하지 않는다.
     path: '/onboarding/profile',
-    name: 'onb-02-profile',
-    /*
-     * 로그인해야 들어올 수 있다. 그 판정은 뷰가 아니라 가드가 한다 —
-     * 예전에는 뷰가 스토어의 `user` 를 보고 되돌려 보냈는데, 새로고침하면 그 값이 사라져
-     * 정상 진입까지 막혔다.
-     */
-    component: () => import('@/views/onboarding/ProfileView.vue'),
+    redirect: '/whatif',
   },
 ]
