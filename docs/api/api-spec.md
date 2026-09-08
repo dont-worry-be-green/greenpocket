@@ -1068,7 +1068,7 @@ CLOVA Template OCR의 고정 데모 템플릿은 관리비 통합(43341)·개별
 | `month` | `2026-07` |
 | `utility` | `ELECTRICITY` |
 
-- 지역 기준은 에코마일리지 연동 주소의 `app_user.eco_sido_code`·`eco_sigungu_code`를 사용합니다. 미연동이면 지역 비교를 만들지 않고 `available:false`, `unavailableReason:"ECO_ADDRESS_REQUIRED"`를 반환합니다. 진단 도메인은 사용자 Repository를 직접 호출하지 않고 사용자 조회 Service를 거칩니다.
+- 지역 기준은 에코마일리지 연동 주소의 `app_user.eco_sido_code`·`eco_sigungu_code`를 사용합니다. `sigunguCode` 쿼리는 기존 검증 호출 호환용이며 실제 지역 선택에는 사용하지 않습니다. 미연동이면 지역 비교를 만들지 않고 `found:false`, `unavailableReason:"ECO_ADDRESS_REQUIRED"`를 반환합니다. 진단 도메인은 사용자 Repository를 직접 호출하지 않고 사용자 조회 Service를 거칩니다.
 - `month` 와 정확히 같은 월만 찾지 않고 **요청 월 이하에서 가장 최근에 공개된 사용 가능한 기준선**을 선택합니다. 실제 선택된 월은 `baseMonth` 로 반환합니다.
 - 사용 가능한 기준선은 `avg_usage` 와 `avg_amount` 가 모두 있는 행입니다. 시군구 행이 없으면 같은 시도의 행을 한 번 조회합니다.
 - 표본 부족 최소 가구 수는 아직 확정되지 않았으므로 숫자를 하드코딩하지 않습니다. 데이터 담당자가 기준을 확정하면 설정값으로 추가합니다.
@@ -1078,6 +1078,7 @@ CLOVA Template OCR의 고정 데모 템플릿은 관리비 통합(43341)·개별
 ```json
 {
   "found": true,
+  "unavailableReason": null,
   "regionLevel": "SIGUNGU",
   "sidoCode": "11", "sigunguCode": "11620",
   "baseMonth": "2026-07",
@@ -1090,7 +1091,7 @@ CLOVA Template OCR의 고정 데모 템플릿은 관리비 통합(43341)·개별
 }
 ```
 
-시군구 기준선이 없으면 시도 평균으로 한 번 더 조회하고, 그것도 없으면 `found: false` · `regionLevel: null` — A-3-03 "임의 값을 만들지 않는다". 이때 요청 맥락인 `sidoCode` · `sigunguCode` · `utilityType` 은 유지하고 기준선 값은 `null` 로 반환합니다.
+시군구 기준선이 없으면 시도 평균으로 한 번 더 조회하고, 그것도 없으면 `found: false` · `unavailableReason: "NO_BASELINE"` · `regionLevel: null` — A-3-03 "임의 값을 만들지 않는다". 이때 에코마일리지 연동 주소인 `sidoCode` · `sigunguCode`와 요청한 `utilityType`은 유지하고 기준선 값은 `null`로 반환합니다. 에코마일리지 미연동이면 주소 코드는 `null`, `unavailableReason`은 `ECO_ADDRESS_REQUIRED`입니다.
 7.2가 이 로직을 내부에서 쓰므로 FE는 보통 호출하지 않습니다. **시드·출처 검증용**으로 남깁니다.
 
 ---
