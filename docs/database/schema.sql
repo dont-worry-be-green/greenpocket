@@ -2,9 +2,9 @@
 --  그린포켓 (GreenPocket) 스키마 기준 DDL
 --  2026 KB IT's Your Life 해커톤 · 돈워리, 비그린
 --
---  기준     : ERD Cloud export + 2026-09-08 팀 결정 (C-1 ~ C-25)
+--  기준     : ERD Cloud export + 2026-09-09 팀 결정 (C-1 ~ C-28)
 --  DBMS     : MySQL 8.4 · InnoDB · utf8mb4 · utf8mb4_0900_ai_ci
---  규모     : 테이블 20 · 외래키 21 · UNIQUE 23 · CHECK 9
+--  규모     : 테이블 20 · 외래키 21 · UNIQUE 24 · CHECK 9
 --
 --  ERD Cloud export 는 다이어그램 원본이라 PK 외 제약이 빠져 있습니다.
 --  이 파일이 스키마의 기준(단일 진실 공급원)입니다.
@@ -28,6 +28,9 @@
 --   11  지역난방 미지원 (utility_type 은 전기·가스·수도 3종 유지)
 --   17  JWT 회원 인증 (auth_account · auth_refresh_token, demo_key NULL 허용)
 --   22~25 마이 청년정책 추천, 온보딩 추천 조건, 온통청년 API 동기화
+--   26  별도 온보딩 제거, 가입 직후 에코마일리지 연동 화면으로 이동
+--   27  가입 본인인증 정보(이름·생년월일·성별·휴대전화번호) 필수 저장
+--   28  정책 추천 선택 정보는 마이 탭에서만 저장, 관심 분야 필터 제거
 -- ============================================================
 
 SET NAMES utf8mb4;
@@ -59,19 +62,21 @@ SET FOREIGN_KEY_CHECKS = 1;
 CREATE TABLE `app_user` (
 	`id`	BIGINT	NOT NULL	AUTO_INCREMENT	COMMENT '사용자 ID | 사용자 내부 식별자',
 	`demo_key`	VARCHAR(50)	NULL	COMMENT '데모 사용자 키 | dev·demo 프로필에서만 사용하는 UUID v4, 일반 회원은 NULL',
-	`name`	VARCHAR(20)	NOT NULL	COMMENT '이름 | 온보딩에서 입력한 사용자 이름, 공백 제거 후 1~20자',
-	`sido_code`	VARCHAR(10)	NULL	COMMENT '시도 코드 | 거주 시도 행정구역 코드, 서울은 11',
-	`sido_name`	VARCHAR(30)	NULL	COMMENT '시도명 | 화면에 표시할 거주 시도명',
-	`sigungu_code`	VARCHAR(10)	NULL	COMMENT '시군구 코드 | 거주 시군구 행정구역 코드, 한전 API cityCd 겸용',
-	`sigungu_name`	VARCHAR(30)	NULL	COMMENT '시군구명 | 화면에 표시할 거주 시군구명',
-	`housing_type`	ENUM('ONE_ROOM', 'OFFICETEL', 'APARTMENT', 'MULTI_HOUSE')	NULL	COMMENT '주거 형태 | 원룸, 오피스텔, 아파트, 다세대',
-	`area_band`	ENUM('UNDER_10', 'FROM_10_TO_20', 'OVER_20')	NULL	COMMENT '평수 구간 | 10평 이하, 10~20평, 20평 이상',
-	`birth_date`	DATE	NULL	COMMENT '생년월일 | 정책 지원 연령 계산 기준, 미래 날짜 불가',
+	`name`	VARCHAR(20)	NOT NULL	COMMENT '이름 | 가입 본인인증 입력, 공백 제거 후 1~20자',
+	`sido_code`	VARCHAR(10)	NULL	COMMENT '레거시 거주 시도 코드 | 신규 입력·수정하지 않음',
+	`sido_name`	VARCHAR(30)	NULL	COMMENT '레거시 거주 시도명 | 신규 입력·수정하지 않음',
+	`sigungu_code`	VARCHAR(10)	NULL	COMMENT '레거시 거주 시군구 코드 | 신규 입력·수정하지 않음',
+	`sigungu_name`	VARCHAR(30)	NULL	COMMENT '레거시 거주 시군구명 | 신규 입력·수정하지 않음',
+	`housing_type`	ENUM('ONE_ROOM', 'OFFICETEL', 'APARTMENT', 'MULTI_HOUSE')	NULL	COMMENT '레거시 주거 형태 | 신규 입력·수정하지 않음',
+	`area_band`	ENUM('UNDER_10', 'FROM_10_TO_20', 'OVER_20')	NULL	COMMENT '레거시 평수 구간 | 신규 입력·수정하지 않음',
+	`birth_date`	DATE	NULL	COMMENT '생년월일 | 가입 본인인증 입력, 일반 회원 필수·데모 호환 NULL',
+	`gender`	ENUM('MALE', 'FEMALE')	NULL	COMMENT '성별 | 가입 본인인증 입력, 일반 회원 필수·데모 호환 NULL',
+	`phone_number`	VARCHAR(11)	NULL	COMMENT '휴대전화번호 | 숫자만 저장, 일반 회원 필수·데모 호환 NULL',
 	`current_status`	ENUM('EMPLOYED', 'SELF_EMPLOYED', 'UNEMPLOYED', 'FREELANCER', 'STUDENT', 'PREPARING_STARTUP', 'OTHER')	NULL	COMMENT '현재 상태 | 정책 추천용',
 	`annual_income_band`	ENUM('NO_INCOME', 'UNDER_24M', 'FROM_24M_TO_36M', 'FROM_36M_TO_50M', 'OVER_50M', 'UNKNOWN')	NULL	COMMENT '연소득 구간 | 상세 소득은 수집하지 않음',
 	`household_status`	ENUM('ONE_PERSON', 'WITH_PARENTS', 'MARRIED', 'SINGLE_PARENT', 'OTHER')	NULL	COMMENT '가구 상태 | 정책 추천용',
 	`policy_profile_completed`	TINYINT(1)	NOT NULL	DEFAULT 0	COMMENT '정책 추천 프로필 완료 여부',
-	`onboarding_completed`	TINYINT(1)	NOT NULL	DEFAULT 0	COMMENT '온보딩 완료 여부 | 0 미완료 시 ONB-01로 이동',
+	`onboarding_completed`	TINYINT(1)	NOT NULL	DEFAULT 1	COMMENT '별도 온보딩 제거 | 항상 완료',
 	`eco_link_status`	ENUM('UNLINKED', 'LINKING', 'LINKED', 'FAILED')	NOT NULL	DEFAULT 'UNLINKED'	COMMENT '에코마일리지 연동 상태 | 미연동, 연동 중, 연동 완료, 실패',
 	`eco_linked_at`	DATETIME	NULL	COMMENT '에코마일리지 연동 일시 | 기준 사용량 조회일, WF-03에 표기',
 	`eco_sido_code`	VARCHAR(10)	NULL	COMMENT '에코마일리지 시도 코드 | 정책 추천·지역 진단의 단일 지역 기준',
@@ -86,6 +91,7 @@ CREATE TABLE `app_user` (
 	`updated_at`	TIMESTAMP	NOT NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '수정 일시 | 사용자 데이터 최종 수정 시각',
 	PRIMARY KEY (`id`),
 	UNIQUE KEY `uq_app_user_demo_key` (`demo_key`),
+	UNIQUE KEY `uq_app_user_phone_number` (`phone_number`),
 	UNIQUE KEY `uq_app_user_pocket_account_no` (`pocket_account_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='사용자';
 
@@ -96,7 +102,7 @@ CREATE TABLE `user_policy_interest` (
 	`created_at`	TIMESTAMP	NOT NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '생성 일시',
 	PRIMARY KEY (`id`),
 	UNIQUE KEY `uq_user_policy_interest` (`user_id`,`category`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='사용자 청년정책 관심 분야';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='레거시 사용자 관심 분야 | 신규 저장·추천 필터에 사용하지 않음';
 
 CREATE TABLE `youth_policy` (
 	`id`	BIGINT	NOT NULL	AUTO_INCREMENT	COMMENT '청년정책 내부 ID',
