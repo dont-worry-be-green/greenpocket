@@ -15,6 +15,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import com.greenpocket.policy.external.YouthPolicyApiClient;
+import com.greenpocket.policy.external.YouthPolicyClientException;
 import com.greenpocket.policy.external.YouthPolicyPage;
 import com.greenpocket.policy.external.YouthPolicySourcePolicy;
 import com.greenpocket.policy.repository.YouthPolicySyncRepository;
@@ -38,6 +39,12 @@ public class YouthPolicySyncService {
 
 	@Value("${greenpocket.youth-policy.page-size:100}")
 	private int pageSize;
+
+	@Value("${greenpocket.youth-policy.retry-attempts:3}")
+	private int retryAttempts;
+
+	@Value("${greenpocket.youth-policy.retry-delay-millis:500}")
+	private long retryDelayMillis;
 
 	@EventListener(ApplicationReadyEvent.class)
 	public void syncOnStartup() {
@@ -81,16 +88,42 @@ public class YouthPolicySyncService {
 	}
 
 	FetchedPolicies fetchAll() {
-		YouthPolicyPage firstPage = youthPolicyApiClient.fetchPage(1, pageSize);
+		YouthPolicyPage firstPage = fetchPageWithRetry(1);
 		int totalPages = Math.max(1, (firstPage.totalCount() + pageSize - 1) / pageSize);
 		List<YouthPolicySourcePolicy> policies = new ArrayList<>(firstPage.policies());
 		for (int page = 2; page <= totalPages; page++) {
-			policies.addAll(youthPolicyApiClient.fetchPage(page, pageSize).policies());
+			policies.addAll(fetchPageWithRetry(page).policies());
 		}
 		if (policies.size() != firstPage.totalCount()) {
 			throw new IllegalStateException("온통청년 API 전체 건수와 수집 건수가 다릅니다.");
 		}
 		return new FetchedPolicies(firstPage.totalCount(), totalPages, List.copyOf(policies));
+	}
+
+	private YouthPolicyPage fetchPageWithRetry(int pageNumber) {
+		for (int attempt = 1; attempt <= Math.max(1, retryAttempts); attempt++) {
+			try {
+				return youthPolicyApiClient.fetchPage(pageNumber, pageSize);
+			}
+			catch (YouthPolicyClientException ignored) {
+				if (attempt < Math.max(1, retryAttempts)) {
+					waitBeforeRetry(attempt);
+				}
+			}
+		}
+		throw new YouthPolicyClientException(
+			"온통청년 API " + pageNumber + "페이지 요청이 반복해서 실패했습니다."
+		);
+	}
+
+	private void waitBeforeRetry(int attempt) {
+		try {
+			Thread.sleep(Math.max(0, retryDelayMillis) * attempt);
+		}
+		catch (InterruptedException exception) {
+			Thread.currentThread().interrupt();
+			throw new YouthPolicyClientException("온통청년 API 재시도 대기가 중단됐습니다.");
+		}
 	}
 
 	private static LocalDateTime now() {

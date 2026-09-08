@@ -3,6 +3,7 @@ package com.greenpocket.policy.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.greenpocket.policy.external.YouthPolicyApiClient;
+import com.greenpocket.policy.external.YouthPolicyClientException;
 import com.greenpocket.policy.external.YouthPolicyPage;
 import com.greenpocket.policy.external.YouthPolicySourcePolicy;
 import com.greenpocket.policy.repository.YouthPolicySyncRepository;
@@ -31,6 +33,32 @@ class YouthPolicySyncServiceTest {
 			mock(YouthPolicySyncRepository.class)
 		);
 		ReflectionTestUtils.setField(service, "pageSize", 2);
+		ReflectionTestUtils.setField(service, "retryAttempts", 3);
+		ReflectionTestUtils.setField(service, "retryDelayMillis", 0L);
+	}
+
+	@Test
+	void retriesTransientPageFailure() {
+		YouthPolicySourcePolicy policy = policy("P-1");
+		when(client.fetchPage(1, 2))
+			.thenThrow(new YouthPolicyClientException("온통청년 API HTTP 500"))
+			.thenReturn(new YouthPolicyPage(1, 1, 2, List.of(policy)));
+
+		YouthPolicySyncService.FetchedPolicies result = service.fetchAll();
+
+		assertThat(result.policies()).containsExactly(policy);
+		verify(client, times(2)).fetchPage(1, 2);
+	}
+
+	@Test
+	void stopsAfterConfiguredRetryAttempts() {
+		when(client.fetchPage(1, 2))
+			.thenThrow(new YouthPolicyClientException("온통청년 API HTTP 500"));
+
+		assertThatThrownBy(() -> service.fetchAll())
+			.isInstanceOf(YouthPolicyClientException.class)
+			.hasMessageContaining("1페이지");
+		verify(client, times(3)).fetchPage(1, 2);
 	}
 
 	@Test
