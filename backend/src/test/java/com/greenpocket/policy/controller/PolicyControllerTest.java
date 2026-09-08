@@ -1,5 +1,6 @@
 package com.greenpocket.policy.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -7,6 +8,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -14,6 +17,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
 import com.greenpocket.global.auth.CurrentUserIdArgumentResolver;
 import com.greenpocket.global.auth.DemoKeyAuthenticationInterceptor;
@@ -91,6 +96,17 @@ class PolicyControllerTest {
 				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+	}
+
+	@Test
+	void documentsPreviewAuthenticationAndProfileErrors() throws Exception {
+		Method method = PolicyController.class.getDeclaredMethod(
+			"preview", Long.class, PolicyPreviewRequest.class
+		);
+
+		assertThat(Arrays.stream(method.getAnnotation(ApiResponses.class).value())
+			.map(response -> response.responseCode()))
+			.contains("200", "400", "401", "409", "503");
 	}
 
 	private PolicyListResponse emptyResponse(boolean preview) {

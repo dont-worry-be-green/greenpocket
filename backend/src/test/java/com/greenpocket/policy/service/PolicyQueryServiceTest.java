@@ -72,9 +72,104 @@ class PolicyQueryServiceTest {
 
 		assertThat(response.content()).singleElement().satisfies(card -> {
 			assertThat(card.matchStatus()).isEqualTo(PolicyMatchStatus.CHECK_REQUIRED);
+			assertThat(card.matchScore()).isLessThan(100);
 			assertThat(card.matchReasons()).anyMatch(reason -> reason.contains("세부 조건"));
 		});
 		assertThat(response.region().linked()).isTrue();
+	}
+
+	@Test
+	void keepsNationalReasonAfterEcoAddressIsLinked() {
+		when(profileQueryService.findCompleted(USER_ID)).thenReturn(Optional.of(profile("11", "11620")));
+		when(repository.findAllActive()).thenReturn(List.of(
+			policy("NATIONAL", "전국 취업 지원", PolicyInterestCategory.JOB,
+				"NATIONAL:00000", 19, 39, false)
+		));
+
+		var response = service.getRecommendations(USER_ID, 0, 20);
+
+		assertThat(response.content()).singleElement().satisfies(card -> {
+			assertThat(card.matchReasons()).contains("전국 대상 정책이에요");
+			assertThat(card.matchReasons()).doesNotContain("에코마일리지 연동 지역과 일치해요");
+		});
+	}
+
+	@Test
+	void filtersPoliciesByStructuredEmploymentCode() {
+		when(profileQueryService.findCompleted(USER_ID)).thenReturn(Optional.of(profile("11", "11620")));
+		when(repository.findAllActive()).thenReturn(List.of(
+			policyWithConditions("EMPLOYED", "재직자 지원", "NATIONAL:00000",
+				null, null, null, null, null, "0013001", null),
+			policyWithConditions("UNEMPLOYED", "미취업자 지원", "NATIONAL:00000",
+				null, null, null, null, null, "0013003", null)
+		));
+
+		var response = service.getRecommendations(USER_ID, 0, 20);
+
+		assertThat(response.content()).extracting(card -> card.policyId()).containsExactly("EMPLOYED");
+		assertThat(response.content().getFirst().matchReasons())
+			.contains("현재 상태가 정책의 취업 조건과 일치해요");
+	}
+
+	@Test
+	void previewRecalculatesWithTemporaryEmploymentStatus() {
+		when(profileQueryService.find(USER_ID)).thenReturn(Optional.of(profile("11", "11620")));
+		when(repository.findAllActive()).thenReturn(List.of(
+			policyWithConditions("EMPLOYED", "재직자 지원", "NATIONAL:00000",
+				null, null, null, null, null, "0013001", null),
+			policyWithConditions("UNEMPLOYED", "미취업자 지원", "NATIONAL:00000",
+				null, null, null, null, null, "0013003", null)
+		));
+
+		var response = service.preview(USER_ID, new PolicyPreviewRequest(
+			CurrentStatus.UNEMPLOYED, AnnualIncomeBand.UNDER_24M, HouseholdStatus.ONE_PERSON, 0, 20
+		));
+
+		assertThat(response.content()).extracting(card -> card.policyId()).containsExactly("UNEMPLOYED");
+	}
+
+	@Test
+	void filtersOnlyWhenIncomeBandClearlyMissesStructuredRange() {
+		when(profileQueryService.findCompleted(USER_ID)).thenReturn(Optional.of(profile(
+			CurrentStatus.EMPLOYED, AnnualIncomeBand.FROM_24M_TO_36M, HouseholdStatus.ONE_PERSON,
+			"11", "11620"
+		)));
+		when(repository.findAllActive()).thenReturn(List.of(
+			policyWithConditions("LOW", "저소득 지원", "NATIONAL:00000",
+				null, "0043002", null, 2_399L, null, null, null),
+			policyWithConditions("MATCH", "중간소득 지원", "NATIONAL:00000",
+				null, "0043002", 2_400L, 5_000L, null, null, null),
+			policyWithConditions("PARTIAL", "경계소득 지원", "NATIONAL:00000",
+				null, "0043002", 3_000L, 5_000L, null, null, null)
+		));
+
+		var response = service.getRecommendations(USER_ID, 0, 20);
+
+		assertThat(response.content()).extracting(card -> card.policyId())
+			.containsExactly("MATCH", "PARTIAL");
+		assertThat(response.content().get(0).matchReasons())
+			.contains("연소득 구간이 정책의 소득 조건과 일치해요");
+		assertThat(response.content().get(1).matchStatus()).isEqualTo(PolicyMatchStatus.CHECK_REQUIRED);
+	}
+
+	@Test
+	void filtersMarriedUserFromUnmarriedOnlyPolicy() {
+		when(profileQueryService.findCompleted(USER_ID)).thenReturn(Optional.of(profile(
+			CurrentStatus.EMPLOYED, AnnualIncomeBand.UNDER_24M, HouseholdStatus.MARRIED,
+			"11", "11620"
+		)));
+		when(repository.findAllActive()).thenReturn(List.of(
+			policyWithConditions("MARRIED", "기혼 지원", "NATIONAL:00000",
+				"0055001", null, null, null, null, null, null),
+			policyWithConditions("UNMARRIED", "미혼 지원", "NATIONAL:00000",
+				"0055002", null, null, null, null, null, null)
+		));
+
+		var response = service.getRecommendations(USER_ID, 0, 20);
+
+		assertThat(response.content()).extracting(card -> card.policyId()).containsExactly("MARRIED");
+		assertThat(response.content().getFirst().matchReasons())
+			.contains("가구 상태가 정책 조건과 일치해요");
 	}
 
 	@Test
@@ -128,9 +223,22 @@ class PolicyQueryServiceTest {
 	}
 
 	private PolicyProfile profile(String sidoCode, String sigunguCode) {
+		return profile(
+			CurrentStatus.EMPLOYED, AnnualIncomeBand.UNDER_24M, HouseholdStatus.ONE_PERSON,
+			sidoCode, sigunguCode
+		);
+	}
+
+	private PolicyProfile profile(
+		CurrentStatus currentStatus,
+		AnnualIncomeBand annualIncomeBand,
+		HouseholdStatus householdStatus,
+		String sidoCode,
+		String sigunguCode
+	) {
 		return new PolicyProfile(
 			LocalDate.of(1998, 3, 15),
-			CurrentStatus.EMPLOYED, AnnualIncomeBand.UNDER_24M, HouseholdStatus.ONE_PERSON,
+			currentStatus, annualIncomeBand, householdStatus,
 			sidoCode, sigunguCode,
 			sigunguCode == null ? null : "서울특별시 관악구"
 		);
@@ -145,12 +253,53 @@ class PolicyQueryServiceTest {
 		Integer maxAge,
 		boolean manualCondition
 	) {
+		return policyWithConditions(
+			id, title, regionKeys, minAge, maxAge,
+			null, manualCondition ? "0043001" : null, null, null,
+			manualCondition ? "세부 소득 확인" : null, null, null,
+			category
+		);
+	}
+
+	private YouthPolicySnapshot policyWithConditions(
+		String id,
+		String title,
+		String regionKeys,
+		String marriageCode,
+		String incomeCode,
+		Long incomeMin,
+		Long incomeMax,
+		String incomeText,
+		String employmentCodes,
+		String specialCodes
+	) {
+		return policyWithConditions(
+			id, title, regionKeys, 19, 39, marriageCode, incomeCode, incomeMin, incomeMax,
+			incomeText, employmentCodes, specialCodes, PolicyInterestCategory.JOB
+		);
+	}
+
+	private YouthPolicySnapshot policyWithConditions(
+		String id,
+		String title,
+		String regionKeys,
+		Integer minAge,
+		Integer maxAge,
+		String marriageCode,
+		String incomeCode,
+		Long incomeMin,
+		Long incomeMax,
+		String incomeText,
+		String employmentCodes,
+		String specialCodes,
+		PolicyInterestCategory category
+	) {
 		return new YouthPolicySnapshot(
 			1L, id, title, null, "설명", category.name(), "세부분류", category, "지원 내용",
 			"주관기관", "운영기관", "0057001", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31),
 			null, "온라인", "https://example.go.kr", null, null, "N", minAge, maxAge,
-			null, manualCondition ? "0043001" : null, null, null,
-			manualCondition ? "세부 소득 확인" : null, null, null, null, null, null, null,
+			marriageCode, incomeCode, incomeMin, incomeMax,
+			incomeText, null, null, null, employmentCodes, null, specialCodes,
 			PolicyApplicationStatus.OPEN, regionKeys, SYNCED_AT
 		);
 	}

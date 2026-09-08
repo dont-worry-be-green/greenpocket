@@ -2501,12 +2501,13 @@ requiredByUtility
 }
 ```
 
-- 명확한 나이·지역 조건만 서버가 자동 판정합니다.
-- 자유 텍스트 소득·학력·전공·특화 조건은 모르는 값을 탈락시키지 않고 `CHECK_REQUIRED`로 반환합니다.
+- 명확한 나이·지역과 온통청년 코드로 정확히 대응되는 취업 상태·연소득 범위·혼인·한부모 조건만 서버가 자동 판정합니다.
+- 연소득 구간이 정책 범위에 일부만 겹치거나 원본 금액이 비정상인 경우, 사용자 선택값과 직접 대응하지 않는 상태·가구 조건, 자유 텍스트 소득·학력·전공·특화 조건은 탈락시키지 않고 `CHECK_REQUIRED`로 반환합니다.
+- `matchScore`는 0~100점이며 `CHECK_REQUIRED` 응답은 90점을 넘지 않습니다. 점수는 정렬용 보조값이고 자격 확정 점수가 아닙니다.
 - `ELIGIBLE`은 입력 조건상 신청 가능성이 높다는 뜻이며 실제 자격을 보증하지 않습니다.
 - 에코 미연동이면 `region.linked=false`, `appliedLevels=["NATIONAL"]`로 전국 정책만 반환합니다.
 
-**Errors** `PROFILE_INCOMPLETE(409)` · `YOUTH_POLICY_DATA_UNAVAILABLE(503)`
+**Errors** `UNAUTHENTICATED(401)` · `PROFILE_INCOMPLETE(409)` · `YOUTH_POLICY_DATA_UNAVAILABLE(503)`
 
 ---
 
@@ -2526,6 +2527,8 @@ requiredByUtility
 
 Response는 14.3과 동일하며 `preview:true`가 추가됩니다. 생년월일과 에코 주소는 저장된 값을 사용하며, 이 호출은 `app_user`를 변경하지 않습니다.
 
+**Errors** `INVALID_REQUEST(400)` · `UNAUTHENTICATED(401)` · `PROFILE_INCOMPLETE(409)` · `YOUTH_POLICY_DATA_UNAVAILABLE(503)`
+
 ---
 
 ## 14.5 전체 청년정책 목록
@@ -2542,7 +2545,7 @@ Response는 14.3과 동일하며 `preview:true`가 추가됩니다. 생년월일
 
 Response의 페이징 구조와 카드 항목은 14.3과 같습니다. 사용자 조건이 완성돼 있으면 `matchStatus`·`matchReasons`를 포함하고, 아니면 해당 필드는 `null`입니다.
 
-**Errors** `YOUTH_POLICY_DATA_UNAVAILABLE(503)`
+**Errors** `UNAUTHENTICATED(401)` · `YOUTH_POLICY_DATA_UNAVAILABLE(503)`
 
 ---
 
@@ -2790,7 +2793,7 @@ FROM eco_round_utility WHERE eco_round_id = :rid AND is_registered = 1;
 | 선택 정보 | 현재 상태·연소득 구간·가구 상태는 원하는 사용자만 마이에서 저장. 관심 분야·주거 형태·평수는 수집하지 않음 |
 | 지역 | 에코마일리지 연동 주소가 단일 기준. 미연동은 전국 정책만 추천하고 연동 CTA 표시 |
 | 데이터 | 온통청년 OPEN API를 100건 단위로 동기화해 로컬 DB에 캐시. 사용자 조회 때 외부 API를 직접 호출하지 않음 |
-| 판정 | 생년월일·에코 연동 지역처럼 확실한 구조화 조건만 자동 판정. 자유 텍스트·미수집 조건은 `CHECK_REQUIRED`, 자격 확정 표현 금지 |
+| 판정 | 생년월일·에코 연동 지역과 온통청년 코드로 명확히 대응되는 취업·연소득·혼인·한부모 조건만 자동 판정. 부분 중첩·비정상 금액·자유 텍스트·미수집 조건은 `CHECK_REQUIRED`, 자격 확정 표현 금지 |
 | 상세 필터 | 임시 추천은 저장하지 않고 `내 정보에 저장`을 누른 경우에만 프로필 갱신 |
 | 보안 | `YOUTH_POLICY_API_KEY` 환경변수 사용. 인증키·응답 개인정보를 저장소나 로그에 남기지 않음 |
 | 제외 | 신청 대행, 자격 확정, 온통청년 마이데이터 연동 |
