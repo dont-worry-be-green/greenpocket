@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AppTabLayout from '@/components/layout/AppTabLayout.vue'
+import PocketRecommendedProductCard from '@/components/pocket/PocketRecommendedProductCard.vue'
 import PocketState from '@/components/pocket/PocketState.vue'
 import GpButton from '@/components/ui/GpButton.vue'
 import GpModal from '@/components/ui/GpModal.vue'
@@ -17,6 +18,9 @@ const router = useRouter()
 const store = usePocketStore()
 const actionMessage = ref('')
 const isConversionNoticeOpen = ref(false)
+const recommendedProductBootstrapping = computed(
+  () => !store.recommendedProduct && !store.recommendedProductError,
+)
 const pocket = computed(
   () => store.home ?? { balance: 0, convertibleMileage: 0 },
 )
@@ -34,6 +38,7 @@ onMounted(() => {
   store.fetchHome()
   store.fetchTransactions()
   store.fetchWithdrawals()
+  store.fetchRecommendedProduct()
   window.addEventListener('focus', completeConversionOnReturn)
 })
 onBeforeUnmount(() => window.removeEventListener('focus', completeConversionOnReturn))
@@ -142,6 +147,14 @@ async function completeConversionOnReturn() {
           </div>
         </section>
 
+        <PocketRecommendedProductCard
+          :product="store.recommendedProduct"
+          :loading="store.recommendedProductLoading || recommendedProductBootstrapping"
+          :error="store.recommendedProductError"
+          @view="router.push('/pocket/recommended-product')"
+          @retry="store.fetchRecommendedProduct"
+        />
+
         <section>
           <div class="mb-3 flex items-center justify-between">
             <h2 class="text-section m-0">최근 내역</h2>
@@ -198,6 +211,7 @@ async function completeConversionOnReturn() {
             </p>
           </div>
         </section>
+
       </div>
     </PocketState>
 
