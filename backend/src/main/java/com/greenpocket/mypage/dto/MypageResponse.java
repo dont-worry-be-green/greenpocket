@@ -7,6 +7,7 @@ import java.util.List;
 import com.greenpocket.eco.entity.EcoLinkStatus;
 import com.greenpocket.global.type.UtilityType;
 import com.greenpocket.policy.dto.PolicyCardResponse;
+import com.greenpocket.user.entity.Gender;
 
 public record MypageResponse(
 	Profile profile,
@@ -20,9 +21,8 @@ public record MypageResponse(
 	public record Profile(
 		String name,
 		LocalDate birthDate,
-		String housingType,
-		String areaBand,
-		String profileSummary
+		Gender gender,
+		String phoneNumber
 	) {
 	}
 

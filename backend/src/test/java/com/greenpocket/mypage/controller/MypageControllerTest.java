@@ -21,6 +21,7 @@ import com.greenpocket.mypage.dto.ReportListResponse;
 import com.greenpocket.mypage.dto.ReportType;
 import com.greenpocket.mypage.service.MypageService;
 import com.greenpocket.mypage.service.ReportService;
+import com.greenpocket.user.entity.Gender;
 
 class MypageControllerTest {
 
@@ -43,8 +44,7 @@ class MypageControllerTest {
 	void returnsMypageMain() throws Exception {
 		when(mypageService.getMypage(USER_ID)).thenReturn(new MypageResponse(
 			new MypageResponse.Profile(
-				"김수현", LocalDate.of(1998, 3, 15), "ONE_ROOM", "UNDER_10",
-				"원룸 · 10평 이하"
+				"김수현", LocalDate.of(1998, 3, 15), Gender.FEMALE, "01091740339"
 			),
 			new MypageResponse.Links(
 				new MypageResponse.ArchiveLink(14, "MY-03"),

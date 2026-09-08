@@ -34,7 +34,7 @@ public class MypageService {
 	private static final String REPORT_ARCHIVE_SCREEN = "MY-04";
 	private static final String MOVING_NOTICE =
 		"주소를 바꾸려면 에코마일리지 누리집에서 변경한 뒤 다시 연동해 주세요";
-	private static final int POLICY_PREVIEW_SIZE = 3;
+	private static final int POLICY_PREVIEW_SIZE = 5;
 
 	private final UserMypageQueryService userMypageQueryService;
 	private final BillReportQueryService billReportQueryService;
@@ -55,9 +55,8 @@ public class MypageService {
 			new MypageResponse.Profile(
 				user.name(),
 				user.birthDate(),
-				user.housingType(),
-				user.areaBand(),
-				profileSummary(user)
+				user.gender(),
+				user.phoneNumber()
 			),
 			new MypageResponse.Links(
 				new MypageResponse.ArchiveLink(
@@ -99,40 +98,6 @@ public class MypageService {
 				: YEAR_MONTH_FORMATTER.format(user.ecoAddressRegisteredAt()),
 			MOVING_NOTICE
 		);
-	}
-
-	private String profileSummary(UserMypageSnapshot user) {
-		String housing = housingTypeLabel(user.housingType());
-		String area = areaBandLabel(user.areaBand());
-		if (housing == null) {
-			return area == null ? "" : area;
-		}
-		return area == null ? housing : housing + " · " + area;
-	}
-
-	private String housingTypeLabel(String value) {
-		if (value == null) {
-			return null;
-		}
-		return switch (value) {
-			case "ONE_ROOM" -> "원룸";
-			case "OFFICETEL" -> "오피스텔";
-			case "APARTMENT" -> "아파트";
-			case "MULTI_HOUSE" -> "다세대";
-			default -> null;
-		};
-	}
-
-	private String areaBandLabel(String value) {
-		if (value == null) {
-			return null;
-		}
-		return switch (value) {
-			case "UNDER_10" -> "10평 이하";
-			case "FROM_10_TO_20" -> "10~20평";
-			case "OVER_20" -> "20평 이상";
-			default -> null;
-		};
 	}
 
 	private OffsetDateTime toOffsetDateTime(LocalDateTime value) {

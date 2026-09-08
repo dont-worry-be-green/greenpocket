@@ -12,6 +12,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import com.greenpocket.eco.entity.EcoLinkStatus;
+import com.greenpocket.user.entity.Gender;
 
 @Repository
 @RequiredArgsConstructor
@@ -21,7 +22,7 @@ public class UserMypageQueryRepository {
 
 	public Optional<UserMypageSnapshot> findByUserId(Long userId) {
 		return jdbcClient.sql("""
-				SELECT name, birth_date, housing_type, area_band, policy_profile_completed,
+				SELECT name, birth_date, gender, phone_number, policy_profile_completed,
 				       eco_link_status, eco_linked_at,
 				       eco_sido_code, eco_sigungu_code,
 				       eco_address_label, eco_address_registered_at,
@@ -34,8 +35,8 @@ public class UserMypageQueryRepository {
 			.query((resultSet, rowNum) -> new UserMypageSnapshot(
 				resultSet.getString("name"),
 				toLocalDate(resultSet.getDate("birth_date")),
-				resultSet.getString("housing_type"),
-				resultSet.getString("area_band"),
+				toEnum(resultSet.getString("gender"), Gender.class),
+				resultSet.getString("phone_number"),
 				resultSet.getBoolean("policy_profile_completed"),
 				EcoLinkStatus.valueOf(resultSet.getString("eco_link_status")),
 				toLocalDateTime(resultSet.getTimestamp("eco_linked_at")),
@@ -58,11 +59,15 @@ public class UserMypageQueryRepository {
 		return value == null ? null : value.toLocalDate();
 	}
 
+	private static <T extends Enum<T>> T toEnum(String value, Class<T> enumType) {
+		return value == null ? null : Enum.valueOf(enumType, value);
+	}
+
 	public record UserMypageSnapshot(
 		String name,
 		LocalDate birthDate,
-		String housingType,
-		String areaBand,
+		Gender gender,
+		String phoneNumber,
 		boolean policyProfileCompleted,
 		EcoLinkStatus ecoLinkStatus,
 		LocalDateTime ecoLinkedAt,

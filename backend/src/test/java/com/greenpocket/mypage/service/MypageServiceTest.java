@@ -27,6 +27,7 @@ import com.greenpocket.policy.dto.PolicyMypageSummary;
 import com.greenpocket.policy.service.PolicyQueryService;
 import com.greenpocket.user.repository.UserMypageQueryRepository.UserMypageSnapshot;
 import com.greenpocket.user.service.UserMypageQueryService;
+import com.greenpocket.user.entity.Gender;
 
 class MypageServiceTest {
 
@@ -74,12 +75,13 @@ class MypageServiceTest {
 			)
 		));
 		when(ecoLinkService.getStatus(USER_ID)).thenReturn(linkedEcoStatus());
-		when(policyQueryService.getMypageSummary(USER_ID, 3))
+		when(policyQueryService.getMypageSummary(USER_ID, 5))
 			.thenReturn(new PolicyMypageSummary(true, true, 12, List.of(), null));
 
 		MypageResponse response = mypageService.getMypage(USER_ID);
 
-		assertThat(response.profile().profileSummary()).isEqualTo("원룸 · 10평 이하");
+		assertThat(response.profile().gender()).isEqualTo(Gender.FEMALE);
+		assertThat(response.profile().phoneNumber()).isEqualTo("01091740339");
 		assertThat(response.links().billArchive().count()).isEqualTo(14L);
 		assertThat(response.links().reportArchive().count()).isEqualTo(3L);
 		assertThat(response.ecoAddress().registeredAt()).isEqualTo("2026-03");
@@ -93,7 +95,7 @@ class MypageServiceTest {
 	@Test
 	void returnsNullEcoAddressWhenNotLinked() {
 		UserMypageSnapshot user = new UserMypageSnapshot(
-			"김수현", LocalDate.of(1998, 3, 15), "ONE_ROOM", "UNDER_10", true,
+			"김수현", LocalDate.of(1998, 3, 15), Gender.FEMALE, "01091740339", true,
 			EcoLinkStatus.UNLINKED, null, null, null, null, null, false, null, "1005-1234-5678-90"
 		);
 		when(userMypageQueryService.findMypageUser(USER_ID)).thenReturn(Optional.of(user));
@@ -104,7 +106,7 @@ class MypageServiceTest {
 			EcoLinkStatus.UNLINKED, null, true, true, null, List.of(), false, null,
 			"https://ecomileage.seoul.go.kr"
 		));
-		when(policyQueryService.getMypageSummary(USER_ID, 3))
+		when(policyQueryService.getMypageSummary(USER_ID, 5))
 			.thenReturn(new PolicyMypageSummary(true, false, 3, List.of(), null));
 
 		MypageResponse response = mypageService.getMypage(USER_ID);
@@ -115,7 +117,7 @@ class MypageServiceTest {
 
 	private UserMypageSnapshot linkedUser() {
 		return new UserMypageSnapshot(
-			"김수현", LocalDate.of(1998, 3, 15), "ONE_ROOM", "UNDER_10", true,
+			"김수현", LocalDate.of(1998, 3, 15), Gender.FEMALE, "01091740339", true,
 			EcoLinkStatus.LINKED, LocalDateTime.of(2026, 9, 1, 9, 0), "11", "11620",
 			"서울 관악구", LocalDate.of(2026, 3, 1), true,
 			LocalDateTime.of(2026, 9, 1, 9, 12), "1005-1234-5678-90"

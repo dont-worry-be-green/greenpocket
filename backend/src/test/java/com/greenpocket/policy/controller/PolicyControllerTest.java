@@ -22,10 +22,8 @@ import com.greenpocket.policy.dto.PolicyListResponse;
 import com.greenpocket.policy.dto.PolicyPreviewRequest;
 import com.greenpocket.policy.service.PolicyQueryService;
 import com.greenpocket.profile.entity.AnnualIncomeBand;
-import com.greenpocket.profile.entity.AreaBand;
 import com.greenpocket.profile.entity.CurrentStatus;
 import com.greenpocket.profile.entity.HouseholdStatus;
-import com.greenpocket.profile.entity.HousingType;
 import com.greenpocket.profile.entity.PolicyInterestCategory;
 
 class PolicyControllerTest {
@@ -68,9 +66,7 @@ class PolicyControllerTest {
 	@Test
 	void routesPreviewWithoutPersistingRequest() throws Exception {
 		PolicyPreviewRequest request = new PolicyPreviewRequest(
-			java.time.LocalDate.of(1998, 3, 15), HousingType.ONE_ROOM, AreaBand.UNDER_10,
-			CurrentStatus.UNEMPLOYED, AnnualIncomeBand.NO_INCOME, HouseholdStatus.ONE_PERSON,
-			List.of(PolicyInterestCategory.JOB), 0, 20
+			CurrentStatus.UNEMPLOYED, AnnualIncomeBand.NO_INCOME, HouseholdStatus.ONE_PERSON, 0, 20
 		);
 		when(service.preview(USER_ID, request)).thenReturn(emptyResponse(true));
 
@@ -79,9 +75,8 @@ class PolicyControllerTest {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 					{
-					  "birthDate":"1998-03-15", "housingType":"ONE_ROOM", "areaBand":"UNDER_10",
 					  "currentStatus":"UNEMPLOYED", "annualIncomeBand":"NO_INCOME",
-					  "householdStatus":"ONE_PERSON", "interestCategories":["JOB"],
+					  "householdStatus":"ONE_PERSON",
 					  "page":0, "size":20
 					}
 					"""))

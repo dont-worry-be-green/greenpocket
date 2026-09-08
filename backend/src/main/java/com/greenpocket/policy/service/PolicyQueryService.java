@@ -8,7 +8,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -87,7 +86,7 @@ public class PolicyQueryService {
 	}
 
 	public PolicyListResponse preview(Long userId, PolicyPreviewRequest request) {
-		PolicyProfile stored = policyProfileQueryService.findCompleted(userId)
+		PolicyProfile stored = policyProfileQueryService.find(userId)
 			.orElseThrow(() -> new BusinessException(ProfileErrorCode.PROFILE_INCOMPLETE));
 		PolicyProfile preview = validatePreview(request, stored);
 		int page = request.page() == null ? 0 : request.page();
@@ -165,8 +164,6 @@ public class PolicyQueryService {
 		validatePage(page, size);
 		List<PolicyCardResponse> cards = activePolicies().stream()
 			.filter(policy -> policy.applicationStatus() != PolicyApplicationStatus.CLOSED)
-			.filter(policy -> profile.interestCategories().isEmpty()
-				|| profile.interestCategories().contains(policy.interestCategory()))
 			.map(policy -> new ScoredPolicy(policy, match(policy, profile)))
 			.filter(scored -> scored.match().status() != PolicyMatchStatus.NOT_ELIGIBLE)
 			.sorted(Comparator.comparingInt((ScoredPolicy scored) -> scored.match().score()).reversed()
@@ -228,18 +225,13 @@ public class PolicyQueryService {
 	private PolicyMatch match(YouthPolicySnapshot policy, PolicyProfile profile) {
 		List<String> reasons = new ArrayList<>();
 		int score = 0;
-		if (!profile.interestCategories().isEmpty()
-			&& profile.interestCategories().contains(policy.interestCategory())) {
-			score += 40;
-			reasons.add("관심 분야가 일치해요");
-		}
 
 		RegionMatch regionMatch = regionMatch(policy, profile);
 		if (regionMatch == RegionMatch.NO) {
 			return new PolicyMatch(PolicyMatchStatus.NOT_ELIGIBLE, 0, List.of("지원 지역이 일치하지 않아요"));
 		}
 		if (regionMatch == RegionMatch.YES) {
-			score += 25;
+			score += 40;
 			reasons.add(profile.regionLinked() ? "에코마일리지 연동 지역과 일치해요" : "전국 대상 정책이에요");
 		}
 
@@ -249,12 +241,12 @@ public class PolicyQueryService {
 			return new PolicyMatch(PolicyMatchStatus.NOT_ELIGIBLE, 0, List.of("지원 연령에 해당하지 않아요"));
 		}
 		if (policy.minAge() != null || policy.maxAge() != null) {
-			score += 25;
+			score += 40;
 			reasons.add("지원 연령에 해당해요");
 		}
 
 		if (policy.applicationStatus() == PolicyApplicationStatus.OPEN) {
-			score += 10;
+			score += 20;
 			reasons.add("현재 신청 가능한 기간이에요");
 		}
 
@@ -325,27 +317,13 @@ public class PolicyQueryService {
 	}
 
 	private static PolicyProfile validatePreview(PolicyPreviewRequest request, PolicyProfile stored) {
-		if (request.birthDate() == null || request.housingType() == null || request.areaBand() == null
-			|| request.currentStatus() == null || request.annualIncomeBand() == null
+		if (request == null || request.currentStatus() == null || request.annualIncomeBand() == null
 			|| request.householdStatus() == null) {
 			throw new BusinessException(ProfileErrorCode.PROFILE_INCOMPLETE);
 		}
-		if (request.birthDate().isAfter(LocalDate.now(KOREA_ZONE_ID))) {
-			throw new BusinessException(ProfileErrorCode.BIRTH_DATE_INVALID, "birthDate", null);
-		}
-		List<PolicyInterestCategory> interests = request.interestCategories() == null
-			? List.of()
-			: request.interestCategories();
-		if (interests.size() > 3) {
-			throw new BusinessException(ProfileErrorCode.POLICY_INTEREST_LIMIT_EXCEEDED, "interestCategories", null);
-		}
-		if (interests.stream().anyMatch(java.util.Objects::isNull)
-			|| new LinkedHashSet<>(interests).size() != interests.size()) {
-			throw new BusinessException(CommonErrorCode.INVALID_REQUEST, "interestCategories", null);
-		}
 		return new PolicyProfile(
-			request.birthDate(), request.housingType(), request.areaBand(), request.currentStatus(),
-			request.annualIncomeBand(), request.householdStatus(), List.copyOf(interests),
+			stored.birthDate(), request.currentStatus(),
+			request.annualIncomeBand(), request.householdStatus(),
 			stored.ecoSidoCode(), stored.ecoSigunguCode(), stored.ecoAddressLabel()
 		);
 	}

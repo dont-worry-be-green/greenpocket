@@ -21,10 +21,8 @@ import com.greenpocket.policy.entity.PolicyRegionLevel;
 import com.greenpocket.policy.repository.YouthPolicyRepository;
 import com.greenpocket.policy.repository.YouthPolicyRepository.YouthPolicySnapshot;
 import com.greenpocket.profile.entity.AnnualIncomeBand;
-import com.greenpocket.profile.entity.AreaBand;
 import com.greenpocket.profile.entity.CurrentStatus;
 import com.greenpocket.profile.entity.HouseholdStatus;
-import com.greenpocket.profile.entity.HousingType;
 import com.greenpocket.profile.entity.PolicyInterestCategory;
 import com.greenpocket.profile.service.PolicyProfileQueryService;
 import com.greenpocket.profile.service.PolicyProfileQueryService.PolicyProfile;
@@ -81,14 +79,12 @@ class PolicyQueryServiceTest {
 
 	@Test
 	void previewUsesTemporaryValuesAndDoesNotRequirePersistence() {
-		when(profileQueryService.findCompleted(USER_ID)).thenReturn(Optional.of(profile("11", "11620")));
+		when(profileQueryService.find(USER_ID)).thenReturn(Optional.of(profile("11", "11620")));
 		when(repository.findAllActive()).thenReturn(List.of(
 			policy("EDU", "교육 지원", PolicyInterestCategory.EDUCATION, "SIGUNGU:11620", 19, 39, false)
 		));
 		PolicyPreviewRequest request = new PolicyPreviewRequest(
-			LocalDate.of(1998, 3, 15), HousingType.ONE_ROOM, AreaBand.UNDER_10,
-			CurrentStatus.STUDENT, AnnualIncomeBand.NO_INCOME, HouseholdStatus.WITH_PARENTS,
-			List.of(PolicyInterestCategory.EDUCATION), 0, 20
+			CurrentStatus.STUDENT, AnnualIncomeBand.NO_INCOME, HouseholdStatus.WITH_PARENTS, 0, 20
 		);
 
 		var response = service.preview(USER_ID, request);
@@ -133,9 +129,9 @@ class PolicyQueryServiceTest {
 
 	private PolicyProfile profile(String sidoCode, String sigunguCode) {
 		return new PolicyProfile(
-			LocalDate.of(1998, 3, 15), HousingType.ONE_ROOM, AreaBand.UNDER_10,
+			LocalDate.of(1998, 3, 15),
 			CurrentStatus.EMPLOYED, AnnualIncomeBand.UNDER_24M, HouseholdStatus.ONE_PERSON,
-			List.of(PolicyInterestCategory.JOB), sidoCode, sigunguCode,
+			sidoCode, sigunguCode,
 			sigunguCode == null ? null : "서울특별시 관악구"
 		);
 	}
