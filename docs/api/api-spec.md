@@ -375,7 +375,7 @@ GET   /bills/ocr/{jobId}   200           → { status, progress, result | error 
 
 ## 4.3 행정구역 목록
 
-`GET /meta/regions` · **P1** · 레거시 호환
+`GET /meta/regions` · **P0** · 레거시 호환
 
 | 쿼리 | 필수 | 설명 |
 |---|---|---|
