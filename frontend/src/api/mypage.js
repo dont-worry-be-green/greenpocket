@@ -7,9 +7,8 @@
  * 분기를 끼우면 진단 탭 등록 흐름까지 모드에 얽힌다. 진단 탭이 나중에 목록을 쓰게 되면
  * 그때 옮긴다.
  *
- * `GET /profile`(5.2)·`PUT /profile`(5.3)도 같은 이유다. `POST /profile`(5.1)은
- * **온보딩을 끝내는 동작**이라 `api/onboarding.js` 에 남아 있다(저장 성공이 곧 온보딩 완료다).
- * 조회·수정은 MY-01·MY-02 것이다.
+ * 청년정책 추천 조건은 `/profile/policy-preferences` 에서 별도로 조회·저장한다.
+ * 이름·생년월일·성별·전화번호는 회원가입 본인확인 정보이며 이 화면에서 수정하지 않는다.
  *
  * ── 데이터 소스 ──────────────────────────────────────────────────────────
  * 기본값은 실 호출이다. 스위치는 `api/dataSource.js` 하나이고 onboarding·eco 와 공유한다.
@@ -25,9 +24,8 @@ import {
   buildBillArchive,
   buildReportArchive,
   MYPAGE,
-  PROFILE,
 } from '@/fixtures/mypage'
-import { formatHousing } from '@/utils/format'
+import { POLICY_PREFERENCES } from '@/fixtures/policy'
 
 import client from './client'
 import { isFixtureMode } from './dataSource'
@@ -38,70 +36,34 @@ const fake = async (value, ms = 220) => {
 }
 
 /*
- * 목데이터 모드에서 수정한 프로필. 새로고침하면 사라진다.
+ * 목데이터 모드에서 수정한 정책 추천 조건. 새로고침하면 사라진다.
  * 저장한 값이 되돌아오지 않으면 MY-02 가 제대로 저장했는지 화면에서 확인할 수 없다.
  */
-let editedProfile = null
+let editedPolicyPreferences = null
 
 /** GET /mypage — 마이페이지 메인 (E-1-01 · E-1-02 · MY-01) */
 export function getMypage() {
-  if (isFixtureMode()) {
-    return fake(() => {
-      if (!editedProfile) return MYPAGE
-      return {
-        ...MYPAGE,
-        profile: { ...MYPAGE.profile, ...editedProfile.profile },
-      }
-    })
-  }
+  if (isFixtureMode()) return fake(MYPAGE)
   return client.get('/mypage')
 }
 
-/**
- * GET /profile — 프로필 조회 (A-1-06 · MY-02 프리필)
- *
- * MY-01 은 이걸 부르지 않는다. `GET /mypage` 가 표시에 필요한 값을 이미 다 준다.
- * **여기서만 지역 코드(`sidoCode`·`sigunguCode`)를 준다** — 수정 폼이 무엇이 골라져 있는지
- * 알려면 이름이 아니라 코드가 필요하다.
- */
-export function getProfile() {
+/** GET /profile/policy-preferences — 정책 추천 조건 프리필 (MY-02) */
+export function getPolicyPreferences() {
   if (isFixtureMode()) {
-    return fake(() => (editedProfile ? { ...PROFILE, ...editedProfile.raw } : PROFILE))
+    return fake(() => ({ ...POLICY_PREFERENCES, ...editedPolicyPreferences }))
   }
-  return client.get('/profile')
+  return client.get('/profile/policy-preferences')
 }
 
-/**
- * PUT /profile — 프로필 수정 (A-1-06 · MY-02)
- *
- * ⚠️ **진행 중 평가 회차가 있고 지역이 바뀌면 서버가 409 로 막는다.**
- * `code: 'CONFLICT'` · `field: 'confirmBaselineChange'` · `details.warning` 이 오고,
- * 화면이 그 문구로 확인을 받은 뒤 `confirmBaselineChange: true` 로 다시 부른다.
- * 여기서 그 플래그를 몰래 붙이지 않는다 — 사용자 확인 없이 기준선을 바꾸는 셈이 된다.
- */
-export function updateProfile(payload) {
+/** PUT /profile/policy-preferences — 현재 상태·연소득·가구 상태 저장 (MY-02·MY-06) */
+export function updatePolicyPreferences(payload) {
   if (isFixtureMode()) {
     return fake(() => {
-      const sigunguName = payload.sigunguName ?? PROFILE.sigunguName
-      const summary = `서울 ${sigunguName} · ${formatHousing(payload.housingType, payload.areaBand)}`
-      editedProfile = {
-        raw: payload,
-        profile: {
-          name: payload.name,
-          sigunguName,
-          housingType: payload.housingType,
-          areaBand: payload.areaBand,
-        },
-      }
-      return {
-        // 요약 문장은 서버가 조립한다(A-1-07). 목데이터도 서버가 줄 모양만 흉내 낸다
-        profileSummary: summary,
-        baselineRecalculated: payload.sigunguCode !== PROFILE.sigunguCode,
-        affectedRoundId: null,
-      }
+      editedPolicyPreferences = { ...payload, completed: true }
+      return { policyProfileCompleted: true, recommendationsUpdated: true }
     }, 400)
   }
-  return client.put('/profile', payload)
+  return client.put('/profile/policy-preferences', payload)
 }
 
 /**

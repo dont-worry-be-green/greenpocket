@@ -1,55 +1,49 @@
 /*
- * 마이페이지 네 화면이 **첫 렌더에서 터지지 않는지**, 그리고 명세가 못 박은 것들이 실제로
- * 지켜지는지 본다. API 모듈을 여기서 막는다 — 응답 모양은 **api-spec.md 5.2 · 6.6 · 14.1 · 14.2
- * 예시 그대로**다. 임의 필드를 만들면 계약이 갈라진다.
+ * 마이 탭 여섯 화면이 **첫 렌더에서 터지지 않는지**, 그리고 API 계약에 맞게 동작하는지 본다.
+ * API 모듈은 여기서 막고 실제 응답 모양과 같은 픽스처를 주입한다.
  *
  * 특히 지키려는 것 셋:
  *   ① 계좌번호를 그리지 않는다 — 응답에는 있다
  *   ② MY-03 탭 배지가 목록 길이가 아니라 `counts` 다(A-2-12 완료 조건)
- *   ③ MY-02 는 지역 변경 경고를 확인받고 나서야 `confirmBaselineChange` 를 붙인다(핵심 규칙 9)
+ *   ③ MY-06 임시 추천과 MY-02 추천 조건 저장은 서로 다른 동작이다
  */
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRouter, createWebHistory } from 'vue-router'
 
-import { ApiError } from '@/api/client'
 import routes from '@/router/routes/mypage'
 import BillArchiveView from '@/views/mypage/BillArchiveView.vue'
 import MypageHomeView from '@/views/mypage/MypageHomeView.vue'
+import PolicyDetailView from '@/views/mypage/PolicyDetailView.vue'
+import PolicyListView from '@/views/mypage/PolicyListView.vue'
 import ProfileEditView from '@/views/mypage/ProfileEditView.vue'
 import ReportArchiveView from '@/views/mypage/ReportArchiveView.vue'
 
-const { getMypage, getProfile, updateProfile, getBills, getReports } = vi.hoisted(() => ({
+const { getMypage, getPolicyPreferences, updatePolicyPreferences, getBills, getReports } = vi.hoisted(() => ({
   getMypage: vi.fn(),
-  getProfile: vi.fn(),
-  updateProfile: vi.fn(),
+  getPolicyPreferences: vi.fn(),
+  updatePolicyPreferences: vi.fn(),
   getBills: vi.fn(),
   getReports: vi.fn(),
 }))
 
-vi.mock('@/api/mypage', () => ({ getMypage, getProfile, updateProfile, getBills, getReports }))
+vi.mock('@/api/mypage', () => ({ getMypage, getPolicyPreferences, updatePolicyPreferences, getBills, getReports }))
 
-/** MY-02 는 지역 목록을 온보딩 스토어에서 가져온다(A-1-06 "ONB-02 폼 재사용") */
-const { getRegions } = vi.hoisted(() => ({ getRegions: vi.fn() }))
-vi.mock('@/api/onboarding', () => ({
-  getRegions,
-  startUser: vi.fn(),
-  saveProfile: vi.fn(),
+const { getPolicies, getPolicyRecommendations, getPolicy, previewPolicyRecommendations } = vi.hoisted(() => ({
+  getPolicies: vi.fn(),
+  getPolicyRecommendations: vi.fn(),
+  getPolicy: vi.fn(),
+  previewPolicyRecommendations: vi.fn(),
 }))
+vi.mock('@/api/policy', () => ({ getPolicies, getPolicyRecommendations, getPolicy, previewPolicyRecommendations }))
 
 const MYPAGE = {
   profile: {
     name: '김수현',
-    sidoName: '서울특별시',
-    sigunguName: '관악구',
-    housingType: 'ONE_ROOM',
-    areaBand: 'UNDER_10',
-    profileSummary: '서울 관악구 · 원룸 · 10평 이하',
     birthDate: '1998-03-14',
-    currentStatus: '재직 중',
-    annualIncomeBand: '3,000만원 이하',
-    interestAreas: ['주거', '취업', '생활비', '교육'],
+    gender: 'FEMALE',
+    phoneNumber: '01091740339',
   },
   links: {
     billArchive: { count: 14, screen: 'MY-03' },
@@ -58,8 +52,7 @@ const MYPAGE = {
   ecoAddress: {
     label: '서울 관악구',
     registeredAt: '2026-03',
-    matchesProfile: true,
-    notice: '이사했다면 꼭 바꿔주세요.',
+    notice: '주소는 에코마일리지 누리집에서 바꿔주세요.',
   },
   integration: {
     ecoLinkStatus: 'LINKED',
@@ -69,19 +62,44 @@ const MYPAGE = {
     registeredUtilities: ['ELECTRICITY', 'GAS', 'WATER'],
   },
   pocketAccountNo: '1005-1234-5678-90',
+  youthPolicy: {
+    profileCompleted: true,
+    regionLinked: true,
+    recommendedCount: 1,
+    preview: [{
+      policyId: 'policy-1', title: '청년 주거 지원', category: 'HOUSING', subCategory: '주거',
+      applicationStatus: 'OPEN', applicationEndDate: '2026-12-31', matchStatus: 'ELIGIBLE',
+    }],
+    lastSyncedAt: '2026-09-09T01:00:00+09:00',
+  },
 }
 
-const PROFILE = {
-  name: '김수현',
-  sidoCode: '11',
-  sidoName: '서울특별시',
-  sigunguCode: '11620',
-  sigunguName: '관악구',
-  housingType: 'ONE_ROOM',
-  areaBand: 'UNDER_10',
-  profileSummary: '서울 관악구 · 원룸 · 10평 이하',
-  seoulResident: true,
-  onboardingCompleted: true,
+const PREFERENCES = {
+  birthDate: '1998-03-14',
+  currentStatus: 'EMPLOYED',
+  annualIncomeBand: 'FROM_24M_TO_36M',
+  householdStatus: 'ONE_PERSON',
+  ecoAddress: { label: '서울 관악구', sidoCode: '11', sigunguCode: '11620' },
+  birthDateEditable: false,
+  regionEditable: false,
+  completed: true,
+}
+
+const POLICY_LIST = {
+  content: MYPAGE.youthPolicy.preview,
+  page: 0, size: 20, totalElements: 1, totalPages: 1, hasNext: false,
+  region: { linked: true, label: '서울 관악구', appliedLevels: ['NATIONAL', 'SIDO', 'SIGUNGU'] },
+  lastSyncedAt: '2026-09-09T01:00:00+09:00', preview: false,
+}
+
+const POLICY_DETAIL = {
+  ...POLICY_LIST.content[0],
+  description: '정책 설명', supportContent: '지원 내용',
+  application: { status: 'OPEN', startDate: '2026-01-01', endDate: '2026-12-31', method: '온라인 신청', url: 'https://example.com' },
+  organizations: { supervising: '서울특별시', operating: '청년센터' },
+  conditions: { age: '만 19~39세', income: '확인 필요', employment: '재직자', education: '제한 없음', major: '제한 없음', marriage: '제한 없음', special: '공고 확인' },
+  match: { status: 'ELIGIBLE', score: 100, reasons: ['연령이 일치해요'] },
+  source: '온통청년', referenceUrls: [], lastSyncedAt: '2026-09-09T01:00:00+09:00',
 }
 
 const BILLS = {
@@ -167,86 +185,34 @@ async function mountView(component, path = '/mypage') {
 beforeEach(() => {
   vi.clearAllMocks()
   getMypage.mockResolvedValue(MYPAGE)
-  getProfile.mockResolvedValue(PROFILE)
+  getPolicyPreferences.mockResolvedValue(PREFERENCES)
+  updatePolicyPreferences.mockResolvedValue({ policyProfileCompleted: true, recommendationsUpdated: true })
   getBills.mockResolvedValue(BILLS)
   getReports.mockResolvedValue(REPORTS)
-  getRegions.mockImplementation(({ sidoCode } = {}) =>
-    Promise.resolve(
-      sidoCode
-        ? { level: 'SIGUNGU', items: [{ code: '11620', name: '관악구', sidoCode: '11' }] }
-        : { level: 'SIDO', items: [{ code: '11', name: '서울특별시' }] },
-    ),
-  )
+  getPolicies.mockResolvedValue(POLICY_LIST)
+  getPolicyRecommendations.mockResolvedValue(POLICY_LIST)
+  getPolicy.mockResolvedValue(POLICY_DETAIL)
+  previewPolicyRecommendations.mockResolvedValue({ ...POLICY_LIST, preview: true })
 })
 
 describe('MY-01 마이페이지 메인', () => {
-  it('프로필 요약과 기본 정보를 그린다', async () => {
+  it('본인 정보와 에코마일리지 주소를 그린다', async () => {
     const { wrapper } = await mountView(MypageHomeView)
     const text = wrapper.text()
 
     expect(text).toContain('김수현')
-    expect(text).toContain('서울 관악구 · 원룸 · 10평 이하')
-    expect(text).toContain('서울특별시 관악구')
-    // 주거 형태와 평수는 시안대로 한 행이다
-    expect(text).toContain('원룸 · 10평 이하')
-  })
-
-  it('맞춤 지원금 3개를 가로 스와이프 카드로 보여준다', async () => {
-    const { wrapper } = await mountView(MypageHomeView)
-    const carousel = wrapper.get('[aria-roledescription="carousel"]')
-    const cards = carousel.findAll('article')
-
-    expect(wrapper.text()).toContain('맞춤 지원 혜택')
-    expect(wrapper.text()).toContain('내 정보로 찾은 지원금이에요.')
-    expect(wrapper.text()).toContain('서울 관악구 · 원룸 · 10평 이하 기준')
-    expect(cards).toHaveLength(3)
-    expect(cards[0].text()).toContain('청년월세 특별지원')
-    expect(cards[0].text()).not.toContain('추천')
-    expect(cards[0].text()).not.toContain('신청 가능성 높음')
-    expect(cards[0].text()).toContain('접수 일정 확인')
-    expect(carousel.classes()).toContain('snap-mandatory')
-    expect(carousel.classes()).toContain('overflow-x-auto')
-  })
-
-  it('맞춤 지원금에 필요한 추가 기본 정보를 표시하고 관심 분야는 3개로 제한한다', async () => {
-    const { wrapper } = await mountView(MypageHomeView)
-    const toggle = wrapper.get('[aria-controls="mypage-basic-info"]')
-
-    expect(toggle.text()).toContain('더 보기')
-    expect(toggle.attributes('aria-expanded')).toBe('false')
-    await toggle.trigger('click')
-
-    const text = wrapper.text()
-
     expect(text).toContain('생년월일1998.03.14')
-    expect(text).toContain('현재 상태재직 중')
-    expect(text).toContain('연소득 구간3,000만원 이하')
-    expect(text).toContain('관심 분야주거 · 취업 · 생활비')
-    expect(text).not.toContain('주거 · 취업 · 생활비 · 교육')
-    expect(toggle.text()).toContain('접기')
-    expect(toggle.attributes('aria-expanded')).toBe('true')
+    expect(text).toContain('성별여성')
+    expect(text).toContain('휴대전화010-9174-0339')
+    expect(text).toContain('에코마일리지 등록 주소')
+    expect(text).toContain('서울 관악구')
   })
 
-  it('맞춤 정보 값이 없어도 네 항목을 펼쳐 확인할 수 있다', async () => {
-    getMypage.mockResolvedValueOnce({
-      ...MYPAGE,
-      profile: {
-        ...MYPAGE.profile,
-        birthDate: null,
-        currentStatus: null,
-        annualIncomeBand: null,
-        interestAreas: [],
-      },
-    })
-
+  it('실제 응답의 추천 정책을 보여주고 상세로 이동한다', async () => {
     const { wrapper } = await mountView(MypageHomeView)
-    await wrapper.get('[aria-controls="mypage-basic-info"]').trigger('click')
-    const info = wrapper.get('#mypage-basic-info')
-
-    expect(info.text()).toContain('생년월일-')
-    expect(info.text()).toContain('현재 상태-')
-    expect(info.text()).toContain('연소득 구간-')
-    expect(info.text()).toContain('관심 분야-')
+    expect(wrapper.text()).toContain('나를 위한 청년정책')
+    expect(wrapper.text()).toContain('청년 주거 지원')
+    expect(wrapper.text()).toContain('1개 추천 전체 보기')
   })
 
   it('계좌번호를 그리지 않는다 — 응답에는 있다', async () => {
@@ -254,13 +220,14 @@ describe('MY-01 마이페이지 메인', () => {
     expect(wrapper.text()).not.toContain('1005-1234-5678-90')
   })
 
-  it('에코마일리지 등록 주소를 표시하지 않는다', async () => {
+  it('추천 조건이 없으면 설정 CTA를 표시한다', async () => {
+    getMypage.mockResolvedValueOnce({
+      ...MYPAGE,
+      youthPolicy: { ...MYPAGE.youthPolicy, profileCompleted: false, preview: [] },
+    })
     const { wrapper } = await mountView(MypageHomeView)
-    const text = wrapper.text()
-
-    expect(text).not.toContain('에코마일리지 등록 주소')
-    expect(text).not.toContain('2026년 3월 등록')
-    expect(text).not.toContain('이사했다면 꼭 바꿔주세요')
+    expect(wrapper.text()).toContain('맞춤 추천 조건을 알려주세요')
+    expect(wrapper.text()).toContain('추천 조건 설정하기')
   })
 
   it('월별·ECO 리포트 카드가 각각 해당 탭으로 이동한다', async () => {
@@ -439,69 +406,68 @@ describe('MY-04 리포트 보관함', () => {
   })
 })
 
-describe('MY-02 기본 정보 수정', () => {
+describe('MY-02 정책 추천 조건 설정', () => {
   it('저장된 값으로 폼을 채운다', async () => {
-    const { wrapper } = await mountView(ProfileEditView, '/mypage/profile')
+    const { wrapper } = await mountView(ProfileEditView, '/mypage/policy-preferences')
 
-    expect(wrapper.find('#my-profile-name').element.value).toBe('김수현')
+    expect(wrapper.text()).toContain('1998.03.14')
     expect(wrapper.text()).toContain('관악구')
+    expect(wrapper.get('[role="radio"][aria-checked="true"]').text()).toBe('재직 중')
   })
 
-  it('저장하면 name 까지 함께 보낸다 (api-spec 5.3)', async () => {
-    updateProfile.mockResolvedValue({
-      profileSummary: '서울 관악구 · 원룸 10평 이하',
-      baselineRecalculated: false,
-      affectedRoundId: null,
-    })
-    const { wrapper } = await mountView(ProfileEditView, '/mypage/profile')
+  it('세 가지 선택값만 저장한다', async () => {
+    const { wrapper } = await mountView(ProfileEditView, '/mypage/policy-preferences')
 
-    const save = wrapper.findAll('button').find((button) => button.text() === '저장하기')
+    const save = wrapper.findAll('button').find((button) => button.text() === '저장하고 추천받기')
     await save.trigger('click')
     await flushPromises()
 
-    expect(updateProfile).toHaveBeenCalledWith({
-      name: '김수현',
-      sidoCode: '11',
-      sidoName: '서울특별시',
-      sigunguCode: '11620',
-      sigunguName: '관악구',
-      housingType: 'ONE_ROOM',
-      areaBand: 'UNDER_10',
+    expect(updatePolicyPreferences).toHaveBeenCalledWith({
+      currentStatus: 'EMPLOYED',
+      annualIncomeBand: 'FROM_24M_TO_36M',
+      householdStatus: 'ONE_PERSON',
     })
   })
+})
 
-  it('지역 변경 경고를 확인받고 나서야 confirmBaselineChange 를 붙인다 (A-1-06 · 핵심 규칙 9)', async () => {
-    const warning = '지역을 바꾸면 진행 중 평가의 비교 기준이 바뀌어요'
-    updateProfile.mockRejectedValueOnce(
-      new ApiError({
-        code: 'CONFLICT',
-        message: '확인이 필요해요.',
-        field: 'confirmBaselineChange',
-        details: { warning, affectedRoundId: 7 },
-        status: 409,
-      }),
-    )
-    const { wrapper } = await mountView(ProfileEditView, '/mypage/profile')
+describe('MY-05 청년정책 목록', () => {
+  it('맞춤 추천 목록과 전체 정책을 전환한다', async () => {
+    const { wrapper } = await mountView(PolicyListView, '/mypage/policies?mode=recommended')
+    expect(getPolicyRecommendations).toHaveBeenCalledWith({ page: 0, size: 20 })
+    expect(wrapper.text()).toContain('청년 주거 지원')
 
-    const save = wrapper.findAll('button').find((button) => button.text() === '저장하기')
-    await save.trigger('click')
+    const all = wrapper.findAll('[role="tab"]').find((tab) => tab.text() === '전체 정책')
+    await all.trigger('click')
+    await flushPromises()
+    expect(getPolicies).toHaveBeenCalledWith({ page: 0, size: 20 })
+  })
+})
+
+describe('MY-06 청년정책 상세', () => {
+  it('상세 정보와 판정 근거를 표시한다', async () => {
+    const { wrapper } = await mountView(PolicyDetailView, '/mypage/policies/policy-1')
+    expect(getPolicy).toHaveBeenCalledWith('policy-1')
+    expect(wrapper.text()).toContain('정책 설명')
+    expect(wrapper.text()).toContain('연령이 일치해요')
+    expect(wrapper.text()).toContain('실제 신청 자격은 반드시 공고에서 확인해 주세요')
+  })
+
+  it('임시 추천과 내 정보 저장을 분리한다', async () => {
+    const { wrapper } = await mountView(PolicyDetailView, '/mypage/policies/policy-1')
+    await wrapper.findAll('button').find((button) => button.text() === '조건을 바꿔 다시 추천하기').trigger('click')
     await flushPromises()
 
-    // 첫 요청에는 플래그가 없다 — 앱이 알아서 붙이지 않는다
-    expect(updateProfile.mock.calls[0][0].confirmBaselineChange).toBeUndefined()
-    expect(document.body.textContent).toContain(warning)
-
-    updateProfile.mockResolvedValue({
-      profileSummary: '서울 관악구 · 원룸 10평 이하',
-      baselineRecalculated: true,
-      affectedRoundId: 7,
+    await wrapper.findAll('button').find((button) => button.text() === '이 조건으로 다시 추천').trigger('click')
+    await flushPromises()
+    expect(previewPolicyRecommendations).toHaveBeenCalledWith({
+      currentStatus: 'EMPLOYED', annualIncomeBand: 'FROM_24M_TO_36M', householdStatus: 'ONE_PERSON', page: 0, size: 5,
     })
-    const confirm = [...document.body.querySelectorAll('button')].find(
-      (button) => button.textContent.trim() === '그대로 바꾸기',
-    )
-    confirm.click()
-    await flushPromises()
+    expect(updatePolicyPreferences).not.toHaveBeenCalled()
 
-    expect(updateProfile.mock.calls[1][0].confirmBaselineChange).toBe(true)
+    await wrapper.findAll('button').find((button) => button.text() === '내 정보에 저장').trigger('click')
+    await flushPromises()
+    expect(updatePolicyPreferences).toHaveBeenCalledWith({
+      currentStatus: 'EMPLOYED', annualIncomeBand: 'FROM_24M_TO_36M', householdStatus: 'ONE_PERSON',
+    })
   })
 })

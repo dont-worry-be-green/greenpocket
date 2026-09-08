@@ -34,7 +34,8 @@ export const DEMO_SHORTCUTS = [
     group: '마이 · 보관함',
     items: [
       { label: 'MY-01 마이', to: '/mypage' },
-      { label: 'MY-02 기본 정보 수정', to: '/mypage/profile' },
+      { label: 'MY-02 추천 조건 설정', to: '/mypage/policy-preferences' },
+      { label: 'MY-05 청년정책 목록', to: '/mypage/policies?mode=recommended' },
       { label: 'MY-03 고지서 보관함', to: '/mypage/bills' },
       { label: 'MY-03 전기 탭', to: '/mypage/bills?utility=ELECTRICITY' },
       { label: 'MY-04 리포트 보관함', to: '/mypage/reports' },
