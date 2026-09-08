@@ -155,6 +155,11 @@ class UserServiceTest {
 			"김수현", LocalDate.of(1998, 3, 15), Gender.FEMALE, "1234"
 		)).isInstanceOfSatisfying(BusinessException.class,
 			exception -> assertThat(exception.getErrorCode().code()).isEqualTo("PHONE_NUMBER_INVALID"));
+
+		assertThatThrownBy(() -> userService.createRegisteredUser(
+			"김수현", LocalDate.of(1998, 3, 15), Gender.FEMALE, "010abc91740339"
+		)).isInstanceOfSatisfying(BusinessException.class,
+			exception -> assertThat(exception.getErrorCode().code()).isEqualTo("PHONE_NUMBER_INVALID"));
 	}
 
 	@Test

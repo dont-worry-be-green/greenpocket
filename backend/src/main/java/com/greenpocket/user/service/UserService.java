@@ -170,7 +170,7 @@ public class UserService {
 	}
 
 	private static String normalizeAndValidatePhoneNumber(String rawPhoneNumber) {
-		String phoneNumber = rawPhoneNumber == null ? "" : rawPhoneNumber.replaceAll("[^0-9]", "");
+		String phoneNumber = rawPhoneNumber == null ? "" : rawPhoneNumber.replaceAll("[\\s-]", "");
 		if (!PHONE_NUMBER_PATTERN.matcher(phoneNumber).matches()) {
 			throw new BusinessException(UserErrorCode.PHONE_NUMBER_INVALID, "phoneNumber", null);
 		}
