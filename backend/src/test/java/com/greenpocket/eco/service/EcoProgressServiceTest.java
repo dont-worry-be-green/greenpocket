@@ -71,7 +71,7 @@ class EcoProgressServiceTest {
 		when(repository.findLatestBillMonth(USER_ID, date(4), date(9))).thenReturn(Optional.of(date(7)));
 		when(repository.findMonthlyUtilities(USER_ID, ROUND_ID, date(4), date(7)))
 			.thenReturn(monthlyRowsThroughJuly());
-		when(repository.findMissionProgress(USER_ID, ROUND_ID, LocalDate.of(2026, 8, 15)))
+		when(repository.findMissionProgress(USER_ID, ROUND_ID, LocalDate.of(2026, 8, 15), "SUMMER"))
 			.thenReturn(new MissionProgressSnapshot(2, 3));
 
 		EcoHomeResponse response = service.getHome(USER_ID);
@@ -121,7 +121,7 @@ class EcoProgressServiceTest {
 	void prioritizesAnUnviewedConfirmedResultScreen() {
 		stubLinkedRound();
 		when(repository.findLatestBillMonth(USER_ID, date(4), date(9))).thenReturn(Optional.empty());
-		when(repository.findMissionProgress(USER_ID, ROUND_ID, LocalDate.of(2026, 8, 15)))
+		when(repository.findMissionProgress(USER_ID, ROUND_ID, LocalDate.of(2026, 8, 15), "SUMMER"))
 			.thenReturn(new MissionProgressSnapshot(0, 0));
 		when(repository.findUnviewedResult(USER_ID)).thenReturn(Optional.of(new ResultRoundSnapshot(
 			6L,
