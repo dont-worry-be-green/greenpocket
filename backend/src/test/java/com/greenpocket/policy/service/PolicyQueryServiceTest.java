@@ -254,6 +254,44 @@ class PolicyQueryServiceTest {
 	}
 
 	@Test
+	void treatsMissingAgeBoundsAsUnknownWhenSourceSaysAgeIsLimited() {
+		YouthPolicySnapshot policy = new YouthPolicySnapshot(
+			1L, "AGE-MISSING", "연령 조건 누락 정책", null, "설명", "JOB", "취업",
+			PolicyInterestCategory.JOB, "지원 내용", "주관기관", "운영기관",
+			"0044002", "0042002", "0057002", null, null, null, null, null,
+			"홈페이지 신청", "https://example.go.kr", null, null, "Y", null, null,
+			"0055003", "0043001", null, null, null, null, null,
+			"0011009", "0013010", "0049010", "0014010",
+			PolicyApplicationStatus.OPEN, "NATIONAL:00000", SYNCED_AT
+		);
+		when(repository.findActiveByExternalId("AGE-MISSING")).thenReturn(Optional.of(policy));
+		when(profileQueryService.findCompleted(USER_ID)).thenReturn(Optional.of(profile(null, null)));
+
+		var detail = service.getDetail(USER_ID, "AGE-MISSING");
+
+		assertThat(detail.conditions().age()).isEqualTo("세부 연령 조건 확인");
+	}
+
+	@Test
+	void showsParticipantTargetTextInsteadOfGenericNoLimitLabel() {
+		YouthPolicySnapshot policy = new YouthPolicySnapshot(
+			1L, "TARGET", "대상 조건 정책", null, "설명", "JOB", "취업",
+			PolicyInterestCategory.JOB, "지원 내용", "주관기관", "운영기관",
+			"0044002", "0042002", "0057002", null, null, null, null, null,
+			"홈페이지 신청", "https://example.go.kr", null, null, "N", 19, 39,
+			"0055003", "0043001", null, null, null, null, "지역 청년 재직자",
+			"0011009", "0013010", "0049010", "0014010",
+			PolicyApplicationStatus.OPEN, "NATIONAL:00000", SYNCED_AT
+		);
+		when(repository.findActiveByExternalId("TARGET")).thenReturn(Optional.of(policy));
+		when(profileQueryService.findCompleted(USER_ID)).thenReturn(Optional.of(profile(null, null)));
+
+		var detail = service.getDetail(USER_ID, "TARGET");
+
+		assertThat(detail.conditions().special()).isEqualTo("지역 청년 재직자");
+	}
+
+	@Test
 	void rendersStructuredAnnualIncomeLimit() {
 		YouthPolicySnapshot policy = policyWithConditions(
 			"INCOME", "연소득 제한 정책", "NATIONAL:00000",

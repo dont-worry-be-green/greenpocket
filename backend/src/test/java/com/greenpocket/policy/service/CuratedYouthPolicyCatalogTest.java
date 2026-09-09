@@ -22,6 +22,14 @@ class CuratedYouthPolicyCatalogTest {
 				policy,
 				LocalDateTime.of(2026, 9, 9, 0, 0)
 			)).as(policy.externalPolicyId()).isPresent());
+		assertThat(catalog.snapshot())
+			.extracting(policy -> policy.title())
+			.doesNotContain(
+				"온국민평생배움터 운영",
+				"한국형 온라인 공개강좌(K-MOOC)",
+				"전세보증금 반환보증 보증료 지원",
+				"부산 자립준비청년 자립수당 지원"
+			);
 	}
 
 	@Test

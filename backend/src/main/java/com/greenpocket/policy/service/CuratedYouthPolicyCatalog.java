@@ -32,6 +32,9 @@ public class CuratedYouthPolicyCatalog {
 		if (snapshot.size() != CATALOG_SIZE || externalPolicyIds.size() != CATALOG_SIZE) {
 			throw new IllegalStateException("검증된 청년정책 카탈로그는 중복 없이 정확히 60건이어야 합니다.");
 		}
+		if (snapshot.stream().anyMatch(CuratedYouthPolicyCatalog::hasNoSpecificTargetCondition)) {
+			throw new IllegalStateException("검증된 청년정책에는 하나 이상의 구체적인 대상 조건이 있어야 합니다.");
+		}
 	}
 
 	public List<YouthPolicySourcePolicy> snapshot() {
@@ -70,5 +73,21 @@ public class CuratedYouthPolicyCatalog {
 		catch (IOException exception) {
 			throw new IllegalStateException("검증된 청년정책 스냅샷을 읽을 수 없습니다.", exception);
 		}
+	}
+
+	private static boolean hasNoSpecificTargetCondition(YouthPolicySourcePolicy policy) {
+		return policy.minAge() == null && policy.maxAge() == null
+			&& "0043001".equals(policy.incomeConditionCode())
+			&& "0013010".equals(policy.employmentCodes())
+			&& "0049010".equals(policy.schoolCodes())
+			&& "0011009".equals(policy.majorCodes())
+			&& "0055003".equals(policy.marriageStatusCode())
+			&& "0014010".equals(policy.specialCodes())
+			&& !hasText(policy.participantTargetText())
+			&& !hasText(policy.additionalConditionText());
+	}
+
+	private static boolean hasText(String value) {
+		return value != null && !value.isBlank();
 	}
 }
