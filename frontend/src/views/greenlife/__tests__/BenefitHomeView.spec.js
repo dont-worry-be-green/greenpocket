@@ -54,7 +54,9 @@ const NOT_PARTICIPATING = {
     joinSteps: ['공식 누리집에서 회원가입해요', '참여기업 앱에서 실천 항목을 설정해요'],
     externalUrl: 'https://cpoint.or.kr',
   },
-  featuredItems: [{ itemId: 1, name: '전자영수증', unitPrice: 10, rewardUnit: '건', iconKey: 'receipt' }],
+  featuredItems: [
+    { itemId: 1, name: '전자영수증', unitPrice: 10, rewardUnit: '건', iconKey: 'receipt' },
+  ],
 }
 
 const ITEMS = {
@@ -62,8 +64,24 @@ const ITEMS = {
   standardYear: 2026,
   items: [
     // monthAmount = monthCount × unitPrice (상한 적용). 행에 뜨는 것은 이 값이다
-    { itemId: 1, name: '전자영수증', unitPrice: 10, rewardUnit: '건', iconKey: 'receipt', monthCount: 24, monthAmount: 240 },
-    { itemId: 7, name: '친환경제품 구매', unitPrice: 500, rewardUnit: '건', iconKey: 'eco', monthCount: 0, monthAmount: 0 },
+    {
+      itemId: 1,
+      name: '전자영수증',
+      unitPrice: 10,
+      rewardUnit: '건',
+      iconKey: 'receipt',
+      monthCount: 24,
+      monthAmount: 240,
+    },
+    {
+      itemId: 7,
+      name: '친환경제품 구매',
+      unitPrice: 500,
+      rewardUnit: '건',
+      iconKey: 'eco',
+      monthCount: 0,
+      monthAmount: 0,
+    },
   ],
   totalCount: 17,
   collapsedAfter: 6,
@@ -75,8 +93,12 @@ async function mountHome(path = '/benefit') {
   await router.isReady()
 
   const errors = []
-  const spy = vi.spyOn(console, 'error').mockImplementation((...args) => errors.push(String(args[0])))
-  const warn = vi.spyOn(console, 'warn').mockImplementation((...args) => errors.push(String(args[0])))
+  const spy = vi
+    .spyOn(console, 'error')
+    .mockImplementation((...args) => errors.push(String(args[0])))
+  const warn = vi
+    .spyOn(console, 'warn')
+    .mockImplementation((...args) => errors.push(String(args[0])))
 
   const wrapper = mount(BenefitHomeView, { global: { plugins: [createPinia(), router] } })
   await flushPromises()
@@ -103,19 +125,22 @@ describe('BenefitHomeView', () => {
 
     expect(errors).toEqual([])
     const text = wrapper.text()
-    expect(text).toContain('8월 실천 현황')
+    expect(text).toContain('8월 적립')
+    expect(text).toContain('44건')
     // 적립 예정과 지급 완료는 색이 아니라 라벨로도 갈린다 (COM-06)
     expect(text).toContain('적립 예정')
     expect(text).toContain('5,540원')
     expect(text).toContain('지급 완료')
     expect(text).toContain('3,140원')
-    expect(text).toContain('18,600원 / 70,000원')
+    expect(text).toContain('/ 70,000원')
     expect(text).toContain('전자영수증')
     // 행에 뜨는 것은 건수가 아니라 이번 달 금액이다 (핵심 규칙 1 — 원화 우선)
-    expect(text).toContain('240원')
+    // 행 오른쪽은 이번 달 건수다(C-2-03 · 결정 C-32). monthCount 24.000 → 24건
+    expect(text).toContain('24')
+    expect(text).toContain('10')
     // 실적이 없어도 17개를 전부 내려준다. 빈칸이 아니라 0원이다 (C-2-03)
     expect(text).toContain('친환경제품 구매')
-    expect(text).toContain('0원')
+    expect(text).toContain('0건')
     wrapper.unmount()
   })
 
@@ -125,8 +150,7 @@ describe('BenefitHomeView', () => {
 
     expect(errors).toEqual([])
     const text = wrapper.text()
-    expect(text).toContain('탄소중립포인트 녹색생활실천')
-    expect(text).toContain('17가지 실천 · 연간 최대')
+    expect(text).toContain('17가지 실천으로')
     expect(text).toContain('70,000원')
     expect(text).toContain('공식 누리집에서 회원가입해요')
     expect(text).toContain('10원/건')

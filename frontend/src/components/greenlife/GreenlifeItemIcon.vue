@@ -19,6 +19,8 @@ import IconTumbler from '@/components/ui/icons/IconTumbler.vue'
 const props = defineProps({
   iconKey: { type: String, default: '' },
   size: { type: [Number, String], default: 22 },
+  /** 미실천 항목. 타일을 회색으로 떨어뜨려 실천한 줄이 먼저 보이게 한다(결정 C-32) */
+  muted: { type: Boolean, default: false },
 })
 
 // 키는 db/seed/greenlife_items.sql 의 icon_key 다
@@ -36,7 +38,8 @@ const icon = () => ICONS[props.iconKey] ?? IconPlant
 
 <template>
   <span
-    class="bg-primary-bg text-primary flex size-10 flex-none items-center justify-center rounded-sm"
+    class="flex size-10 flex-none items-center justify-center rounded-md"
+    :class="muted ? 'bg-surface-sub text-icon-off' : 'bg-primary-bg text-primary-soft'"
   >
     <component :is="icon()" :size="size" />
   </span>
