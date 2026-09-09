@@ -35,12 +35,12 @@ class DiagnosisBaselineServiceTest {
 		Baseline baseline = new Baseline(
 			UtilityType.ELECTRICITY,
 			"전국 1인 가구",
-			new BigDecimal("247.633"),
+			new BigDecimal("257.617"),
 			UsageUnit.kWh,
-			"산업통상자원부·에너지경제연구원 2022년 기준 13차 가구에너지패널조사",
-			"2022",
-			BaselineCalculationBasis.ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT,
-			"월평균 환산 참고값"
+			"에너지경제연구원 2023년 기준 14차 가구에너지패널조사 마이크로데이터",
+			"2023",
+			BaselineCalculationBasis.WEIGHTED_MONTHLY_MICRODATA_AVERAGE,
+			"월별 가중평균"
 		);
 		when(baselineCatalog.find(REQUEST_MONTH, UtilityType.ELECTRICITY))
 			.thenReturn(Optional.of(baseline));
@@ -53,7 +53,7 @@ class DiagnosisBaselineServiceTest {
 		assertThat(response.found()).isTrue();
 		assertThat(response.targetYearMonth()).isEqualTo("2026-08");
 		assertThat(response.comparisonLabel()).isEqualTo("전국 1인 가구");
-		assertThat(response.averageUsage()).isEqualByComparingTo("247.633");
+		assertThat(response.averageUsage()).isEqualByComparingTo("257.617");
 		assertThat(response.usageUnit()).isEqualTo(UsageUnit.kWh);
 	}
 

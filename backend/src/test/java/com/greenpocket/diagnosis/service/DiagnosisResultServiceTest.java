@@ -111,18 +111,21 @@ class DiagnosisResultServiceTest {
 			record(TARGET_MONTH.minusYears(1), UtilityType.GAS, 14_200L),
 			record(TARGET_MONTH.minusYears(1), UtilityType.WATER, 8_300L)
 		);
-		when(billQueryService.findAllBills(USER_ID)).thenReturn(current);
+		when(billQueryService.findAllBills(USER_ID)).thenReturn(List.of(
+			current.get(0), current.get(1), current.get(2),
+			record(TARGET_MONTH.minusMonths(1), UtilityType.ELECTRICITY, 40_100L)
+		));
 		when(billQueryService.findPreviousYearBaseline(USER_ID, TARGET_MONTH.minusYears(1)))
 			.thenReturn(previous);
 		when(userRegionQueryService.findDiagnosisProfile(USER_ID)).thenReturn(Optional.of(
 			new UserDiagnosisProfile("11", "서울", "11620", "관악구", "APARTMENT", "OVER_20")
 		));
-		when(baselineCatalog.find(TARGET_MONTH, UtilityType.ELECTRICITY))
-			.thenReturn(Optional.of(baseline(UtilityType.ELECTRICITY, "247.633", UsageUnit.kWh)));
-		when(baselineCatalog.find(TARGET_MONTH, UtilityType.GAS))
-			.thenReturn(Optional.of(baseline(UtilityType.GAS, "25.429", UsageUnit.m3)));
-		when(baselineCatalog.find(TARGET_MONTH, UtilityType.WATER))
-			.thenReturn(Optional.of(baseline(UtilityType.WATER, "13.578", UsageUnit.m3)));
+		mockSeriesBaselines(UtilityType.ELECTRICITY, UsageUnit.kWh,
+			"189.658", "184.783", "179.013", "186.260", "228.449", "257.617");
+		mockSeriesBaselines(UtilityType.GAS, UsageUnit.m3,
+			"68.353", "47.285", "34.182", "23.414", "18.890", "16.781");
+		mockSeriesBaselines(UtilityType.WATER, UsageUnit.m3,
+			"13.578", "13.140", "13.578", "13.140", "13.578", "13.578");
 		when(ecoCurrentRoundQueryService.findCurrentRoundLink(USER_ID)).thenReturn(Optional.of(
 			new EcoCurrentRoundQueryService.CurrentRoundLink(7L, true)
 		));
@@ -140,9 +143,22 @@ class DiagnosisResultServiceTest {
 		assertThat(response.singleHouseholdComparison().comparisonLabel()).isEqualTo("1인 가구 평균 사용량");
 		assertThat(response.singleHouseholdComparison().tabs()).hasSize(3);
 		assertThat(response.singleHouseholdComparison().tabs().getFirst().differenceUsage())
-			.isEqualByComparingTo("-237.633");
+			.isEqualByComparingTo("-247.617");
 		assertThat(response.singleHouseholdComparison().tabs().getFirst().differenceRate())
-			.isEqualByComparingTo("-95.962");
+			.isEqualByComparingTo("-96.118");
+		assertThat(response.singleHouseholdComparison().tabs().getFirst().series())
+			.extracting(DiagnosisResponse.SingleHouseholdSeriesPoint::yearMonth)
+			.containsExactly("2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08");
+		assertThat(response.singleHouseholdComparison().tabs().getFirst().series())
+			.extracting(DiagnosisResponse.SingleHouseholdSeriesPoint::averageUsage)
+			.containsExactly(
+				new BigDecimal("189.658"), new BigDecimal("184.783"),
+				new BigDecimal("179.013"), new BigDecimal("186.260"),
+				new BigDecimal("228.449"), new BigDecimal("257.617")
+			);
+		assertThat(response.singleHouseholdComparison().tabs().getFirst().series())
+			.extracting(DiagnosisResponse.SingleHouseholdSeriesPoint::myUsage)
+			.containsExactly(null, null, null, null, new BigDecimal("10.000"), new BigDecimal("10.000"));
 		assertThat(response.singleHouseholdComparison().tabs().get(1).available()).isTrue();
 		assertThat(response.singleHouseholdComparison().tabs().get(2).available()).isTrue();
 		assertThat(response.whatIfLink()).isEqualTo(new DiagnosisResponse.WhatIfLink(7L, true));
@@ -167,6 +183,7 @@ class DiagnosisResultServiceTest {
 		assertThat(response.lastYearComparison().unavailableReason()).isEqualTo("NO_BASELINE");
 		assertThat(response.singleHouseholdComparison().tabs().getFirst().available()).isFalse();
 		assertThat(response.singleHouseholdComparison().tabs().getFirst().averageUsage()).isNull();
+		assertThat(response.singleHouseholdComparison().tabs().getFirst().series()).isEmpty();
 		assertThat(response.whatIfLink()).isEqualTo(new DiagnosisResponse.WhatIfLink(null, false));
 	}
 
@@ -191,9 +208,21 @@ class DiagnosisResultServiceTest {
 			new BigDecimal(averageUsage),
 			usageUnit,
 			"공식 출처",
-			"2022",
-			BaselineCalculationBasis.ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT,
+			"2023",
+			BaselineCalculationBasis.WEIGHTED_MONTHLY_MICRODATA_AVERAGE,
 			"환산 참고값"
 		);
+	}
+
+	private void mockSeriesBaselines(
+		UtilityType utilityType,
+		UsageUnit usageUnit,
+		String... monthlyAverages
+	) {
+		for (int offset = 0; offset < monthlyAverages.length; offset++) {
+			YearMonth month = TARGET_MONTH.minusMonths(monthlyAverages.length - 1L - offset);
+			when(baselineCatalog.find(month, utilityType))
+				.thenReturn(Optional.of(baseline(utilityType, monthlyAverages[offset], usageUnit)));
+		}
 	}
 }
