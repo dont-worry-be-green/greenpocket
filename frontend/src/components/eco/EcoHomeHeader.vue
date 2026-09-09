@@ -1,6 +1,6 @@
 <script setup>
 /*
- * WF-06 홈 헤더 (B-4-01) — 로고·이름 줄, 헤드라인, 카드 뒤에서 빼꼼한 캐릭터.
+ * WF-06 홈 헤더 (B-4-01) — 그린포켓 로고(PNG)·이름 줄, 헤드라인, 카드 뒤에서 빼꼼한 캐릭터.
  *
  * 홈에만 있는 헤더다. 다른 네 탭은 `GpPageHeader` + 흰 카드로 시작한다(design-system.md 9-1).
  * 하늘·언덕 배경과 「다 지키면 이번 달 ~원」 보조문은 뺐다 — 헤더가 길어지고 너무 귀여워졌다.
@@ -14,7 +14,7 @@
  */
 import { computed } from 'vue'
 
-import IconLeaf from '@/components/ui/icons/IconLeaf.vue'
+import gpLogo from '@/assets/그린포켓 로고 .png'
 import characterBehind from '@/assets/character/sad.png'
 import characterNear from '@/assets/character/push.png'
 import characterOn from '@/assets/character/ok.png'
@@ -48,12 +48,7 @@ const headline = computed(() => {
 <template>
   <header class="relative pt-3.5 pb-3.5">
     <div class="flex items-center gap-2">
-      <span
-        class="bg-primary-soft text-on-primary flex size-8 shrink-0 items-center justify-center rounded-full shadow-[0_2px_6px_rgb(6_137_79/0.3)]"
-        aria-hidden="true"
-      >
-        <IconLeaf :size="19" />
-      </span>
+      <img :src="gpLogo" alt="" aria-hidden="true" class="size-10 shrink-0 object-contain select-none" />
       <b class="text-list-title text-ink tracking-title">{{ name ? `${name}님` : '안녕하세요' }}</b>
     </div>
 
