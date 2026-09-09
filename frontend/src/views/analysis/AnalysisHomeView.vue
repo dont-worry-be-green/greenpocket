@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AppTabLayout from '@/components/layout/AppTabLayout.vue'
+import SingleHouseholdComparisonCard from '@/components/analysis/SingleHouseholdComparisonCard.vue'
 import GpButton from '@/components/ui/GpButton.vue'
 import IconChevronDown from '@/components/ui/icons/IconChevronDown.vue'
 import IconDrop from '@/components/ui/icons/IconDrop.vue'
@@ -15,7 +16,6 @@ import { formatMonth, formatMonthOnly, formatSignedWon, formatUtilityType, forma
 const route = useRoute()
 const router = useRouter()
 const store = useAnalysisStore()
-const selectedUtilityType = ref('ELECTRICITY')
 const selectedMonth = ref('')
 const isMonthMenuOpen = ref(false)
 const monthDropdown = ref(null)
@@ -37,11 +37,6 @@ const targetYearMonth = computed(
   () => diagnosis.value?.yearMonth ?? store.targetMonth?.targetYearMonth ?? diagnosis.value?.targetYearMonth,
 )
 const targetMonthOnlyLabel = computed(() => formatMonthOnly(targetYearMonth.value))
-const selectedRegionTab = computed(() =>
-  diagnosis.value?.regionComparison?.tabs?.find(
-    (tab) => tab.utilityType === selectedUtilityType.value,
-  ),
-)
 const lastYearChartMax = computed(() => {
   const amounts = diagnosis.value?.lastYearComparison?.items?.flatMap((item) => [
     item.lastYearAmount,
@@ -52,21 +47,6 @@ const lastYearChartMax = computed(() => {
 
 function barHeight(amount) {
   return `${Math.max((amount / lastYearChartMax.value) * 100, 4)}%`
-}
-
-function linePoints(series, key) {
-  if (!series?.length) return ''
-  const values = series.flatMap((point) => [point.mine, point.regionAvg])
-  const min = Math.min(...values)
-  const max = Math.max(...values)
-  const range = max - min || 1
-  return series
-    .map((point, index) => {
-      const x = 8 + (index * 84) / Math.max(series.length - 1, 1)
-      const y = 82 - ((point[key] - min) / range) * 62
-      return `${x},${y}`
-    })
-    .join(' ')
 }
 
 function utilityCostLabel(utilityType) {
@@ -107,7 +87,6 @@ async function changeMonth(month) {
   if (!month || month === diagnosis.value?.yearMonth) return
 
   selectedMonth.value = month
-  selectedUtilityType.value = 'ELECTRICITY'
   await router.replace({ query: { ...route.query, month } })
   await store.fetchHome(month)
 }
@@ -179,7 +158,7 @@ function goToRegistration() {
 
       <h2 class="text-section text-ink mt-7 mb-3">아직 등록된 고지서가 없어요</h2>
       <p class="text-body-sm text-muted mx-auto mt-0 mb-8 max-w-80 break-keep">
-        사진에서 청구 월을 자동으로 확인해요.<br />등록하면 전년 동월·지역 평균과 바로 비교해드려요.
+        사진에서 청구 월을 자동으로 확인해요.<br />등록하면 전년 동월·1인 가구 평균과 바로 비교해드려요.
       </p>
 
       <GpButton @click="goToRegistration">고지서 등록하기</GpButton>
@@ -279,62 +258,10 @@ function goToRegistration() {
         <p v-else class="text-body-sm text-muted my-10 text-center">작년 비교 데이터를 준비하고 있어요.</p>
       </section>
 
-      <section v-if="diagnosis.regionComparison" class="bg-surface mt-5 rounded-xl px-5 py-6">
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <h2 class="text-section text-ink mt-0 mb-1">같은 지역 가구 평균</h2>
-            <p class="text-caption text-muted m-0">최근 6개월 우리 집과 지역 평균 추이</p>
-          </div>
-          <span class="bg-primary-bg text-primary rounded-full px-3 py-2 text-label font-semibold">
-            {{ diagnosis.regionComparison.regionLabel }}
-          </span>
-        </div>
-
-        <div class="mt-5 grid grid-cols-3 gap-2">
-          <button
-            v-for="tab in diagnosis.regionComparison.tabs"
-            :key="tab.utilityType"
-            type="button"
-            class="min-h-11 rounded-md border-0 text-label"
-            :class="selectedUtilityType === tab.utilityType ? 'bg-primary text-white' : 'bg-confirmed-bg text-muted'"
-            @click="selectedUtilityType = tab.utilityType"
-          >
-            {{ utilityCostLabel(tab.utilityType) }}
-          </button>
-        </div>
-
-        <template v-if="selectedRegionTab?.available">
-          <div class="mt-4 flex items-end justify-between gap-3">
-            <strong class="text-title text-ink tabular-nums">{{ formatWon(selectedRegionTab.myAmount) }}</strong>
-            <strong class="text-body-strong text-negative">
-              지역 평균보다 {{ formatSignedWon(selectedRegionTab.diffRegion) }}
-            </strong>
-          </div>
-          <div class="text-caption text-muted mt-5 flex justify-end gap-4">
-            <span class="flex items-center gap-1"><i class="bg-primary size-2 rounded-full" />우리 집</span>
-            <span class="flex items-center gap-1"><i class="bg-control-off size-2 rounded-full" />지역 평균</span>
-          </div>
-          <svg class="mt-2 h-40 w-full" viewBox="0 0 100 100" role="img" aria-label="최근 6개월 지역 평균 비교 그래프">
-            <line v-for="y in [20, 50, 80]" :key="y" x1="6" :y1="y" x2="94" :y2="y" class="stroke-divider" stroke-width="0.5" />
-            <polyline :points="linePoints(selectedRegionTab.series, 'regionAvg')" fill="none" class="stroke-control-off" stroke-width="2" />
-            <polyline :points="linePoints(selectedRegionTab.series, 'mine')" fill="none" class="stroke-primary" stroke-width="2" />
-            <circle
-              v-for="(point, index) in selectedRegionTab.series"
-              :key="point.yearMonth"
-              :cx="8 + (index * 84) / Math.max(selectedRegionTab.series.length - 1, 1)"
-              :cy="linePoints(selectedRegionTab.series, 'mine').split(' ')[index].split(',')[1]"
-              r="2"
-              class="fill-primary"
-            />
-          </svg>
-          <div class="text-caption-sm text-muted -mt-2 flex justify-between px-2">
-            <span v-for="point in selectedRegionTab.series" :key="point.yearMonth">
-              {{ Number(point.yearMonth.split('-')[1]) }}월
-            </span>
-          </div>
-        </template>
-        <p v-else class="text-body-sm text-muted my-10 text-center">지역 비교 데이터를 준비하고 있어요.</p>
-      </section>
+      <SingleHouseholdComparisonCard
+        v-if="diagnosis.singleHouseholdComparison"
+        :comparison="diagnosis.singleHouseholdComparison"
+      />
     </template>
 
     <section v-else class="bg-surface rounded-lg px-5 py-8 text-center">
