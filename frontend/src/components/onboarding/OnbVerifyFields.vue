@@ -221,10 +221,10 @@ function changePhoneNumber() {
 
     <!-- 좁은 화면에서도 생년월일과 성별을 한 행으로 유지한다. -->
     <div
-      class="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] gap-3"
+      class="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] items-start gap-3"
       data-testid="identity-detail-row"
     >
-      <label class="min-w-0">
+      <label class="min-w-0 overflow-hidden">
         <span class="text-body-strong text-muted mb-2 block">생년월일</span>
         <div class="relative">
           <IconCalendar
@@ -245,7 +245,7 @@ function changePhoneNumber() {
         </span>
       </label>
 
-      <div class="min-w-0">
+      <div class="min-w-0 overflow-hidden">
         <span class="text-body-strong text-muted mb-2 block" id="gender-label">성별</span>
         <div class="grid grid-cols-2 gap-1.5" role="radiogroup" aria-labelledby="gender-label">
           <button
