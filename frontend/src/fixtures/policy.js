@@ -52,6 +52,25 @@ export const POLICY_PREFERENCES = {
   completed: true,
 }
 
+let editedPolicyPreferences = null
+
+export function getFixturePolicyPreferences() {
+  const preferences = { ...POLICY_PREFERENCES, ...editedPolicyPreferences }
+  return {
+    ...preferences,
+    interestCategories: [...preferences.interestCategories],
+  }
+}
+
+export function updateFixturePolicyPreferences(payload) {
+  editedPolicyPreferences = {
+    ...payload,
+    interestCategories: [...payload.interestCategories],
+    completed: true,
+  }
+  return getFixturePolicyPreferences()
+}
+
 export function buildPolicyList(params = {}) {
   const keyword = String(params.keyword ?? '')
     .trim()
@@ -60,6 +79,7 @@ export function buildPolicyList(params = {}) {
     (item) =>
       (!keyword || `${item.title} ${item.supportSummary}`.toLowerCase().includes(keyword)) &&
       (!params.category || item.category === params.category) &&
+      (!params.categories?.length || params.categories.includes(item.category)) &&
       (!params.matchStatus || item.matchStatus === params.matchStatus),
   )
   const page = Number(params.page ?? 0)

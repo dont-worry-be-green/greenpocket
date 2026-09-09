@@ -4,6 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import client from '@/api/client'
 import { DATA_SOURCE, setDataSource } from '@/api/dataSource'
 import { getPolicies, getPolicy, getPolicyRecommendations } from '@/api/policy'
+import {
+  POLICY_PREFERENCES,
+  updateFixturePolicyPreferences,
+} from '@/fixtures/policy'
 
 const storage = new Map()
 Object.defineProperty(globalThis, 'localStorage', {
@@ -21,7 +25,10 @@ beforeEach(() => {
   vi.restoreAllMocks()
 })
 
-afterEach(() => setDataSource(DATA_SOURCE.API))
+afterEach(() => {
+  setDataSource(DATA_SOURCE.API)
+  updateFixturePolicyPreferences(POLICY_PREFERENCES)
+})
 
 describe('청년정책 API', () => {
   it('맞춤 추천·전체 목록·상세 API 계약을 그대로 호출한다', async () => {
@@ -53,5 +60,18 @@ describe('청년정책 API', () => {
       code: 'YOUTH_POLICY_NOT_FOUND',
       status: 404,
     })
+  })
+
+  it('픽스처 모드 맞춤 추천도 저장한 관심 분야로 필터링한다', async () => {
+    setDataSource(DATA_SOURCE.FIXTURE)
+    updateFixturePolicyPreferences({
+      ...POLICY_PREFERENCES,
+      interestCategories: ['HOUSING'],
+    })
+
+    const list = await getPolicyRecommendations()
+
+    expect(list.content).toEqual([])
+    expect(list.totalElements).toBe(0)
   })
 })

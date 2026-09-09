@@ -1,4 +1,4 @@
-import { buildPolicyList, findPolicy } from '@/fixtures/policy'
+import { buildPolicyList, findPolicy, getFixturePolicyPreferences } from '@/fixtures/policy'
 
 import client, { ApiError } from './client'
 import { isFixtureMode } from './dataSource'
@@ -9,7 +9,15 @@ const fake = async (value) => {
 }
 
 export function getPolicyRecommendations() {
-  if (isFixtureMode()) return fake(() => buildPolicyList({ size: 5, matchStatus: 'ELIGIBLE' }))
+  if (isFixtureMode()) {
+    return fake(() =>
+      buildPolicyList({
+        size: 5,
+        matchStatus: 'ELIGIBLE',
+        categories: getFixturePolicyPreferences().interestCategories,
+      }),
+    )
+  }
   return client.get('/policies/recommendations')
 }
 

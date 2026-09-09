@@ -109,6 +109,20 @@ class PolicyQueryServiceTest {
 	}
 
 	@Test
+	void filtersRecommendationsBySelectedInterestCategories() {
+		when(profileQueryService.findCompleted(USER_ID)).thenReturn(Optional.of(profile("11", "11620")));
+		when(repository.findAllActive()).thenReturn(List.of(
+			policy("JOB", "취업 지원", PolicyInterestCategory.JOB, "NATIONAL:00000", 19, 39, false),
+			policy("HOUSING", "주거 지원", PolicyInterestCategory.HOUSING, "NATIONAL:00000", 19, 39, false)
+		));
+
+		var response = service.getRecommendations(USER_ID);
+
+		assertThat(response.content()).extracting(card -> card.policyId()).containsExactly("JOB");
+		assertThat(response.content().getFirst().matchReasons()).contains("관심 분야와 일치해요");
+	}
+
+	@Test
 	void filtersPoliciesByStructuredEmploymentCode() {
 		when(profileQueryService.findCompleted(USER_ID)).thenReturn(Optional.of(profile("11", "11620")));
 		when(repository.findAllActive()).thenReturn(List.of(

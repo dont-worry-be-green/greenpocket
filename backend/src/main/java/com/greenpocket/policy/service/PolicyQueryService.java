@@ -167,6 +167,7 @@ public class PolicyQueryService {
 	private PolicyListResponse recommendations(PolicyProfile profile) {
 		List<PolicyCardResponse> cards = activePolicies().stream()
 			.filter(policy -> policy.applicationStatus() == PolicyApplicationStatus.OPEN)
+			.filter(policy -> profile.interestCategories().contains(policy.interestCategory()))
 			.map(policy -> new ScoredPolicy(policy, match(policy, profile)))
 			.filter(scored -> scored.match().status() == PolicyMatchStatus.ELIGIBLE)
 			.sorted(Comparator.comparingInt((ScoredPolicy scored) -> scored.match().score()).reversed()
