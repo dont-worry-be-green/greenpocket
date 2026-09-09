@@ -1,7 +1,10 @@
 <script setup>
 import GpCard from '@/components/ui/GpCard.vue'
 
-const props = defineProps({ profile: { type: Object, required: true } })
+const props = defineProps({
+  profile: { type: Object, required: true },
+  ecoAddress: { type: Object, default: null },
+})
 
 const genderLabel = () => ({ MALE: '남성', FEMALE: '여성' })[props.profile.gender] ?? '-'
 const birthDate = () => props.profile.birthDate?.replaceAll('-', '.') ?? '-'
@@ -21,6 +24,7 @@ const phoneNumber = () => {
             { label: '생년월일', value: birthDate() },
             { label: '성별', value: genderLabel() },
             { label: '휴대전화', value: phoneNumber() },
+            ...(ecoAddress ? [{ label: '주소', value: ecoAddress.label }] : []),
           ]"
           :key="row.label"
           class="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
