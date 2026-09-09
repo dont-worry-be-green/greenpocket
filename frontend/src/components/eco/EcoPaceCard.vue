@@ -44,7 +44,9 @@ const props = defineProps({
   remainingMonths: { type: Number, default: null },
 })
 // 하단 링크는 둘뿐이다 — 미션 다시 고르기는 목표 관리(WF-04) 안에서 한다(2026-09-09 수현, WF-08 폐지)
-defineEmits(['goal', 'report'])
+// `demo-result` 는 발표용 임시 입구다(2026-09-10 수현) — 아래 「예상 적립」 캡션 옆 작은 버튼. 서버 상태와 무관하게
+// 홈 뷰가 WF-09 결산 모달을 띄운다. 결산이 실제로 도는 흐름이 붙으면 버튼·emit 을 같이 지운다.
+defineEmits(['goal', 'report', 'demo-result'])
 
 /*
  * 페이스별 색. 클래스 문자열을 통째로 적어야 Tailwind 가 스캔한다 — 조립하지 않는다.
@@ -238,7 +240,17 @@ const mileageParts = computed(() => {
     <div class="mt-3.5 flex items-center gap-2.5 pt-3 pb-0.5">
       <img :src="ecoMark" alt="에코마일리지" class="h-[17px] w-auto shrink-0" />
       <div class="flex min-w-0 flex-col gap-px">
-        <span class="text-caption text-muted font-semibold">{{ mileageCaption }}</span>
+        <span class="flex items-center gap-1.5">
+          <span class="text-caption text-muted font-semibold">{{ mileageCaption }}</span>
+          <!-- 발표용 임시 버튼. 결산 모달(WF-09)이 이 카드를 덮으므로 가려지는 자리에 둔다 -->
+          <button
+            type="button"
+            class="bg-surface-sub text-badge text-ink-soft cursor-pointer rounded-full border-0 px-2 py-[3px] font-bold"
+            @click="$emit('demo-result')"
+          >
+            결산 보기
+          </button>
+        </span>
         <span class="text-amount tracking-display text-ink tabular-nums">
           {{ mileageParts[0]
           }}<span class="text-list-title text-ink-soft">{{ mileageParts[1] }}</span>
