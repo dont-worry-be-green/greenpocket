@@ -144,26 +144,28 @@ async function completeConversionOnReturn() {
         >
           <div class="pb-3">
             <p class="text-label m-0 font-bold">그린포켓 잔액</p>
-            <button
-              type="button"
-              class="text-on-primary mt-1.5 inline-flex cursor-pointer items-center gap-0.5 border-0 bg-transparent p-0 text-left"
-              aria-label="거래 내역 전체 보기"
-              @click="router.push('/pocket/transactions')"
-            >
-              <span class="inline-flex items-baseline gap-1">
-                <span class="text-display tracking-display tabular-nums">{{
-                  formatWon(pocket.balance).replace('원', '')
-                }}</span>
-                <span class="text-section font-extrabold">원</span>
-              </span>
-              <IconCaretRight :size="20" class="opacity-85" />
-            </button>
-            <p
-              v-if="store.home?.empty?.noTransaction"
-              class="text-caption m-0 mt-1.5 font-semibold"
-            >
-              아직 입금이 없어요
-            </p>
+            <div class="mt-1.5 flex items-end justify-between">
+              <button
+                type="button"
+                class="text-on-primary inline-flex cursor-pointer items-center gap-0.5 border-0 bg-transparent p-0 text-left"
+                aria-label="거래 내역 전체 보기"
+                @click="router.push('/pocket/transactions')"
+              >
+                <span class="inline-flex items-baseline gap-1">
+                  <span class="text-display tracking-display tabular-nums">{{
+                    formatWon(pocket.balance).replace('원', '')
+                  }}</span>
+                  <span class="text-section font-extrabold">원</span>
+                </span>
+              </button>
+              <button
+                type="button"
+                class="text-on-primary text-label cursor-pointer rounded-full border border-white/40 bg-white/15 px-2.5 py-1 backdrop-blur-sm"
+                @click="router.push('/pocket/transactions')"
+              >
+                내역
+              </button>
+            </div>
           </div>
 
           <div class="bg-surface text-ink -ml-2.5 rounded-[18px] px-3.5 py-0.5">
