@@ -46,7 +46,7 @@ public class DiagnosisController {
 		return ApiResponse.success(diagnosisResultService.findMonths(userId));
 	}
 
-	@Operation(summary = "월별 진단 결과 조회", description = "선택 월의 합계, 작년 동월, 1인 가구 평균 사용량과 What-if 연결 정보를 조회합니다. 월을 생략하면 최신 등록 월을 조회합니다.")
+	@Operation(summary = "월별 진단 결과 조회", description = "선택 월의 합계, 작년 동월, 1인 가구 평균 사용량과 최근 6개월 사용량 시계열, What-if 연결 정보를 조회합니다. 사용자 고지서가 없는 시계열 월은 null이며 월을 생략하면 최신 등록 월을 조회합니다.")
 	@ApiResponses({
 		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "진단 결과 또는 빈 상태 조회 성공"),
 		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "조회 월 형식 오류"),
@@ -62,7 +62,7 @@ public class DiagnosisController {
 		return ApiResponse.success(diagnosisResultService.findDiagnosis(userId, month));
 	}
 
-	@Operation(summary = "1인 가구 사용량 기준선 조회", description = "요청 월의 1인 가구 평균 사용량과 출처·산출 기준을 조회합니다.")
+	@Operation(summary = "1인 가구 사용량 기준선 조회", description = "요청 월의 1인 가구 평균 사용량과 출처·산출 기준을 조회합니다. 전기·도시가스는 KESIS 월별 마이크로데이터 가중평균, 수도는 일 사용량의 월환산값입니다.")
 	@ApiResponses({
 		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "기준선 조회 성공 또는 기준선 없음"),
 		@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "필수 쿼리 누락 또는 쿼리 형식 오류"),

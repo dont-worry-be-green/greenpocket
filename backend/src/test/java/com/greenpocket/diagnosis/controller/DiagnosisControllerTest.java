@@ -1,5 +1,6 @@
 package com.greenpocket.diagnosis.controller;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -8,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 import java.time.YearMonth;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -78,6 +80,52 @@ class DiagnosisControllerTest {
 	}
 
 	@Test
+	void returnsDiagnosisSeriesWithExplicitNullForMissingUserUsage() throws Exception {
+		DiagnosisResponse.SingleHouseholdTab tab = new DiagnosisResponse.SingleHouseholdTab(
+			UtilityType.ELECTRICITY,
+			true,
+			null,
+			new BigDecimal("210.000"),
+			new BigDecimal("257.617"),
+			new BigDecimal("-47.617"),
+			new BigDecimal("-18.484"),
+			com.greenpocket.eco.entity.UsageUnit.kWh,
+			"전국 1인 가구",
+			"에너지경제연구원 2023년 기준 14차 가구에너지패널조사 마이크로데이터",
+			"2023",
+			BaselineCalculationBasis.WEIGHTED_MONTHLY_MICRODATA_AVERAGE,
+			"월별 가중평균",
+			List.of(new DiagnosisResponse.SingleHouseholdSeriesPoint(
+				"2026-04", null, new BigDecimal("184.783")
+			))
+		);
+		DiagnosisResponse response = new DiagnosisResponse(
+			false,
+			null,
+			"AN-07",
+			"2026-08",
+			"",
+			null,
+			null,
+			new DiagnosisResponse.SingleHouseholdComparison("1인 가구 평균 사용량", List.of(tab)),
+			null
+		);
+		when(diagnosisResultService.findDiagnosis(USER_ID, YearMonth.of(2026, 8)))
+			.thenReturn(response);
+
+		mockMvc.perform(get("/api/v1/diagnosis")
+				.requestAttr(DemoKeyAuthenticationInterceptor.CURRENT_USER_ID_ATTRIBUTE, USER_ID)
+				.param("month", "2026-08"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.singleHouseholdComparison.tabs[0].series[0].yearMonth")
+				.value("2026-04"))
+			.andExpect(jsonPath("$.data.singleHouseholdComparison.tabs[0].series[0].myUsage")
+				.value(nullValue()))
+			.andExpect(jsonPath("$.data.singleHouseholdComparison.tabs[0].series[0].averageUsage")
+				.value(184.783));
+	}
+
+	@Test
 	void unregisteredDiagnosisMonthReturnsDomainError() throws Exception {
 		YearMonth month = YearMonth.of(2026, 6);
 		when(diagnosisResultService.findDiagnosis(USER_ID, month))
@@ -106,12 +154,12 @@ class DiagnosisControllerTest {
 			"2026-08",
 			UtilityType.ELECTRICITY,
 			"전국 1인 가구",
-			new BigDecimal("247.633"),
+			new BigDecimal("257.617"),
 			com.greenpocket.eco.entity.UsageUnit.kWh,
-			"산업통상자원부·에너지경제연구원 2022년 기준 13차 가구에너지패널조사",
-			"2022",
-			BaselineCalculationBasis.ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT,
-			"월평균 환산 참고값"
+			"에너지경제연구원 2023년 기준 14차 가구에너지패널조사 마이크로데이터",
+			"2023",
+			BaselineCalculationBasis.WEIGHTED_MONTHLY_MICRODATA_AVERAGE,
+			"월별 가중평균"
 		);
 		when(diagnosisBaselineService.findBaseline(YearMonth.of(2026, 8), UtilityType.ELECTRICITY))
 			.thenReturn(response);
@@ -124,9 +172,9 @@ class DiagnosisControllerTest {
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.found").value(true))
 			.andExpect(jsonPath("$.data.comparisonLabel").value("전국 1인 가구"))
-			.andExpect(jsonPath("$.data.averageUsage").value(247.633))
+			.andExpect(jsonPath("$.data.averageUsage").value(257.617))
 			.andExpect(jsonPath("$.data.calculationBasis")
-				.value("ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT"))
+				.value("WEIGHTED_MONTHLY_MICRODATA_AVERAGE"))
 			.andExpect(jsonPath("$.error").doesNotExist());
 	}
 

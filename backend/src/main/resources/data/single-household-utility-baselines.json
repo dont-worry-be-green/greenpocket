@@ -4,29 +4,37 @@
       "utilityType": "ELECTRICITY",
       "comparisonLabel": "전국 1인 가구",
       "usageUnit": "kWh",
-      "sourceName": "산업통상자원부·에너지경제연구원 2022년 기준 13차 가구에너지패널조사",
-      "sourceUrl": "https://kesis.keei.re.kr/pdfOpenG.es?bid=0001&list_no=95&seq=1",
-      "referencePeriod": "2022",
-      "calculationBasis": "ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT",
-      "annualTotalEnergyMcal": 7912.000,
-      "energyShareRate": 32.300,
-      "mcalPerUsageUnit": 0.860,
+      "sourceName": "에너지경제연구원 2023년 기준 14차 가구에너지패널조사 마이크로데이터",
+      "sourceUrl": "https://kesis.keei.re.kr/micro/list.es?mid=a10202030200&pid=2",
+      "referencePeriod": "2023",
+      "calculationBasis": "WEIGHTED_MONTHLY_MICRODATA_AVERAGE",
+      "annualTotalEnergyMcal": null,
+      "energyShareRate": null,
+      "mcalPerUsageUnit": null,
       "dailyUsage": null,
-      "note": "전국 1인 가구 연간 에너지소비량과 전기 비중을 월평균 사용량으로 환산한 참고값입니다. 월별·서울 표본 평균은 아닙니다."
+      "monthlyAverageUsage": [
+        209.029, 204.551, 189.658, 184.783, 179.013, 186.260,
+        228.449, 257.617, 223.761, 192.937, 194.265, 205.169
+      ],
+      "note": "유효한 가구 횡단가중치가 있는 전국 1인 가구 1,221가구의 월별 전기 사용량 추정평균입니다."
     },
     {
       "utilityType": "GAS",
-      "comparisonLabel": "전국 1인 가구",
+      "comparisonLabel": "전국 1인 도시가스 사용 가구",
       "usageUnit": "m3",
-      "sourceName": "산업통상자원부·에너지경제연구원 2022년 기준 13차 가구에너지패널조사",
-      "sourceUrl": "https://kesis.keei.re.kr/pdfOpenG.es?bid=0001&list_no=95&seq=1",
-      "referencePeriod": "2022",
-      "calculationBasis": "ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT",
-      "annualTotalEnergyMcal": 7912.000,
-      "energyShareRate": 39.300,
-      "mcalPerUsageUnit": 10.190,
+      "sourceName": "에너지경제연구원 2023년 기준 14차 가구에너지패널조사 마이크로데이터",
+      "sourceUrl": "https://kesis.keei.re.kr/micro/list.es?mid=a10202030200&pid=2",
+      "referencePeriod": "2023",
+      "calculationBasis": "WEIGHTED_MONTHLY_MICRODATA_AVERAGE",
+      "annualTotalEnergyMcal": null,
+      "energyShareRate": null,
+      "mcalPerUsageUnit": null,
       "dailyUsage": null,
-      "note": "전국 1인 가구 연간 에너지소비량과 도시가스 비중을 월평균 사용량으로 환산한 참고값입니다. 난방 계절성과 도시가스 미사용 가구가 포함된 집계의 한계가 있습니다."
+      "monthlyAverageUsage": [
+        84.072, 86.620, 68.353, 47.285, 34.182, 23.414,
+        18.890, 16.781, 19.792, 29.590, 45.764, 65.299
+      ],
+      "note": "유효한 가구 횡단가중치가 있고 연간 도시가스 사용량이 있는 전국 1인 가구 841가구를 고정 비교군으로 삼아 월별 0 사용량을 포함한 추정평균입니다. 원자료 단위는 N㎥이며 화면에서는 m3로 표기합니다."
     },
     {
       "utilityType": "WATER",
@@ -40,6 +48,7 @@
       "energyShareRate": null,
       "mcalPerUsageUnit": null,
       "dailyUsage": 0.438,
+      "monthlyAverageUsage": null,
       "note": "서울 아파트 조사에서 확인한 1인 가구의 가정 내 하루 438L를 조회 월 일수로 환산한 참고값입니다. 전체 주거유형 평균은 아닙니다."
     }
   ]

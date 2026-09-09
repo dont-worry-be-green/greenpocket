@@ -27,6 +27,7 @@ public class SingleHouseholdBaselineCatalog {
 	private static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
 	private static final BigDecimal MONTHS_PER_YEAR = new BigDecimal("12");
 	private static final int USAGE_SCALE = 3;
+	private static final int MONTHS_IN_YEAR = 12;
 
 	private final Map<UtilityType, BaselineDefinition> definitions;
 
@@ -82,6 +83,13 @@ public class SingleHouseholdBaselineCatalog {
 			throw new IllegalStateException("1인 가구 사용량 기준의 필수 메타데이터가 없습니다.");
 		}
 		switch (definition.calculationBasis()) {
+			case WEIGHTED_MONTHLY_MICRODATA_AVERAGE -> {
+				if (definition.monthlyAverageUsage() == null
+					|| definition.monthlyAverageUsage().size() != MONTHS_IN_YEAR
+					|| definition.monthlyAverageUsage().stream().anyMatch(value -> !positive(value))) {
+					throw new IllegalStateException("월별 마이크로데이터 평균은 1월부터 12월까지 양수 12개여야 합니다.");
+				}
+			}
 			case ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT -> {
 				if (!positive(definition.annualTotalEnergyMcal())
 					|| !positive(definition.energyShareRate())
@@ -102,6 +110,9 @@ public class SingleHouseholdBaselineCatalog {
 		BaselineDefinition definition
 	) {
 		return switch (definition.calculationBasis()) {
+			case WEIGHTED_MONTHLY_MICRODATA_AVERAGE -> definition.monthlyAverageUsage()
+				.get(targetMonth.getMonthValue() - 1)
+				.setScale(USAGE_SCALE, RoundingMode.HALF_UP);
 			case ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT -> definition.annualTotalEnergyMcal()
 				.multiply(definition.energyShareRate())
 				.divide(ONE_HUNDRED, 12, RoundingMode.HALF_UP)
@@ -132,6 +143,7 @@ public class SingleHouseholdBaselineCatalog {
 		BigDecimal energyShareRate,
 		BigDecimal mcalPerUsageUnit,
 		BigDecimal dailyUsage,
+		List<BigDecimal> monthlyAverageUsage,
 		String note
 	) {
 	}

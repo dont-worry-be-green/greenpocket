@@ -2,7 +2,7 @@
 
 | 항목 | 내용 |
 |---|---|
-| 문서 기준일 | 2026-09-09 (ver3.8 — 결정 C-1~C-30 반영) |
+| 문서 기준일 | 2026-09-09 (ver3.9 — 결정 C-1~C-35 반영) |
 | 참가팀 | 돈워리, 비그린 (Don't worry, be green) |
 | 기준 문서 | `docs/feature-spec/기능명세서.md` (115건) · `docs/database/schema.sql` (20테이블) |
 | 대상 범위 | **P0 88건 + P1 25건**. P2 2건(D-3-06 · E-2-02)은 15절에 자리만 표기 |
@@ -297,7 +297,7 @@ GET   /bills/ocr/{jobId}   200           → { status, progress, result | error 
 | `JobStatus` | `PENDING` · `RUNNING` · `SUCCEEDED` · `PARTIAL` · `FAILED` · `TIMEOUT` | OCR·연동 비동기 작업 |
 | `Tab` | `DIAGNOSIS` · `BENEFIT` · `WHATIF` · `POCKET` · `MYPAGE` | 하단 탭 5개 (COM-02) |
 | `PolicyMatchStatus` | `ELIGIBLE` · `CHECK_REQUIRED` · `NOT_ELIGIBLE` | 추천 조건 판정. `ELIGIBLE`도 최종 자격 확정을 뜻하지 않음 |
-| `BaselineCalculationBasis` | `ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT` · `DAILY_USAGE_MONTH_EQUIVALENT` | 1인 가구 기준의 연간 집계 월평균 환산 / 일 사용량 월 일수 환산 |
+| `BaselineCalculationBasis` | `WEIGHTED_MONTHLY_MICRODATA_AVERAGE` · `ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT` · `DAILY_USAGE_MONTH_EQUIVALENT` | 월별 마이크로데이터 가중평균 / 연간 집계 월평균 환산(하위 호환) / 일 사용량 월 일수 환산 |
 
 ---
 
@@ -961,27 +961,43 @@ CLOVA Template OCR의 고정 데모 템플릿은 관리비 통합(43341)·개별
         "available": true,
         "unavailableReason": null,
         "myUsage": 210.000,
-        "averageUsage": 247.633,
-        "differenceUsage": -37.633,
-        "differenceRate": -15.197,
+        "averageUsage": 257.617,
+        "differenceUsage": -47.617,
+        "differenceRate": -18.484,
         "usageUnit": "kWh",
         "comparisonLabel": "전국 1인 가구",
-        "sourceName": "산업통상자원부·에너지경제연구원 2022년 기준 13차 가구에너지패널조사",
-        "referencePeriod": "2022",
-        "calculationBasis": "ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT",
-        "note": "전국 1인 가구 연간 에너지소비량과 전기 비중을 월평균 사용량으로 환산한 참고값입니다. 월별·서울 표본 평균은 아닙니다."
+        "sourceName": "에너지경제연구원 2023년 기준 14차 가구에너지패널조사 마이크로데이터",
+        "referencePeriod": "2023",
+        "calculationBasis": "WEIGHTED_MONTHLY_MICRODATA_AVERAGE",
+        "note": "유효한 가구 횡단가중치가 있는 전국 1인 가구 1,221가구의 월별 전기 사용량 추정평균입니다.",
+        "series": [
+          { "yearMonth": "2026-03", "myUsage": 195.000, "averageUsage": 189.658 },
+          { "yearMonth": "2026-04", "myUsage": null,    "averageUsage": 184.783 },
+          { "yearMonth": "2026-05", "myUsage": 188.000, "averageUsage": 179.013 },
+          { "yearMonth": "2026-06", "myUsage": 190.000, "averageUsage": 186.260 },
+          { "yearMonth": "2026-07", "myUsage": 205.000, "averageUsage": 228.449 },
+          { "yearMonth": "2026-08", "myUsage": 210.000, "averageUsage": 257.617 }
+        ]
       },
       {
         "utilityType": "GAS",
         "available": true,
         "myUsage": 14.000,
-        "averageUsage": 25.429,
-        "differenceUsage": -11.429,
-        "differenceRate": -44.945,
+        "averageUsage": 16.781,
+        "differenceUsage": -2.781,
+        "differenceRate": -16.572,
         "usageUnit": "m3",
-        "comparisonLabel": "전국 1인 가구",
-        "referencePeriod": "2022",
-        "calculationBasis": "ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT"
+        "comparisonLabel": "전국 1인 도시가스 사용 가구",
+        "referencePeriod": "2023",
+        "calculationBasis": "WEIGHTED_MONTHLY_MICRODATA_AVERAGE",
+        "series": [
+          { "yearMonth": "2026-03", "myUsage": 55.000, "averageUsage": 68.353 },
+          { "yearMonth": "2026-04", "myUsage": null,    "averageUsage": 47.285 },
+          { "yearMonth": "2026-05", "myUsage": 30.000, "averageUsage": 34.182 },
+          { "yearMonth": "2026-06", "myUsage": 20.000, "averageUsage": 23.414 },
+          { "yearMonth": "2026-07", "myUsage": 17.000, "averageUsage": 18.890 },
+          { "yearMonth": "2026-08", "myUsage": 14.000, "averageUsage": 16.781 }
+        ]
       },
       {
         "utilityType": "WATER",
@@ -993,7 +1009,15 @@ CLOVA Template OCR의 고정 데모 템플릿은 관리비 통합(43341)·개별
         "usageUnit": "m3",
         "comparisonLabel": "서울 아파트 1인 가구",
         "referencePeriod": "2018",
-        "calculationBasis": "DAILY_USAGE_MONTH_EQUIVALENT"
+        "calculationBasis": "DAILY_USAGE_MONTH_EQUIVALENT",
+        "series": [
+          { "yearMonth": "2026-03", "myUsage": 10.000, "averageUsage": 13.578 },
+          { "yearMonth": "2026-04", "myUsage": null,    "averageUsage": 13.140 },
+          { "yearMonth": "2026-05", "myUsage": 9.000,  "averageUsage": 13.578 },
+          { "yearMonth": "2026-06", "myUsage": 9.000,  "averageUsage": 13.140 },
+          { "yearMonth": "2026-07", "myUsage": 10.000, "averageUsage": 13.578 },
+          { "yearMonth": "2026-08", "myUsage": 10.000, "averageUsage": 13.578 }
+        ]
       }
     ]
   },
@@ -1007,8 +1031,9 @@ CLOVA Template OCR의 고정 데모 템플릿은 관리비 통합(43341)·개별
 | `available: false` | 해당 에너지원의 1인 가구 기준이 없으면 **임의 값을 만들지 않고** 이 플래그로 "비교 데이터 준비 중"을 띄움 (A-3-03 · 비즈니스 규칙 8) |
 | `unavailableReason` | 현재 `NO_BASELINE` |
 | `differenceUsage` · `differenceRate` | **양수 = 평균 초과, 음수 = 평균 미만.** 부호 그대로 내려주고 표기는 FE (A-3-08) |
-| `calculationBasis` | `ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT`는 연간 에너지 집계의 월평균 환산, `DAILY_USAGE_MONTH_EQUIVALENT`는 일 사용량 × 조회 월 일수 |
-| `comparisonLabel` · `referencePeriod` · `note` | 비교군·기준 연도·자료 한계를 숨기지 않고 화면에 함께 표시 (결정 C-29) |
+| `calculationBasis` | `WEIGHTED_MONTHLY_MICRODATA_AVERAGE`는 월별 원자료의 가구 횡단가중 평균, `ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT`는 하위 호환용 연간 집계 월평균 환산, `DAILY_USAGE_MONTH_EQUIVALENT`는 일 사용량 × 조회 월 일수 |
+| `series` | 선택 월을 포함한 최근 6개월을 과거순으로 제공. `myUsage`는 해당 월 고지서가 없으면 `null`이며 서버가 보간하지 않음 |
+| `comparisonLabel` · `referencePeriod` · `note` | 비교군·기준 연도·자료 한계를 숨기지 않고 화면에 함께 표시 (결정 C-29·C-35) |
 | `hasPreviousYear: false` | 작년 값 없음 → 배지·카드 숨김. 에코마일리지 연동 유도 (A-3-05 · A-3-06) |
 
 **Errors** `DIAGNOSIS_MONTH_EMPTY(404)` — 등록 안 된 월을 지정했을 때
@@ -1024,8 +1049,8 @@ CLOVA Template OCR의 고정 데모 템플릿은 관리비 통합(43341)·개별
 | `month` | `2026-07` |
 | `utility` | `ELECTRICITY` |
 
-- 지역·주거형태 파라미터는 받지 않습니다. 전기·도시가스는 KESIS 전국 1인 가구 연간 집계, 수도는 서울 아파트 1인 가구 조사값을 사용합니다.
-- 수도는 `month` 의 실제 일수에 따라 월 환산값이 달라집니다. 전기·도시가스는 월별 마이크로데이터가 아닌 연간 집계의 월평균 환산값입니다.
+- 지역·주거형태 파라미터는 받지 않습니다. 전기·도시가스는 KESIS 2023년 기준 14차 가구에너지패널조사 마이크로데이터의 전국 1인 가구 월별 가중평균, 수도는 서울 아파트 1인 가구 조사값을 사용합니다.
+- 전기·도시가스는 `month`의 월 번호에 맞는 월별 평균을, 수도는 실제 일수에 따른 월 환산값을 반환합니다.
 - 런타임 외부 API를 호출하지 않고 `resources/data/single-household-utility-baselines.json`을 읽습니다.
 
 **Response 200**
@@ -1036,12 +1061,12 @@ CLOVA Template OCR의 고정 데모 템플릿은 관리비 통합(43341)·개별
   "targetYearMonth": "2026-07",
   "utilityType": "ELECTRICITY",
   "comparisonLabel": "전국 1인 가구",
-  "averageUsage": 247.633,
+  "averageUsage": 228.449,
   "usageUnit": "kWh",
-  "sourceName": "산업통상자원부·에너지경제연구원 2022년 기준 13차 가구에너지패널조사",
-  "referencePeriod": "2022",
-  "calculationBasis": "ANNUAL_ENERGY_SHARE_MONTHLY_EQUIVALENT",
-  "note": "전국 1인 가구 연간 에너지소비량과 전기 비중을 월평균 사용량으로 환산한 참고값입니다. 월별·서울 표본 평균은 아닙니다."
+  "sourceName": "에너지경제연구원 2023년 기준 14차 가구에너지패널조사 마이크로데이터",
+  "referencePeriod": "2023",
+  "calculationBasis": "WEIGHTED_MONTHLY_MICRODATA_AVERAGE",
+  "note": "유효한 가구 횡단가중치가 있는 전국 1인 가구 1,221가구의 월별 전기 사용량 추정평균입니다."
 }
 ```
 
@@ -2742,7 +2767,7 @@ P0·P1 기능 중 아래 항목은 화면 동작·데이터 작업으로 별도 
 | **9** | 데모 초기화 CASCADE | 결정 4로 해결. `DELETE FROM app_user WHERE id = :uid` 한 줄로 사용자 데이터 8개 테이블이 비고 마스터 3개가 남는 것을 실측 확인 |
 | **10** | 녹색생활 항목 상한 | 값이 확정될 때까지 `monthlyCapAmount` · `annualCapAmount` 를 `null` 로 내리고 FE는 상한을 표시하지 않음 (담당 아영) |
 | **11** | 지역난방 | **미지원 확정.** `utility_type` 은 전기·가스·수도 3종 유지. 데모 페르소나가 도시가스 사용이라 시연에 지장 없음 |
-| **12** | 수도·가스 지역 평균 | 2026-09-09 결정 C-29로 대체. 지역 평균 금액 비교를 폐기하고, 도시가스는 KESIS 전국 1인 가구 연간 집계 월환산값, 수도는 서울 아파트 1인 가구 일 사용량 월환산값을 사용함 |
+| **12** | 수도·가스 지역 평균 | 2026-09-09 결정 C-29·C-35로 대체. 지역 평균 금액 비교를 폐기하고, 도시가스는 KESIS 전국 1인 가구 월별 마이크로데이터 가중평균, 수도는 서울 아파트 1인 가구 일 사용량 월환산값을 사용함 |
 
 ## 16.4 화면 문구를 고치기로 한 것 (1건)
 
@@ -2765,7 +2790,7 @@ FROM eco_round_utility WHERE eco_round_id = :rid AND is_registered = 1;
 
 | 값 | 담당 | 들어갈 자리 |
 |---|---|---|
-| KESIS 1인 가구 전기·도시가스 월별 마이크로데이터 | 유현 | 확보 전에는 공개 연간 집계의 월평균 환산값 사용. 확보 시 `single-household-utility-baselines.json` 교체 |
+| KESIS 1인 가구 전기·도시가스 월별 마이크로데이터 | 유현 | 2026-09-09 14차(2023년 기준) 원자료 확보·검증 완료. 가구 횡단가중치로 전기 1,221가구·도시가스 841가구의 월별 평균을 산출해 `single-household-utility-baselines.json`에 반영(결정 C-35) |
 | 녹색생활실천 나머지 항목 단가·상한 | 아영 | `greenlife_item.unit_price` · `monthly_cap_amount` · `annual_cap_amount` |
 | 실천 미션 출처 수치·산출 근거·기관 | — | `mission_catalog` (세 값 없으면 INSERT 실패) |
 | 에코마일리지 시드(2024·2025년 4~9월) | 민철 | `utility_monthly_record(record_source='ECO_BASELINE')` |
