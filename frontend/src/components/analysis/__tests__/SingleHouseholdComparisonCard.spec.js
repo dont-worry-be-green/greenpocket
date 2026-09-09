@@ -50,6 +50,13 @@ describe('SingleHouseholdComparisonCard', () => {
     expect(wrapper.find('svg').attributes('viewBox')).toBe('0 0 300 100')
     expect(wrapper.text()).toContain('출처 · 에너지경제연구원')
     expect(wrapper.text()).not.toContain('2023년 기준')
+
+    const averagePoints = wrapper.findAll('[data-testid="average-point"]')
+    const averagePointYValues = averagePoints.map((point) => Number(point.attributes('cy')))
+    expect(Math.min(...averagePointYValues)).toBeLessThan(15)
+    expect(Math.max(...averagePointYValues)).toBeGreaterThan(85)
+    expect(averagePoints[0].attributes('r')).toBe('2.8')
+    expect(wrapper.find('[data-testid="my-point"]').attributes('r')).toBe('3.2')
   })
 
   it('월 축에 마우스를 올리면 해당 월의 나와 평균 사용량을 표시한다', async () => {

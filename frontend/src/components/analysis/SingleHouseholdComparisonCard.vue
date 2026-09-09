@@ -61,7 +61,7 @@ const chartBounds = computed(() => {
 
   const minimum = Math.min(...values)
   const maximum = Math.max(...values)
-  const padding = Math.max((maximum - minimum) * 0.15, maximum * 0.05, 1)
+  const padding = Math.max((maximum - minimum) * 0.06, maximum * 0.02, 0.5)
   const min = Math.max(0, minimum - padding)
   return { min, range: maximum + padding - min || 1 }
 })
@@ -72,7 +72,7 @@ function pointX(index) {
 
 function pointY(value) {
   if (value === null || value === undefined) return null
-  return 80 - ((Number(value) - chartBounds.value.min) / chartBounds.value.range) * 64
+  return 92 - ((Number(value) - chartBounds.value.min) / chartBounds.value.range) * 84
 }
 
 function linePath(key) {
@@ -188,7 +188,7 @@ const differenceLabel = computed(() => {
           :aria-label="`${formatUtilityType(selectedTab.utilityType)} 최근 6개월 1인 가구 평균 사용량 비교 그래프`"
         >
           <line
-            v-for="y in [16, 48, 80]"
+            v-for="y in [8, 50, 92]"
             :key="y"
             x1="25"
             :y1="y"
@@ -200,9 +200,9 @@ const differenceLabel = computed(() => {
           <line
             v-if="activePointIndex !== null"
             :x1="pointX(activePointIndex)"
-            y1="10"
+            y1="6"
             :x2="pointX(activePointIndex)"
-            y2="84"
+            y2="94"
             class="stroke-divider"
             stroke-width="0.8"
             stroke-dasharray="2 2"
@@ -229,14 +229,15 @@ const differenceLabel = computed(() => {
             <circle
               :cx="pointX(index)"
               :cy="pointY(point.averageUsage)"
-              r="1.8"
+              r="2.8"
               class="fill-control-off"
+              data-testid="average-point"
             />
             <circle
               v-if="point.myUsage !== null && point.myUsage !== undefined"
               :cx="pointX(index)"
               :cy="pointY(point.myUsage)"
-              r="2.2"
+              r="3.2"
               class="fill-primary stroke-surface"
               stroke-width="1"
               data-testid="my-point"
