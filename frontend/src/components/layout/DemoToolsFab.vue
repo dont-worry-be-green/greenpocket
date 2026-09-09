@@ -8,7 +8,7 @@
  *   ③ 데모 초기화 — `POST /demo/reset` (api-spec.md 4.4 · COM-10)
  *
  * ⚠️ **왜 떠 있는 버튼인가.** ①③ 을 시작 화면(ONB-01)에 두면 쓸 수 없다.
- * 온보딩을 마치면 가드가 `/onboarding/start` 진입을 막고 홈으로 되돌리기 때문에
+ * 온보딩을 마치면 가드가 `/onboarding/login` 진입을 막고 홈으로 되돌리기 때문에
  * (`router/guards.js`), 목데이터로 한 번 걸으면 실 API 로 되돌릴 길이 없고
  * 초기화 버튼은 정작 초기화가 필요한 상태에서 닿지 않는다.
  *
@@ -62,7 +62,7 @@ function go(to) {
 
 /*
  * 서버는 `DELETE FROM app_user` 한 줄이라 이 데모 키의 사용자가 사라진다.
- * 로컬에 남은 키·온보딩 플래그도 함께 버리고 ONB-01 부터 다시 걷는다.
+ * 로컬에 남은 키·온보딩 플래그도 함께 버리고 ONB-01 로그인부터 다시 걷는다.
  * 라우터가 아니라 하드 이동인 이유는 Pinia 에 남은 이전 사용자 데이터까지 비우기 위해서다.
  */
 async function reset() {
@@ -73,7 +73,7 @@ async function reset() {
     await resetDemo()
     useAuthStore().clearSession()
     clearDemoKey()
-    window.location.assign('/onboarding/start')
+    window.location.assign('/onboarding/login')
   } catch (nextError) {
     error.value = nextError
     resetting.value = false

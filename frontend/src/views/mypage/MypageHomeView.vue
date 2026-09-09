@@ -45,7 +45,7 @@ const auth = useAuthStore()
 
 async function logout() {
   await auth.logout()
-  router.replace('/onboarding/start')
+  router.replace('/onboarding/login')
 }
 
 const bootstrapping = computed(() => !store.mypage && !store.error)

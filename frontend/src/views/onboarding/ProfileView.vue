@@ -81,7 +81,7 @@ async function submit() {
 
 <template>
   <!-- 시안에 헤더 제목이 없다. 본문 큰 제목이 그 자리를 대신한다 -->
-  <AppSubLayout back="/onboarding/start">
+  <AppSubLayout back="/onboarding/login">
     <OnbProgress :step="2" :total="2" />
 
     <div class="space-y-6 pt-5">

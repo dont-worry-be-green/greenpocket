@@ -1,11 +1,9 @@
 /*
  * 온보딩 화면 (ONB) — 이슈 #121
- *   ONB-01  랜딩 (로그인 / 회원가입 두 갈래)
- *   ONB-01a 로그인
- *   ONB-01b 회원가입 (본인확인 + 계정 만들기 — 한 화면)
+ *   ONB-01  로그인
+ *   ONB-01a 회원가입 (본인확인 + 계정 만들기 — 한 화면)
  *
- * 세 화면 모두 탭바가 없다. ONB-01 은 첫 화면이라 뒤로가기도 없어서 셸을 쓰지 않고,
- * 나머지는 `AppSubLayout` 으로 앞 화면으로 돌아간다.
+ * 두 화면 모두 탭바가 없다. 첫 화면은 로그인이고 회원가입은 로그인 화면의 CTA로 진입한다.
  *
  * 별도 온보딩은 제거됐다(결정 C-26). 가입·로그인 후에는 진단 탭의
  * `/analysis/eco-link`에서 에코 연동과 기준 사용량 확인을 진행한다.
@@ -13,21 +11,16 @@
 export default [
   {
     path: '/onboarding/start',
-    name: 'onb-01-start',
-    component: () => import('@/views/onboarding/StartView.vue'),
+    redirect: '/onboarding/login',
   },
   {
     path: '/onboarding/login',
-    name: 'onb-01a-login',
-    /*
-     * ⚠️ **비밀번호를 검증하지 않는다.** BE 에 `POST /auth/login` 이 아직 없어 대조할 곳이
-     * 없다. 이 기기에 가입한 아이디와 맞춰 보는 수준이고 화면이 그 사실을 밝힌다.
-     */
+    name: 'onb-01-login',
     component: () => import('@/views/onboarding/LoginView.vue'),
   },
   {
     path: '/onboarding/signup',
-    name: 'onb-01b-signup',
+    name: 'onb-01a-signup',
     /*
      * **한 화면이다.** 본인확인(이름·번호 → 인증번호)이 위, 계정(아이디·비밀번호)이 아래고
      * 잠기는 것은 가입 CTA 하나다. 화면을 쪼개지 않는 이유는 히스토리이기도 하다 —
