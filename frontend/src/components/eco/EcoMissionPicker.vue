@@ -7,23 +7,22 @@
  * `missions.items[]` 가 `counted` 와 `exclusionReason("냉방 겹침 · 합계 제외")` 을 문구까지 준다.
  * 같은 `deviceGroup` 에서 가장 큰 것만 세는 규칙이라 **프론트가 다시 판정하지 않는다.**
  *
- * ⚠️ `summary`(= `preview.missions`)는 **회차 전체 합계**다. 지금 보고 있는 요금 하나가 아니라
- * 고른 미션 전부를 더한 값이라, 탭을 옮겨도 같은 숫자가 나온다. 문구를 "고른 실천 합계"로 둔 이유다.
+ * ── 합계·목표 대비 문구는 두지 않는다 (2026-09-09 수현) ──────────────────
+ * 미션 %는 「출처 절감량 ÷ 그 요금의 월 기준 사용량」이라 분모가 요금마다 다르다. 서버의
+ * `preview.missions.combinedMissionRate` 는 세 요금 미션을 구분 없이 더한 값이라 뜻이 없고, 요금별 합을
+ * 화면에서 더해 보여주는 안도 검토했지만 **고르는 데만 집중**하도록 뺐다. 이 카드는 미션 목록뿐이다.
+ * 제목도 없다 — 바로 위 섹션 제목 「실천 미션 고르기」와 요금 세그먼트가 이미 무엇인지 말한다.
  */
 import { computed } from 'vue'
 
 import GpCard from '@/components/ui/GpCard.vue'
-import GpDelta from '@/components/ui/GpDelta.vue'
 import GpMissionRow from '@/components/ui/GpMissionRow.vue'
-import { formatPoint, formatUtilityType } from '@/utils/format'
 
 const props = defineProps({
   segment: { type: Object, required: true },
   selectedIds: { type: Array, required: true },
   // preview.missions.items[] — 미리보기가 오기 전에는 비어 있다
   previewItems: { type: Array, default: () => [] },
-  // preview.missions — combinedMissionRate · shortfallPoint · meetsTarget
-  summary: { type: Object, default: null },
 })
 const emit = defineEmits(['update:selectedIds'])
 
@@ -39,8 +38,8 @@ function toggle(missionId, checked) {
 </script>
 
 <template>
-  <GpCard :title="`${formatUtilityType(segment.utilityType)}, 이렇게 줄여요`">
-    <div class="border-divider divide-divider divide-y border-t">
+  <GpCard>
+    <div class="divide-divider -my-2 divide-y">
       <GpMissionRow
         v-for="mission in segment.missions"
         :key="mission.missionId"
@@ -51,17 +50,6 @@ function toggle(missionId, checked) {
         :rate-cap="segment.missionRateCap"
         @update:model-value="toggle(mission.missionId, $event)"
       />
-    </div>
-
-    <div v-if="summary" class="border-divider mt-4 border-t pt-4">
-      <div class="flex items-center justify-between gap-3">
-        <span class="text-list-title">고른 실천 합계</span>
-        <GpDelta :value="summary.combinedMissionRate" word="줄일 수 있어요" />
-      </div>
-      <p v-if="!summary.meetsTarget" class="text-caption text-muted mt-2 mb-0">
-        목표까지 {{ formatPoint(summary.shortfallPoint) }} 모자라요. 실천을 더 고르거나 구간을
-        낮춰도 돼요
-      </p>
     </div>
   </GpCard>
 </template>

@@ -4,9 +4,9 @@ import { useRoute, useRouter } from 'vue-router'
 
 import AppSubLayout from '@/components/layout/AppSubLayout.vue'
 import GpButton from '@/components/ui/GpButton.vue'
-import IconDrop from '@/components/ui/icons/IconDrop.vue'
-import IconFlame from '@/components/ui/icons/IconFlame.vue'
-import IconLightning from '@/components/ui/icons/IconLightning.vue'
+import electricIcon from '@/assets/icons/electric-144.png'
+import gasIcon from '@/assets/icons/gas-144.png'
+import waterIcon from '@/assets/icons/water-144.png'
 import { useAnalysisStore } from '@/stores/analysis'
 import { formatMonth, formatUsage, formatWon } from '@/utils/format'
 
@@ -19,9 +19,10 @@ const targetYearMonth = computed(
 )
 
 const UTILITY_META = {
-  ELECTRICITY: { type: 'electricity', label: '전기', icon: IconLightning, color: 'text-primary' },
-  WATER: { type: 'water', label: '수도', icon: IconDrop, color: 'text-water' },
-  GAS: { type: 'gas', label: '도시가스', icon: IconFlame, color: 'text-gas' },
+  // 아이콘은 디자이너 PNG(타일 바탕 포함) — eco/UtilityIcon 과 같은 그림. 도메인 경계 때문에 직접 import
+  ELECTRICITY: { type: 'electricity', label: '전기', icon: electricIcon },
+  WATER: { type: 'water', label: '수도', icon: waterIcon },
+  GAS: { type: 'gas', label: '도시가스', icon: gasIcon },
 }
 const recognizedItems = computed(() =>
   (store.ocrResult?.items ?? [])
@@ -34,7 +35,10 @@ const recognizedItems = computed(() =>
     })),
 )
 const recognizedMonth = computed(
-  () => store.ocrResult?.billingMonth ?? recognizedItems.value[0]?.billingMonth ?? targetYearMonth.value,
+  () =>
+    store.ocrResult?.billingMonth ??
+    recognizedItems.value[0]?.billingMonth ??
+    targetYearMonth.value,
 )
 const billType = computed(() => store.ocrResult?.billType ?? 'MANAGEMENT')
 
@@ -88,7 +92,9 @@ function saveRecognizedDraft() {
       <div class="mb-5">
         <p class="text-caption text-muted mt-0 mb-1">사진에서 인식한 청구 월</p>
         <h2 class="text-section text-ink m-0">{{ formatMonth(recognizedMonth) }}</h2>
-        <p class="text-caption text-muted mt-2 mb-0">청구 월이 다르면 수정하기에서 변경해 주세요.</p>
+        <p class="text-caption text-muted mt-2 mb-0">
+          청구 월이 다르면 수정하기에서 변경해 주세요.
+        </p>
         <p v-if="store.ocrResult?.partialRecognition" class="text-caption text-negative mt-2 mb-0">
           일부 항목만 인식됐어요. 내용을 확인해 주세요.
         </p>
@@ -100,7 +106,7 @@ function saveRecognizedDraft() {
           :key="item.type"
           class="border-divider flex min-h-14 items-center gap-3 border-t first:border-t-0"
         >
-          <component :is="item.icon" :size="20" :class="item.color" />
+          <img :src="item.icon" alt="" aria-hidden="true" class="block size-6 shrink-0" />
           <span class="text-body-sm text-ink flex-1">{{ item.label }}</span>
           <span
             v-if="item.recordStatus === 'REVIEW_REQUIRED'"
