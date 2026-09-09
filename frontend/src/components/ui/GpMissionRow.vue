@@ -46,10 +46,6 @@ defineEmits(['update:modelValue'])
     <span class="min-w-0 flex-1">
       <span class="text-list-title tracking-body block leading-[1.35]">{{ mission.title }}</span>
 
-      <span v-if="mission.description" class="text-caption text-muted mt-[3px] block">
-        {{ mission.description }}
-      </span>
-
       <span class="mt-[7px] flex flex-wrap items-center gap-[5px]">
         <GpTag small>{{ formatDifficulty(mission.difficulty) }}</GpTag>
         <GpTag v-if="formatSeasonTags(mission.seasonTags)" small tone="sub">
@@ -64,11 +60,6 @@ defineEmits(['update:modelValue'])
         </GpTag>
         <GpTag v-if="!counted && exclusionReason" small>{{ exclusionReason }}</GpTag>
         <GpTag v-if="recommended" small tone="confirmed">추천</GpTag>
-      </span>
-
-      <!-- 산출 근거와 출처 기관. 셋 다 있는 미션만 서버가 내려준다 (B-3-01) -->
-      <span class="text-nav text-muted mt-1.5 block leading-[1.55]">
-        {{ mission.calculationBasis }} · {{ mission.sourceOrg }}
       </span>
     </span>
 

@@ -67,7 +67,7 @@ const LINK_ENTRY_SCREENS = ['WF_01_UNLINKED', 'WF_02_LINKING']
 const IN_PROGRESS_SCREENS = ['WF_06_IN_PROGRESS', 'WF_09_RESULT_READY']
 
 /** 연동 폴링 간격. 서버가 20초쯤 걸린다고 안내한다(B-1-03) */
-const POLL_INTERVAL_MS = 1600
+const POLL_INTERVAL_MS = 1000
 
 const route = useRoute()
 const router = useRouter()
