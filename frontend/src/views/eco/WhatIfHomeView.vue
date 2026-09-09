@@ -53,7 +53,7 @@ import GpButton from '@/components/ui/GpButton.vue'
 import GpCard from '@/components/ui/GpCard.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useEcoStore } from '@/stores/eco'
-import { formatRoundPeriod } from '@/utils/format'
+import { formatRoundPeriod, formatRoundPeriodChip } from '@/utils/format'
 
 // WhatIfScreen enum (api-spec.md 3절). WF-09 는 본문이 WF-06 과 같고 그 위에 결산 모달만 얹힌다
 const SCREENS = [
@@ -106,10 +106,10 @@ const hasFatalError = computed(() => !store.home && Boolean(store.error))
 const periodLabel = computed(() => {
   const header = store.home?.header
   if (!header) return ''
-  return `${header.periodStart.replace('-', '.')}~${header.periodEnd.slice(5)}`
+  return formatRoundPeriodChip(header.periodStart, header.periodEnd)
 })
 
-/** 헤드라인 「오늘 실천 N개가 남았어요」. 오늘의 실천 응답이 오면 그쪽이 더 새 값이다 */
+/** 헤드라인 「오늘 미션 N개가 남았어요」. 오늘의 실천 응답이 오면 그쪽이 더 새 값이다 */
 const todaySummary = computed(() => store.todayMissions ?? store.home?.todayMissions ?? null)
 
 /** 캐릭터 표정 = 감축률 카드의 페이스. 두 컴포넌트가 같은 판정을 쓴다 */

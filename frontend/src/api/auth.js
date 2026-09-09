@@ -8,7 +8,8 @@ const fake = async (value, ms = 400) => {
   return typeof value === 'function' ? value() : value
 }
 
-const DEMO_SMS_CODE = '000000'
+/** 모의 인증번호. `000000` 은 원래 값, `471682` 는 시연용으로 추가(2026-09-10 수현) */
+const DEMO_SMS_CODES = ['000000', '471682']
 
 // 휴대폰 본인확인은 아직 MVP 데모 범위다. 계정 생성과 로그인만 실제 API를 사용한다.
 export function requestSmsCode() {
@@ -16,7 +17,7 @@ export function requestSmsCode() {
 }
 
 export function verifySmsCode(code) {
-  return fake(() => ({ verified: String(code ?? '').trim() === DEMO_SMS_CODE }), 900)
+  return fake(() => ({ verified: DEMO_SMS_CODES.includes(String(code ?? '').trim()) }), 900)
 }
 
 function rememberAccessToken(data) {

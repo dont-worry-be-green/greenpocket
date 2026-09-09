@@ -14,8 +14,8 @@
  * B-4-07 이 ① 결과 → ② 원인 → ③ 처방 순서로 못 박는다. 그래프는 그 뒤에 온다 —
  * 원인을 보기 전에 막대부터 나오면 "왜 그랬는지" 없이 "얼마나" 만 남는다.
  *
- * 「미션 다시 고르기」는 처방 카드 안이 아니라 **화면 하단 고정 CTA** 다(시안 WF-07). 목표 관리(WF-04)로 간다.
- * 스크롤을 끝까지 내려야 보이면 정작 조정이 필요한 사람이 못 찾는다.
+ * 하단 고정 「N 미션 다시 고르기」 CTA 는 **뺐다**(2026-09-10 수현 · 결정 C-41). 시안 WF-07 에는
+ * 있었지만 미션 재선택 입구는 홈 감축률 카드 「목표 관리」 → WF-04 하나로 모은다. 리포트는 읽는 화면이다.
  */
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -35,7 +35,6 @@ import {
   formatUsage,
   usagePrecision,
   formatMonthOnly,
-  formatMonthDay,
   formatPercent,
   formatRoundPeriod,
   formatUtilityType,
@@ -54,11 +53,9 @@ const emit = defineEmits(['close'])
 const report = computed(() => store.monthlyReport)
 const hasResult = computed(() => Boolean(report.value?.result))
 
-/** '7월분 페이스' — 어느 달 이야기인지 제목이 먼저 말한다(시안 WF-07) */
+/** '7월 리포트' — 어느 달 이야기인지 제목이 먼저 말한다(시안 「7월분 페이스」 → 「7월 리포트」, 2026-09-10 수현 · C-41) */
 const title = computed(() =>
-  report.value?.reportMonth
-    ? `${formatMonthOnly(report.value.reportMonth)}분 페이스`
-    : '전달 리포트',
+  report.value?.reportMonth ? `${formatMonthOnly(report.value.reportMonth)} 리포트` : '월 리포트',
 )
 const dialogTitle = computed(() => {
   const month = report.value?.reportMonth || props.month
@@ -67,7 +64,8 @@ const dialogTitle = computed(() => {
 const layout = computed(() => (props.embedded ? ReportDialogLayout : AppSubLayout))
 
 /*
- * '7월 고지서 · 8월 3일 등록 · 평가 기간 2026-04 ~ 09'.
+ * '7월 고지서 · 평가 기간 2026-04 ~ 09'.
+ * 등록일(`billRegisteredAt` · 「8월 3일 등록」)은 서버가 주지만 화면에 안 쓴다(2026-09-10 수현 · C-41).
  *
  * ⚠️ 평가 기간은 `monthly-report` 응답에 **없다**(api-spec 10.3). 홈이나 회차 조회로 이미
  * 받아 둔 것이 있을 때만 붙인다 — 없는 기간을 지어내지 않는다(핵심 규칙 8).
@@ -76,19 +74,12 @@ const subtitle = computed(() => {
   const data = report.value
   if (!data?.reportMonth) return ''
   const parts = [`${formatMonthOnly(data.reportMonth)} 고지서`]
-  if (data.billRegisteredAt) parts.push(`${formatMonthDay(data.billRegisteredAt)} 등록`)
 
   const period = store.home?.header ?? store.currentRound
   if (period?.periodStart) {
     parts.push(`평가 기간 ${formatRoundPeriod(period.periodStart, period.periodEnd)}`)
   }
   return parts.join(' · ')
-})
-
-/** 하단 고정 CTA. 서버가 고른 조정 대상을 그대로 문구에 넣는다 */
-const adjustLabel = computed(() => {
-  const utilityType = report.value?.prescription?.adjustTargetUtility
-  return utilityType ? `${formatUtilityType(utilityType)} 미션 다시 고르기` : '미션 다시 고르기'
 })
 
 const chartCaption = computed(() =>
@@ -124,13 +115,6 @@ async function load() {
 }
 watch(() => props.month || route.query.month, load, { immediate: true })
 
-/*
- * 미션을 다시 고르는 곳은 목표 관리(WF-04)다 — 별도 실천 조정 화면(WF-08)은 없앴다(2026-09-09 수현).
- * `?utility=` 로 처방이 지목한 요금의 미션 탭을 바로 연다. **쿼리 키는 `utility` 다**(응답 필드 `utilityType` 과 다르다).
- */
-function goAdjust(utilityType) {
-  router.push({ path: '/whatif/goal', query: utilityType ? { utility: utilityType } : {} })
-}
 </script>
 
 <template>
@@ -139,7 +123,6 @@ function goAdjust(utilityType) {
     :title="embedded ? dialogTitle : title"
     :subtitle="embedded ? '' : subtitle"
     :back="route.query.from === 'archive' ? '/mypage/reports' : '/whatif'"
-    :has-footer="hasResult && !embedded"
     @close="emit('close')"
   >
     <!-- 로딩·실패·빈 결과를 남기지 않는다 (COM-08) -->
@@ -200,9 +183,6 @@ function goAdjust(utilityType) {
                   )
             }}
           </p>
-          <p v-if="bill.registeredAt" class="text-caption text-muted">
-            {{ formatMonthDay(bill.registeredAt) }} 등록
-          </p>
           <p class="text-caption text-muted">감축률 — · 목표 달성 여부 —</p>
         </div>
       </GpCard>
@@ -251,15 +231,5 @@ function goAdjust(utilityType) {
         footnote="진단 탭에 등록한 고지서로 계산했어요. 월 평가는 페이스를 보려고 우리가 나눈 값이고, 실제 평가는 6개월 누적이에요."
       />
     </div>
-
-    <template v-if="hasResult && !embedded" #footer>
-      <div
-        class="bg-canvas border-divider fixed inset-x-0 bottom-0 z-20 mx-auto max-w-(--gp-viewport-w) border-t px-(--gp-gutter) pt-3 pb-[max(12px,env(safe-area-inset-bottom))]"
-      >
-        <GpButton @click="goAdjust(report.prescription?.adjustTargetUtility)">
-          {{ adjustLabel }}
-        </GpButton>
-      </div>
-    </template>
   </component>
 </template>

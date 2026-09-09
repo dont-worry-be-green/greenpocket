@@ -11,6 +11,7 @@ import {
   formatMonth,
   formatPercent,
   formatRoundPeriod,
+  formatRoundPeriodChip,
   formatUtilityType,
   formatPoint,
   formatTier,
@@ -155,6 +156,12 @@ describe('formatRoundPeriod', () => {
 
   it('해를 넘기면 연도를 그대로 둔다', () => {
     expect(formatRoundPeriod('2025-10', '2026-03')).toBe('2025-10 ~ 2026-03')
+  })
+
+  it('칩 표기는 점 구분·공백 없음이고 접는 규칙은 같다', () => {
+    expect(formatRoundPeriodChip('2026-04', '2026-09')).toBe('2026.04~09')
+    expect(formatRoundPeriodChip('2025-10', '2026-03')).toBe('2025.10~2026.03')
+    expect(formatRoundPeriodChip(null, '2026-09')).toBe('-')
   })
 
   it('값이 없으면 - 로 표시한다', () => {

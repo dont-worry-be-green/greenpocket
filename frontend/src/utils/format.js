@@ -230,6 +230,19 @@ export function formatRoundPeriod(periodStart, periodEnd) {
   return `${periodStart} ~ ${startYear === endYear ? endMonth : periodEnd}`
 }
 
+/**
+ * 평가 회차 기간 **칩** 표기. 홈 감축률 카드 우상단·WF-09 결산 모달의 알약에 쓴다.
+ * 점 구분·공백 없음이라 좁은 칩에 들어간다. 같은 해면 뒤쪽 연도를 접는 규칙은 위와 같다.
+ *   ('2026-04','2026-09') → '2026.04~09'  ·  ('2025-10','2026-03') → '2025.10~2026.03'
+ */
+export function formatRoundPeriodChip(periodStart, periodEnd) {
+  if (!periodStart || !periodEnd) return EMPTY
+  const [startYear] = periodStart.split('-')
+  const [endYear, endMonth] = periodEnd.split('-')
+  const start = periodStart.replace('-', '.')
+  return `${start}~${startYear === endYear ? endMonth : periodEnd.replace('-', '.')}`
+}
+
 /** ISO-8601 일시 → '2026-08-02 14:22' */
 export function formatDateTime(dateTime) {
   if (!dateTime) return EMPTY
