@@ -31,7 +31,6 @@ import { useRouter } from 'vue-router'
 
 import AppTabLayout from '@/components/layout/AppTabLayout.vue'
 import MypageArchiveLinks from '@/components/mypage/MypageArchiveLinks.vue'
-import MypageEcoAddressCard from '@/components/mypage/MypageEcoAddressCard.vue'
 import MypageInfoTable from '@/components/mypage/MypageInfoTable.vue'
 import MypageProfileCard from '@/components/mypage/MypageProfileCard.vue'
 import MypageState from '@/components/mypage/MypageState.vue'
@@ -65,11 +64,9 @@ onMounted(() => {
       <div v-if="store.mypage" class="space-y-5">
         <MypageProfileCard :profile="store.mypage.profile" />
 
-        <MypageInfoTable :profile="store.mypage.profile" />
-
-        <MypageEcoAddressCard
-          v-if="store.mypage.ecoAddress"
-          :eco-address="store.mypage.ecoAddress"
+        <MypageInfoTable
+          :profile="store.mypage.profile"
+          :eco-address="store.mypage.ecoAddress ?? null"
         />
 
         <MypageArchiveLinks
