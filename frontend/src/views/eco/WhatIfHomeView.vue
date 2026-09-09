@@ -246,9 +246,6 @@ function goToReport() {
 }
 
 /** WF-08 실천 다시 고르기. 감축률 카드 하단의 세 링크 중 하나 */
-function goToMissions() {
-  router.push('/whatif/missions')
-}
 
 /**
  * 하루치를 통째로 올린다(B-3-06). 응답의 completedCount 로 홈 요약도 함께 맞춘다 —
@@ -334,7 +331,6 @@ function retry() {
           :remaining-months="store.home.header?.remainingMonths ?? null"
           @goal="goToGoalSetting"
           @report="goToReport"
-          @missions="goToMissions"
         />
 
         <EcoTodayMissions

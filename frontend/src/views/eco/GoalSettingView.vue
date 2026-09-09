@@ -19,7 +19,7 @@
  * `store.goalSet` 이 판단한다. 진입 경로로 가르면 새로고침 후 틀린다.
  */
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import EcoGoalSegment from '@/components/eco/EcoGoalSegment.vue'
 import EcoGoalSummary from '@/components/eco/EcoGoalSummary.vue'
@@ -31,6 +31,7 @@ import { formatRoundPeriod, formatUtilityType } from '@/utils/format'
 import { currentMonth, seasonsBetween } from '@/utils/month'
 
 const router = useRouter()
+const route = useRoute()
 const store = useEcoStore()
 
 // 폼 상태 (뷰 로컬)
@@ -137,7 +138,11 @@ watch(goalForm, (form) => {
   selectedMissionIds.value = form.segments.flatMap((segment) =>
     segment.missions.filter((mission) => mission.selected).map((mission) => mission.missionId),
   )
-  if (!activeUtility.value) activeUtility.value = form.segments[0]?.utilityType ?? null
+  // 월 리포트 처방이 `?utility=` 로 지목한 요금의 미션 탭을 먼저 연다(WF-07 → WF-04). 없으면 첫 요금
+  if (!activeUtility.value) {
+    const wanted = form.segments.find((segment) => segment.utilityType === route.query.utility)
+    activeUtility.value = wanted?.utilityType ?? form.segments[0]?.utilityType ?? null
+  }
 })
 
 async function load() {

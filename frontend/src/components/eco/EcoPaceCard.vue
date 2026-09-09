@@ -43,7 +43,8 @@ const props = defineProps({
   period: { type: String, default: '' },
   remainingMonths: { type: Number, default: null },
 })
-defineEmits(['goal', 'report', 'missions'])
+// 하단 링크는 둘뿐이다 — 미션 다시 고르기는 목표 관리(WF-04) 안에서 한다(2026-09-09 수현, WF-08 폐지)
+defineEmits(['goal', 'report'])
 
 /*
  * 페이스별 색. 클래스 문자열을 통째로 적어야 Tailwind 가 스캔한다 — 조립하지 않는다.
@@ -255,7 +256,7 @@ const mileageParts = computed(() => {
         class="text-caption text-muted flex-1 cursor-pointer border-0 bg-transparent py-[13px] font-bold"
         @click="$emit('goal')"
       >
-        내 목표
+        목표 관리
       </button>
       <button
         type="button"
@@ -263,13 +264,6 @@ const mileageParts = computed(() => {
         @click="$emit('report')"
       >
         월 리포트
-      </button>
-      <button
-        type="button"
-        class="text-caption text-muted border-divider flex-1 cursor-pointer border-0 border-l bg-transparent py-[13px] font-bold"
-        @click="$emit('missions')"
-      >
-        미션 바꾸기
       </button>
     </nav>
   </section>

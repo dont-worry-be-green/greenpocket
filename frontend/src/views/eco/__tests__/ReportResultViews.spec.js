@@ -74,19 +74,36 @@ describe('WF-07 전달 리포트', () => {
    * 조정이 필요한 사람이 스크롤 끝까지 내려야 버튼을 찾는 일이 없어야 한다.
    * 문구의 요금 이름은 서버의 `adjustTargetUtility` 에서 온다 — 화면이 고르지 않는다.
    */
-  it('실천 다시 고르기가 하단 고정 CTA 로 있다', async () => {
+  it('미션 다시 고르기가 하단 고정 CTA 로 있다', async () => {
     const { wrapper } = await openPath('/whatif/report')
     const cta = wrapper.findAll('button').filter((node) => node.text().includes('다시 고르기'))
     expect(cta).toHaveLength(1)
-    expect(cta[0].text()).toMatch(/^(전기|도시가스|수도) 실천 다시 고르기$/)
+    expect(cta[0].text()).toMatch(/^(전기|도시가스|수도) 미션 다시 고르기$/)
     wrapper.unmount()
   })
 
   it('비교값이 없어도 선택한 달의 요금과 사용량을 표시한다', async () => {
-    getBills.mockResolvedValue({ content: [
-      { recordId: 1, billingMonth: '2026-08', utilityType: 'ELECTRICITY', amount: 43200, usage: 210, usageUnit: 'kWh' },
-      { recordId: 2, billingMonth: '2026-07', utilityType: 'GAS', amount: 99000, usage: 9, usageUnit: 'm3' },
-    ], hasNext: false })
+    getBills.mockResolvedValue({
+      content: [
+        {
+          recordId: 1,
+          billingMonth: '2026-08',
+          utilityType: 'ELECTRICITY',
+          amount: 43200,
+          usage: 210,
+          usageUnit: 'kWh',
+        },
+        {
+          recordId: 2,
+          billingMonth: '2026-07',
+          utilityType: 'GAS',
+          amount: 99000,
+          usage: 9,
+          usageUnit: 'm3',
+        },
+      ],
+      hasNext: false,
+    })
     const { wrapper } = await openPath('/whatif/report?month=2026-08')
     expect(wrapper.text()).toContain('43,200원')
     expect(wrapper.text()).toContain('210kWh')
