@@ -2,11 +2,11 @@
 
 | 항목 | 내용 |
 |---|---|
-| 문서 기준일 | 2026-09-09 (ver3.5 — 결정 C-1~C-28 반영) |
+| 문서 기준일 | 2026-09-09 (ver3.8 — 결정 C-1~C-30 반영) |
 | 참가팀 | 돈워리, 비그린 (Don't worry, be green) |
-| 기준 문서 | `docs/feature-spec/기능명세서.md` (116건) · `docs/database/schema.sql` (20테이블) |
-| 대상 범위 | **P0 89건 + P1 25건**. P2 2건(D-3-06 · E-2-02)은 15절에 자리만 표기 |
-| API 수 | **69개** (P0 51 · P1 18) |
+| 기준 문서 | `docs/feature-spec/기능명세서.md` (115건) · `docs/database/schema.sql` (20테이블) |
+| 대상 범위 | **P0 88건 + P1 25건**. P2 2건(D-3-06 · E-2-02)은 15절에 자리만 표기 |
+| API 수 | **68개** (P0 50 · P1 18) |
 | 인증 | 이메일·비밀번호 로그인 + JWT Access Token. Refresh Token은 HttpOnly 쿠키 (결정 C-17) |
 | 서버 | Spring Boot · MySQL 8.4 · Base URL `/api/v1` |
 | 스키마 기준 | `docs/database/schema.sql` — FK·UNIQUE·CHECK 포함본. **DB 적용은 `backend/src/main/resources/db/migration/`의 Flyway 마이그레이션으로 한다** |
@@ -268,8 +268,9 @@ GET   /bills/ocr/{jobId}   200           → { status, progress, result | error 
 | `AreaBand` | `UNDER_10` · `FROM_10_TO_20` · `OVER_20` | 10평 이하·10~20평·20평 이상 |
 | `CurrentStatus` | `EMPLOYED` · `SELF_EMPLOYED` · `UNEMPLOYED` · `FREELANCER` · `STUDENT` · `PREPARING_STARTUP` · `OTHER` | 정책 추천 현재 상태 |
 | `AnnualIncomeBand` | `NO_INCOME` · `UNDER_24M` · `FROM_24M_TO_36M` · `FROM_36M_TO_50M` · `OVER_50M` · `UNKNOWN` | 연소득 구간, 원 단위 상세 금액은 받지 않음 |
-| `HouseholdStatus` | `ONE_PERSON` · `WITH_PARENTS` · `MARRIED` · `SINGLE_PARENT` · `OTHER` | 가구 상태 |
-| `PolicyInterestCategory` | `JOB` · `HOUSING` · `EDUCATION` · `WELFARE_CULTURE` · `PARTICIPATION_RIGHTS` | 최대 3개 |
+| `EducationStatus` | `BELOW_HIGH_SCHOOL` · `HIGH_SCHOOL_STUDENT` · `HIGH_SCHOOL_EXPECTED_GRADUATION` · `HIGH_SCHOOL_GRADUATE` · `UNIVERSITY_STUDENT` · `UNIVERSITY_EXPECTED_GRADUATION` · `UNIVERSITY_GRADUATE` · `GRADUATE_SCHOOL` · `OTHER` | 정책 추천 학력 |
+| `HouseholdStatus` | `ONE_PERSON` · `WITH_PARENTS` · `MARRIED` · `SINGLE_PARENT` · `OTHER` | 기존 DB 호환용. 신규 추천 조건에서는 사용하지 않음 |
+| `PolicyInterestCategory` | `JOB` · `HOUSING` · `EDUCATION` · `WELFARE_CULTURE` · `PARTICIPATION_RIGHTS` | 추천 우선순위용 1~2개 |
 | `PolicyApplicationStatus` | `OPEN` · `UPCOMING` · `CLOSED` · `UNKNOWN` | 정책 신청 상태 |
 | `EcoLinkStatus` | `UNLINKED` · `LINKING` · `LINKED` · `FAILED` | WF-01 · WF-02 |
 | `RecordSource` | `BILL` · `ECO_BASELINE` | 고지서 / 직전 2년 기준값 |
@@ -570,7 +571,8 @@ Set-Cookie: refreshToken=<opaque>; HttpOnly; SameSite=Lax; Path=/api/v1/auth; Ma
   "phoneNumber": "01091740339",
   "currentStatus": "EMPLOYED",
   "annualIncomeBand": "FROM_24M_TO_36M",
-  "householdStatus": "ONE_PERSON",
+  "educationStatus": "UNIVERSITY_GRADUATE",
+  "interestCategories": ["JOB", "HOUSING"],
   "ecoAddress": {
     "label": "서울특별시 관악구",
     "sidoCode": "11",
@@ -587,7 +589,7 @@ Set-Cookie: refreshToken=<opaque>; HttpOnly; SameSite=Lax; Path=/api/v1/auth; Ma
 
 ## 5.2 정책 추천 조건 조회
 
-`GET /profile/policy-preferences` · **P0** · E-3-05 · MY-06
+`GET /profile/policy-preferences` · **P0** · E-3-04 · MY-02
 
 **Response 200**
 
@@ -596,7 +598,8 @@ Set-Cookie: refreshToken=<opaque>; HttpOnly; SameSite=Lax; Path=/api/v1/auth; Ma
   "birthDate": "1998-03-15",
   "currentStatus": "FREELANCER",
   "annualIncomeBand": "UNDER_24M",
-  "householdStatus": "ONE_PERSON",
+  "educationStatus": "UNIVERSITY_GRADUATE",
+  "interestCategories": ["JOB", "HOUSING"],
   "ecoAddress": { "label": "서울특별시 관악구", "sidoCode": "11", "sigunguCode": "11620" },
   "birthDateEditable": false,
   "regionEditable": false,
@@ -604,21 +607,22 @@ Set-Cookie: refreshToken=<opaque>; HttpOnly; SameSite=Lax; Path=/api/v1/auth; Ma
 }
 ```
 
-생년월일은 가입 정보, 지역은 에코 연동 정보이므로 읽기 전용입니다. 아직 선택 정보를 저장하지 않았다면 세 선택 필드는 `null`, `completed`는 `false`입니다.
+생년월일은 가입 정보, 지역은 에코 연동 정보이므로 읽기 전용입니다. 아직 선택 정보를 저장하지 않았다면 선택 필드는 `null` 또는 빈 배열이고 `completed`는 `false`입니다. 저장된 값은 사용자가 다시 저장할 때까지 유지됩니다.
 
 ## 5.3 정책 추천 조건 저장
 
-`PUT /profile/policy-preferences` · **P0** · E-3-05 · MY-06
+`PUT /profile/policy-preferences` · **P0** · E-3-04 · MY-02
 
 ```json
 {
   "currentStatus": "FREELANCER",
   "annualIncomeBand": "UNDER_24M",
-  "householdStatus": "ONE_PERSON"
+  "educationStatus": "UNIVERSITY_GRADUATE",
+  "interestCategories": ["JOB", "HOUSING"]
 }
 ```
 
-세 필드는 모두 필수입니다. 사용자가 마이 탭에서 **내 정보에 저장**을 눌렀을 때만 호출합니다. 생년월일·성별·휴대전화번호·지역·주거 형태·평수·관심 분야는 요청받지 않습니다.
+현재 상태·연소득 구간·학력은 각각 필수이고 관심 분야는 중복 없이 1~2개가 필수입니다. 사용자가 MY-02에서 **저장하고 추천받기**를 눌렀을 때만 호출하며, 기존 저장값은 이 요청이 성공하기 전까지 유지됩니다. 생년월일·성별·휴대전화번호·지역·가구·혼인 상태·주거 형태·평수는 요청받지 않습니다. 정책 상세(MY-06)에서는 조건을 수정하지 않습니다.
 
 **Response 200**
 
@@ -2484,10 +2488,7 @@ requiredByUtility
 
 `GET /policies/recommendations` · **P0** · E-3-01 · MY-01 · MY-05
 
-| 쿼리 | 기본값 | 설명 |
-|---|---|---|
-| `page` | 0 | 0-base |
-| `size` | 20 | 1~100 |
+쿼리 파라미터는 없습니다. 저장된 추천 조건으로 명확히 적격인 정책만 최대 5개 반환합니다.
 
 **Response 200**
 
@@ -2502,15 +2503,15 @@ requiredByUtility
       "supportSummary": "수요 맞춤형 교육 및 현장실습 지원",
       "applicationStatus": "OPEN",
       "applicationEndDate": "2027-02-28",
-      "matchStatus": "CHECK_REQUIRED",
-      "matchScore": 60,
-      "matchReasons": ["전국 대상 정책이에요", "세부 학력 조건은 직접 확인해 주세요"],
+      "matchStatus": "ELIGIBLE",
+      "matchScore": 100,
+      "matchReasons": ["전국 대상 정책이에요", "지원 연령에 해당해요", "관심 분야와 일치해요"],
       "regionScope": "NATIONAL"
     }
   ],
   "page": 0,
-  "size": 20,
-  "totalElements": 12,
+  "size": 5,
+  "totalElements": 5,
   "totalPages": 1,
   "hasNext": false,
   "region": { "linked": true, "label": "서울특별시 관악구", "appliedLevels": ["NATIONAL", "SIDO", "SIGUNGU"] },
@@ -2518,37 +2519,19 @@ requiredByUtility
 }
 ```
 
-- 명확한 나이·지역과 온통청년 코드로 정확히 대응되는 취업 상태·연소득 범위·혼인·한부모 조건만 서버가 자동 판정합니다.
-- 연소득 구간이 정책 범위에 일부만 겹치거나 원본 금액이 비정상인 경우, 사용자 선택값과 직접 대응하지 않는 상태·가구 조건, 자유 텍스트 소득·학력·전공·특화 조건은 탈락시키지 않고 `CHECK_REQUIRED`로 반환합니다.
-- `matchScore`는 0~100점이며 `CHECK_REQUIRED` 응답은 90점을 넘지 않습니다. 점수는 정렬용 보조값이고 자격 확정 점수가 아닙니다.
-- `ELIGIBLE`은 입력 조건상 신청 가능성이 높다는 뜻이며 실제 자격을 보증하지 않습니다.
+- 맞춤 추천에는 구조화된 나이·지역·취업·연소득·학력 조건을 모두 명확히 충족한 `ELIGIBLE` 정책만 들어갑니다.
+- 조건 코드가 비어 있으면 `제한 없음`으로 간주하지 않고 `CHECK_REQUIRED`로 판정합니다.
+- 직접대출·대출보증·공적보험처럼 재직기간·사업기간·신용·자산·보증 심사 등을 앱 입력값만으로 확정할 수 없는 정책은 `CHECK_REQUIRED`로 판정합니다.
+- 자유 텍스트나 앱 입력값으로 확정할 수 없는 추가 자격 조건이 있는 정책, `CHECK_REQUIRED`, `NOT_ELIGIBLE` 정책은 맞춤 추천에서 제외합니다.
+- 관심 분야는 적격 정책의 정렬 우선순위에 반영합니다. `matchScore`는 정렬용 보조값이며 실제 자격을 보증하지 않습니다.
+- 응답은 최대 5개이고 추가 추천 페이지를 제공하지 않습니다. 적격 정책이 5개 미만이면 있는 만큼만 반환하며 불확실한 정책으로 채우지 않습니다. 전체 활성 정책 탐색은 14.4 API를 사용합니다.
 - 에코 미연동이면 `region.linked=false`, `appliedLevels=["NATIONAL"]`로 전국 정책만 반환합니다.
 
 **Errors** `UNAUTHENTICATED(401)` · `PROFILE_INCOMPLETE(409)` · `YOUTH_POLICY_DATA_UNAVAILABLE(503)`
 
 ---
 
-## 14.4 임시 조건으로 다시 추천
-
-`POST /policies/recommendations/preview` · **P0** · E-3-04 · MY-06
-
-```json
-{
-  "currentStatus": "UNEMPLOYED",
-  "annualIncomeBand": "NO_INCOME",
-  "householdStatus": "ONE_PERSON",
-  "page": 0,
-  "size": 20
-}
-```
-
-Response는 14.3과 동일하며 `preview:true`가 추가됩니다. 생년월일과 에코 주소는 저장된 값을 사용하며, 이 호출은 `app_user`를 변경하지 않습니다.
-
-**Errors** `INVALID_REQUEST(400)` · `UNAUTHENTICATED(401)` · `PROFILE_INCOMPLETE(409)` · `YOUTH_POLICY_DATA_UNAVAILABLE(503)`
-
----
-
-## 14.5 전체 청년정책 목록
+## 14.4 전체 청년정책 목록
 
 `GET /policies` · **P0** · E-3-02 · MY-05
 
@@ -2557,16 +2540,15 @@ Response는 14.3과 동일하며 `preview:true`가 추가됩니다. 생년월일
 | `keyword` | string | 정책명·지원 내용 검색 |
 | `category` | `PolicyInterestCategory` | 분야 |
 | `regionCode` | 행정구역 코드 | 전국 정책은 항상 포함하지 않고, 지정 지역만 필터링 |
-| `applicationStatus` | `PolicyApplicationStatus` | 신청 상태 |
-| `page` · `size` | 0 · 20 | size 1~100 |
+| `page` · `size` | 0 · 20 | size 1~100. MY-05 화면은 페이지당 6개로 요청 |
 
-Response의 페이징 구조와 카드 항목은 14.3과 같습니다. 사용자 조건이 완성돼 있으면 `matchStatus`·`matchReasons`를 포함하고, 아니면 해당 필드는 `null`입니다.
+승인 완료·현재 신청 가능·개인 대상 제공 방식·분류 가능·지역 정보 존재·실제 신청 경로 존재 조건을 통과해 활성화된 정책만 조회합니다. MY-05는 페이지 번호로 이동하며, `category`는 목록 검색에만 적용되고 저장된 `interestCategories`를 변경하지 않습니다. Response의 페이징 구조와 카드 항목은 14.3과 같습니다. 사용자 조건이 완성돼 있으면 `matchStatus`·`matchReasons`를 포함하고, 아니면 해당 필드는 `null`입니다.
 
 **Errors** `UNAUTHENTICATED(401)` · `YOUTH_POLICY_DATA_UNAVAILABLE(503)`
 
 ---
 
-## 14.6 청년정책 상세
+## 14.5 청년정책 상세
 
 `GET /policies/{policyId}` · **P0** · E-3-03 · MY-06
 
@@ -2608,6 +2590,11 @@ Response의 페이징 구조와 카드 항목은 14.3과 같습니다. 사용자
 }
 ```
 
+- `application.periodType=ALWAYS`이면 시작·종료일이 `null`이어도 현재 신청 가능한 상시 정책이며 화면에는 `상시 신청`으로 표시합니다.
+- 공통코드가 명시적으로 제한 없음인 대상 조건만 `제한 없음`으로 내려줍니다. 조건 코드 누락은 `세부 … 조건 확인`으로 내려줍니다.
+- 구조화된 연소득 최솟값·최댓값이 있으면 `연소득 3,500만원 이하`, `연소득 2,400만~3,500만원`처럼 구체적으로 내려줍니다.
+- 직접대출·대출보증·공적보험 정책은 `match.status=CHECK_REQUIRED`이며, 취업·학업·보증 심사 조건을 상세에서 확인하도록 안내합니다.
+
 외부 URL은 `http`·`https`만 허용하며 그 외 스킴은 응답에서 제외합니다.
 
 **Errors** `YOUTH_POLICY_NOT_FOUND(404)`
@@ -2616,7 +2603,7 @@ Response의 페이징 구조와 카드 항목은 14.3과 같습니다. 사용자
 
 # 15. 매핑표
 
-## 15.1 API 69개 한눈에 보기
+## 15.1 API 68개 한눈에 보기
 
 P1만 표시하고 나머지는 P0입니다. 뒤 숫자는 이 문서의 절 번호. 표 형태 목록은 노션 「API 기본 명세서」 DB에도 있습니다.
 
@@ -2632,13 +2619,13 @@ P1만 표시하고 나머지는 P0입니다. 뒤 숫자는 이 문서의 절 번
 | 평가 결과 (3) | `GET .../result` 11.1 · `GET .../settlement` 11.2 · `POST .../application` 11.3 (P1) |
 | 혜택 (5) | `GET /greenlife/status` 12.1 · `POST /greenlife/link` 12.2 · `GET /greenlife/items` 12.3 · `GET /greenlife/items/{itemId}` 12.4 (P1) · `POST /greenlife/settlements` 12.5 |
 | 포켓 (15) | `GET /pocket` 13.1 · `GET /pocket/balance` 13.2 · `GET /pocket/convertible-mileage` 13.3 · `GET /pocket/transactions` 13.4 · `POST /pocket/conversions` 13.5 · `POST .../conversions/{id}/complete` 13.6 · `GET /pocket/accounts` 13.7 · `POST /pocket/accounts` 13.8 · `PUT /pocket/accounts/{id}` 13.9 · `PUT .../{id}/default` 13.9 · `DELETE .../{id}` 13.9 (P1) · `POST /pocket/withdrawals` 13.10 · `GET /pocket/withdrawals` 13.11 (P1) · `GET /pocket/management` 13.12 (P1) · `GET /pocket/recommended-product` 13.13 (P1) |
-| 마이·청년정책 (6) | `GET /mypage` 14.1 · `GET /reports` 14.2 (P1) · `GET /policies/recommendations` 14.3 · `POST /policies/recommendations/preview` 14.4 · `GET /policies` 14.5 · `GET /policies/{policyId}` 14.6 |
+| 마이·청년정책 (5) | `GET /mypage` 14.1 · `GET /reports` 14.2 (P1) · `GET /policies/recommendations` 14.3 · `GET /policies` 14.4 · `GET /policies/{policyId}` 14.5 |
 
 각 엔드포인트 절 제목에 담당 기능 ID가 붙어 있습니다. 기능 ID로 역추적할 때는 문서에서 `A-2-11` 처럼 검색하세요.
 
 ## 15.2 API가 없는 기능 (FE 단독 · 비개발)
 
-P0·P1 기능 중 아래 항목은 화면 동작·데이터 작업으로 별도 API가 없습니다. 나머지는 위 69개 API로 덮습니다.
+P0·P1 기능 중 아래 항목은 화면 동작·데이터 작업으로 별도 API가 없습니다. 나머지는 위 68개 API로 덮습니다.
 
 | 기능 ID | 내용 | 왜 API가 없나 |
 |---|---|---|
@@ -2692,12 +2679,12 @@ P0·P1 기능 중 아래 항목은 화면 동작·데이터 작업으로 별도 
 | PK-07 | 출금계좌 등록·변경 | `GET/POST/PUT /pocket/accounts` |
 | PK-08 | 출금 내역 | `GET /pocket/withdrawals` |
 | PK-09 | KB맑은하늘적금 상세 | `GET /pocket/recommended-product` → `applicationUrl` 외부 이동 |
-| MY-01 | 마이 메인 | `GET /mypage` · `GET /policies/recommendations?size=` |
+| MY-01 | 마이 메인 | `GET /mypage` · `GET /policies/recommendations` |
 | MY-02 | 정책 추천 조건 설정 | `GET/PUT /profile/policy-preferences` |
 | MY-03 | 고지서 보관함 | `GET /bills?utility=&year=` |
 | MY-04 | 리포트 보관함 | `GET /reports?type=&year=` |
-| MY-05 | 청년정책 전체 목록 | `GET /policies?keyword=&category=&regionCode=&applicationStatus=` |
-| MY-06 | 청년정책 상세·다시 추천 | `GET /policies/{policyId}` · `POST /policies/recommendations/preview` · `GET/PUT /profile/policy-preferences` |
+| MY-05 | 청년정책 전체 목록 | `GET /policies?keyword=&category=&regionCode=&page=&size=` |
+| MY-06 | 청년정책 상세 | `GET /policies/{policyId}` |
 
 ## 15.4 DB 테이블 → API
 
@@ -2807,11 +2794,12 @@ FROM eco_round_utility WHERE eco_round_id = :rid AND is_registered = 1;
 | 화면 | 하단 `마이페이지` 표기를 `마이`로 변경하고 기존 마이 기능 아래에 청년정책 추천을 추가 |
 | 회원가입 | 이름·생년월일·성별·휴대전화번호를 본인인증 성공값으로 모두 필수 저장. 외부 본인인증 API는 사용하지 않음 |
 | 온보딩 | ONB-02·03을 제거하고 가입 직후 `WF-01` 에코마일리지 연동 화면으로 이동 |
-| 선택 정보 | 현재 상태·연소득 구간·가구 상태는 원하는 사용자만 마이에서 저장. 관심 분야·주거 형태·평수는 수집하지 않음 |
+| 선택 정보 | 현재 상태·연소득 구간·학력·관심 분야 1~2개는 원하는 사용자만 마이에서 저장. 가구·혼인 상태·주거 형태·평수는 수집하지 않음 |
 | 지역 | 에코마일리지 연동 주소가 단일 기준. 미연동은 전국 정책만 추천하고 연동 CTA 표시 |
 | 데이터 | 온통청년 OPEN API를 100건 단위로 동기화해 로컬 DB에 캐시. 사용자 조회 때 외부 API를 직접 호출하지 않음 |
-| 판정 | 생년월일·에코 연동 지역과 온통청년 코드로 명확히 대응되는 취업·연소득·혼인·한부모 조건만 자동 판정. 부분 중첩·비정상 금액·자유 텍스트·미수집 조건은 `CHECK_REQUIRED`, 자격 확정 표현 금지 |
-| 상세 필터 | 임시 추천은 저장하지 않고 `내 정보에 저장`을 누른 경우에만 프로필 갱신 |
+| 활성 정책 | 승인 완료·현재 신청 가능·개인 대상 제공 방식·분류 가능·지역 정보·실제 신청 경로가 모두 있는 정책만 활성화 |
+| 판정 | 구조화된 생년월일·지역·취업·연소득·학력 조건을 명확히 충족한 `ELIGIBLE` 정책만 최대 5개 추천. 불확실하거나 추가 자격 확인이 필요한 정책은 맞춤 추천에서 제외 |
+| 조건 수정 | 관심 분야는 적격 정책의 우선순위에 반영. 추천 조건은 MY-02에서 `저장하고 추천받기`를 누를 때만 갱신하며, 정책 상세에서는 조건 수정·재추천을 제공하지 않음 |
 | 보안 | `YOUTH_POLICY_API_KEY` 환경변수 사용. 인증키·응답 개인정보를 저장소나 로그에 남기지 않음 |
 | 제외 | 신청 대행, 자격 확정, 온통청년 마이데이터 연동 |
 

@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -17,7 +18,9 @@ import com.greenpocket.global.exception.BusinessException;
 import com.greenpocket.profile.dto.PolicyPreferencesRequest;
 import com.greenpocket.profile.entity.AnnualIncomeBand;
 import com.greenpocket.profile.entity.CurrentStatus;
+import com.greenpocket.profile.entity.EducationStatus;
 import com.greenpocket.profile.entity.HouseholdStatus;
+import com.greenpocket.profile.entity.PolicyInterestCategory;
 import com.greenpocket.profile.repository.ProfileRepository;
 import com.greenpocket.profile.repository.ProfileRepository.ProfileSnapshot;
 import com.greenpocket.user.entity.Gender;
@@ -49,22 +52,25 @@ class ProfileServiceTest {
 	@Test
 	void updatesOnlyPolicyPreferences() {
 		when(profileRepository.updatePolicyPreferences(
-			1L, CurrentStatus.FREELANCER, AnnualIncomeBand.UNDER_24M, HouseholdStatus.ONE_PERSON
+			1L, CurrentStatus.FREELANCER, AnnualIncomeBand.UNDER_24M, EducationStatus.UNIVERSITY_GRADUATE
 		)).thenReturn(1);
 		var preferencesUpdated = profileService.updatePolicyPreferences(1L, new PolicyPreferencesRequest(
-			CurrentStatus.FREELANCER, AnnualIncomeBand.UNDER_24M, HouseholdStatus.ONE_PERSON
+			CurrentStatus.FREELANCER, AnnualIncomeBand.UNDER_24M,
+			EducationStatus.UNIVERSITY_GRADUATE, List.of(PolicyInterestCategory.JOB)
 		));
 
 		assertThat(preferencesUpdated.policyProfileCompleted()).isTrue();
 		verify(profileRepository).updatePolicyPreferences(
-			1L, CurrentStatus.FREELANCER, AnnualIncomeBand.UNDER_24M, HouseholdStatus.ONE_PERSON
+			1L, CurrentStatus.FREELANCER, AnnualIncomeBand.UNDER_24M, EducationStatus.UNIVERSITY_GRADUATE
 		);
+		verify(profileRepository).replacePolicyInterests(1L, List.of(PolicyInterestCategory.JOB));
 	}
 
 	@Test
 	void rejectsIncompletePolicyPreferences() {
 		assertThatThrownBy(() -> profileService.updatePolicyPreferences(1L,
-			new PolicyPreferencesRequest(null, AnnualIncomeBand.UNDER_24M, HouseholdStatus.ONE_PERSON)))
+			new PolicyPreferencesRequest(null, AnnualIncomeBand.UNDER_24M,
+				EducationStatus.UNIVERSITY_GRADUATE, List.of(PolicyInterestCategory.JOB))))
 			.isInstanceOfSatisfying(BusinessException.class,
 				exception -> assertThat(exception.getErrorCode().code()).isEqualTo("PROFILE_INCOMPLETE"));
 	}
@@ -72,8 +78,9 @@ class ProfileServiceTest {
 	private ProfileSnapshot completedLinkedProfile() {
 		return new ProfileSnapshot(
 			"김그린", LocalDate.of(1998, 3, 15), Gender.FEMALE, "01091740339",
-			CurrentStatus.EMPLOYED, AnnualIncomeBand.FROM_24M_TO_36M, HouseholdStatus.ONE_PERSON,
-			true, EcoLinkStatus.LINKED, "11", "11620", "서울특별시 관악구",
+			CurrentStatus.EMPLOYED, AnnualIncomeBand.FROM_24M_TO_36M,
+			EducationStatus.UNIVERSITY_GRADUATE, HouseholdStatus.ONE_PERSON,
+			true, List.of(PolicyInterestCategory.JOB), EcoLinkStatus.LINKED, "11", "11620", "서울특별시 관악구",
 			LocalDate.of(2026, 3, 1)
 		);
 	}

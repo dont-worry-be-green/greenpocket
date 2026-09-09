@@ -146,6 +146,8 @@ public class YouthPolicyApiClient {
 			text(item, "plcySprtCn"),
 			text(item, "sprvsnInstCdNm"),
 			text(item, "operInstCdNm"),
+			text(item, "plcyAprvSttsCd"),
+			text(item, "plcyPvsnMthdCd"),
 			text(item, "aplyPrdSeCd"),
 			date(text(item, "bizPrdBgngYmd")),
 			date(text(item, "bizPrdEndYmd")),

@@ -67,7 +67,15 @@ onMounted(() => {
 
         <MypageInfoTable :profile="store.mypage.profile" />
 
-        <MypageEcoAddressCard v-if="store.mypage.ecoAddress" :eco-address="store.mypage.ecoAddress" />
+        <MypageEcoAddressCard
+          v-if="store.mypage.ecoAddress"
+          :eco-address="store.mypage.ecoAddress"
+        />
+
+        <MypageArchiveLinks
+          @monthly="router.push({ path: '/mypage/reports', query: { tab: 'MONTHLY' } })"
+          @eco="router.push({ path: '/mypage/reports', query: { tab: 'ECO' } })"
+        />
 
         <MypageSupportBenefits
           :youth-policy="store.mypage.youthPolicy"
@@ -75,11 +83,6 @@ onMounted(() => {
           @all="router.push('/mypage/policies?mode=recommended')"
           @select="router.push(`/mypage/policies/${$event.policyId}`)"
           @link-eco="router.push('/whatif')"
-        />
-
-        <MypageArchiveLinks
-          @monthly="router.push({ path: '/mypage/reports', query: { tab: 'MONTHLY' } })"
-          @eco="router.push({ path: '/mypage/reports', query: { tab: 'ECO' } })"
         />
 
         <button

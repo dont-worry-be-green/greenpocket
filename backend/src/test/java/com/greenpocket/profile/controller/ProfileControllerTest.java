@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,7 +25,8 @@ import com.greenpocket.profile.dto.PolicyPreferencesUpdateResponse;
 import com.greenpocket.profile.dto.ProfileResponse;
 import com.greenpocket.profile.entity.AnnualIncomeBand;
 import com.greenpocket.profile.entity.CurrentStatus;
-import com.greenpocket.profile.entity.HouseholdStatus;
+import com.greenpocket.profile.entity.EducationStatus;
+import com.greenpocket.profile.entity.PolicyInterestCategory;
 import com.greenpocket.profile.service.ProfileService;
 import com.greenpocket.user.entity.Gender;
 
@@ -48,7 +50,8 @@ class ProfileControllerTest {
 	void findsProfileWithEcoAddress() throws Exception {
 		when(service.find(USER_ID)).thenReturn(new ProfileResponse(
 			"김그린", LocalDate.of(1998, 3, 15), Gender.FEMALE, "01091740339",
-			CurrentStatus.EMPLOYED, AnnualIncomeBand.FROM_24M_TO_36M, HouseholdStatus.ONE_PERSON,
+			CurrentStatus.EMPLOYED, AnnualIncomeBand.FROM_24M_TO_36M, EducationStatus.UNIVERSITY_GRADUATE,
+			List.of(PolicyInterestCategory.JOB),
 			new ProfileResponse.EcoAddress("서울특별시 관악구", "11", "11620", "2026-03"),
 			true
 		));
@@ -68,11 +71,12 @@ class ProfileControllerTest {
 	@Test
 	void getsAndSavesPolicyPreferences() throws Exception {
 		PolicyPreferencesRequest request = new PolicyPreferencesRequest(
-			CurrentStatus.EMPLOYED, AnnualIncomeBand.FROM_24M_TO_36M, HouseholdStatus.ONE_PERSON
+			CurrentStatus.EMPLOYED, AnnualIncomeBand.FROM_24M_TO_36M,
+			EducationStatus.UNIVERSITY_GRADUATE, List.of(PolicyInterestCategory.JOB)
 		);
 		when(service.findPolicyPreferences(USER_ID)).thenReturn(new PolicyPreferencesResponse(
 			LocalDate.of(1998, 3, 15), request.currentStatus(), request.annualIncomeBand(),
-			request.householdStatus(), null, false, false, true
+			request.educationStatus(), request.interestCategories(), null, false, false, true
 		));
 		when(service.updatePolicyPreferences(USER_ID, request))
 			.thenReturn(new PolicyPreferencesUpdateResponse(true, true));
@@ -95,7 +99,8 @@ class ProfileControllerTest {
 			{
 			  "currentStatus":"EMPLOYED",
 			  "annualIncomeBand":"FROM_24M_TO_36M",
-			  "householdStatus":"ONE_PERSON"
+			  "educationStatus":"UNIVERSITY_GRADUATE",
+			  "interestCategories":["JOB"]
 			}
 			""";
 	}

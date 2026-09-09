@@ -24,7 +24,6 @@ import com.greenpocket.policy.dto.PolicyCardResponse;
 import com.greenpocket.policy.dto.PolicyDetailResponse;
 import com.greenpocket.policy.dto.PolicyListResponse;
 import com.greenpocket.policy.dto.PolicyMypageSummary;
-import com.greenpocket.policy.dto.PolicyPreviewRequest;
 import com.greenpocket.policy.entity.PolicyApplicationStatus;
 import com.greenpocket.policy.entity.PolicyMatchStatus;
 import com.greenpocket.policy.entity.PolicyRegionLevel;
@@ -33,7 +32,7 @@ import com.greenpocket.policy.repository.YouthPolicyRepository;
 import com.greenpocket.policy.repository.YouthPolicyRepository.YouthPolicySnapshot;
 import com.greenpocket.profile.entity.AnnualIncomeBand;
 import com.greenpocket.profile.entity.CurrentStatus;
-import com.greenpocket.profile.entity.HouseholdStatus;
+import com.greenpocket.profile.entity.EducationStatus;
 import com.greenpocket.profile.entity.PolicyInterestCategory;
 import com.greenpocket.profile.exception.ProfileErrorCode;
 import com.greenpocket.profile.service.PolicyProfileQueryService;
@@ -45,26 +44,28 @@ import com.greenpocket.profile.service.PolicyProfileQueryService.PolicyProfile;
 public class PolicyQueryService {
 
 	private static final ZoneId KOREA_ZONE_ID = ZoneId.of("Asia/Seoul");
-	private static final int DEFAULT_PAGE_SIZE = 20;
+	private static final int RECOMMENDATION_LIMIT = 5;
 	private static final long MAX_PLAUSIBLE_INCOME_MANWON = 100_000L;
 	private static final String EMPLOYMENT_NO_LIMIT = "0013010";
 	private static final String INCOME_NO_LIMIT = "0043001";
 	private static final String INCOME_ANNUAL = "0043002";
-	private static final String MARRIAGE_MARRIED = "0055001";
-	private static final String MARRIAGE_UNMARRIED = "0055002";
 	private static final String MARRIAGE_NO_LIMIT = "0055003";
-	private static final String SPECIAL_SINGLE_PARENT = "0014004";
 	private static final String SPECIAL_NO_LIMIT = "0014010";
 	private static final String MAJOR_NO_LIMIT = "0011009";
 	private static final String SCHOOL_NO_LIMIT = "0049010";
+	private static final Set<String> FINANCIAL_REVIEW_PROVISION_METHODS = Set.of(
+		"0042003", // 직접대출
+		"0042007", // 대출보증
+		"0042008"  // 공적보험
+	);
 
 	private final YouthPolicyRepository youthPolicyRepository;
 	private final PolicyProfileQueryService policyProfileQueryService;
 
-	public PolicyListResponse getRecommendations(Long userId, int page, int size) {
+	public PolicyListResponse getRecommendations(Long userId) {
 		PolicyProfile profile = policyProfileQueryService.findCompleted(userId)
 			.orElseThrow(() -> new BusinessException(ProfileErrorCode.PROFILE_INCOMPLETE));
-		return recommendations(profile, page, size, false);
+		return recommendations(profile);
 	}
 
 	public PolicyMypageSummary getMypageSummary(Long userId, int previewSize) {
@@ -76,7 +77,7 @@ public class PolicyQueryService {
 			);
 		}
 		try {
-			PolicyListResponse recommendations = recommendations(profile.get(), 0, previewSize, false);
+			PolicyListResponse recommendations = recommendations(profile.get());
 			return new PolicyMypageSummary(
 				true,
 				profile.get().regionLinked(),
@@ -99,21 +100,11 @@ public class PolicyQueryService {
 		}
 	}
 
-	public PolicyListResponse preview(Long userId, PolicyPreviewRequest request) {
-		PolicyProfile stored = policyProfileQueryService.find(userId)
-			.orElseThrow(() -> new BusinessException(ProfileErrorCode.PROFILE_INCOMPLETE));
-		PolicyProfile preview = validatePreview(request, stored);
-		int page = request.page() == null ? 0 : request.page();
-		int size = request.size() == null ? DEFAULT_PAGE_SIZE : request.size();
-		return recommendations(preview, page, size, true);
-	}
-
 	public PolicyListResponse getAll(
 		Long userId,
 		String keyword,
 		PolicyInterestCategory category,
 		String regionCode,
-		PolicyApplicationStatus applicationStatus,
 		int page,
 		int size
 	) {
@@ -126,11 +117,10 @@ public class PolicyQueryService {
 				|| containsIgnoreCase(policy.title(), normalizedKeyword)
 				|| containsIgnoreCase(policy.supportContent(), normalizedKeyword))
 			.filter(policy -> category == null || policy.interestCategory() == category)
-			.filter(policy -> applicationStatus == null || policy.applicationStatus() == applicationStatus)
 			.filter(policy -> regionCode == null || regionCode.isBlank() || hasExactRegion(policy, regionCode.strip()))
 			.map(policy -> toCard(policy, profile.map(value -> match(policy, value)).orElse(null)))
 			.toList();
-		return page(cards, page, size, null, false);
+		return page(cards, page, size, null);
 	}
 
 	public PolicyDetailResponse getDetail(Long userId, String policyId) {
@@ -149,8 +139,8 @@ public class PolicyQueryService {
 			new PolicyDetailResponse.Application(
 				policy.applicationStatus(),
 				periodType(policy),
-				policy.businessStartDate(),
-				policy.businessEndDate(),
+				policy.applicationStartDate(),
+				policy.applicationEndDate(),
 				policy.applicationMethod(),
 				policy.applicationUrl()
 			),
@@ -160,12 +150,12 @@ public class PolicyQueryService {
 			),
 			new PolicyDetailResponse.Conditions(
 				ageCondition(policy),
-				condition(policy.incomeConditionText(), policy.incomeConditionCode(), "제한 없음", "세부 소득 조건 확인"),
-				condition(null, policy.employmentCodes(), "제한 없음", "세부 취업 상태 조건 확인"),
-				condition(null, policy.schoolCodes(), "제한 없음", "세부 학력 조건 확인"),
-				condition(null, policy.majorCodes(), "제한 없음", "세부 전공 조건 확인"),
-				condition(null, policy.marriageStatusCode(), "제한 없음", "세부 혼인 조건 확인"),
-				condition(policy.additionalConditionText(), policy.specialCodes(), "제한 없음", "세부 공고 확인")
+				incomeCondition(policy),
+				employmentCondition(policy),
+				educationCondition(policy),
+				codedCondition(policy.majorCodes(), MAJOR_NO_LIMIT, "세부 전공 조건 확인"),
+				codedCondition(policy.marriageStatusCode(), MARRIAGE_NO_LIMIT, "세부 혼인 조건 확인"),
+				specialCondition(policy)
 			),
 			match == null ? null : new PolicyDetailResponse.Match(match.status(), match.score(), match.reasons()),
 			StreamSupport.urls(policy.referenceUrl1(), policy.referenceUrl2()),
@@ -174,18 +164,18 @@ public class PolicyQueryService {
 		);
 	}
 
-	private PolicyListResponse recommendations(PolicyProfile profile, int page, int size, boolean preview) {
-		validatePage(page, size);
+	private PolicyListResponse recommendations(PolicyProfile profile) {
 		List<PolicyCardResponse> cards = activePolicies().stream()
-			.filter(policy -> policy.applicationStatus() != PolicyApplicationStatus.CLOSED)
+			.filter(policy -> policy.applicationStatus() == PolicyApplicationStatus.OPEN)
 			.map(policy -> new ScoredPolicy(policy, match(policy, profile)))
-			.filter(scored -> scored.match().status() != PolicyMatchStatus.NOT_ELIGIBLE)
+			.filter(scored -> scored.match().status() == PolicyMatchStatus.ELIGIBLE)
 			.sorted(Comparator.comparingInt((ScoredPolicy scored) -> scored.match().score()).reversed()
-				.thenComparing(scored -> scored.policy().businessEndDate(),
+				.thenComparing(scored -> scored.policy().applicationEndDate(),
 					Comparator.nullsLast(Comparator.naturalOrder())))
+			.limit(RECOMMENDATION_LIMIT)
 			.map(scored -> toCard(scored.policy(), scored.match()))
 			.toList();
-		return page(cards, page, size, region(profile), preview);
+		return page(cards, 0, RECOMMENDATION_LIMIT, region(profile));
 	}
 
 	private List<YouthPolicySnapshot> activePolicies() {
@@ -200,8 +190,7 @@ public class PolicyQueryService {
 		List<PolicyCardResponse> cards,
 		int page,
 		int size,
-		PolicyListResponse.Region region,
-		boolean preview
+		PolicyListResponse.Region region
 	) {
 		int from = (int)Math.min((long)page * size, cards.size());
 		int to = Math.min(from + size, cards.size());
@@ -215,8 +204,7 @@ public class PolicyQueryService {
 			totalPages,
 			page + 1 < totalPages,
 			region,
-			toOffsetDateTime(lastSyncedAt),
-			preview
+			toOffsetDateTime(lastSyncedAt)
 		);
 	}
 
@@ -228,7 +216,7 @@ public class PolicyQueryService {
 			policy.mediumCategoryName(),
 			summary(policy.supportContent()),
 			policy.applicationStatus(),
-			policy.businessEndDate(),
+			policy.applicationEndDate(),
 			match == null ? null : match.status(),
 			match == null ? null : match.score(),
 			match == null ? null : match.reasons(),
@@ -239,6 +227,10 @@ public class PolicyQueryService {
 	private PolicyMatch match(YouthPolicySnapshot policy, PolicyProfile profile) {
 		List<String> reasons = new ArrayList<>();
 		int score = 0;
+		if (profile.interestCategories().contains(policy.interestCategory())) {
+			score += 5;
+			reasons.add("관심 분야와 일치해요");
+		}
 
 		RegionMatch regionMatch = regionMatch(policy, profile);
 		if (regionMatch == RegionMatch.NO) {
@@ -291,24 +283,28 @@ public class PolicyQueryService {
 			}
 		}
 
-		ConditionMatch householdMatch = householdMatch(policy, profile.householdStatus());
-		if (householdMatch == ConditionMatch.NOT_MATCHED) {
-			return notEligible("가구 상태가 정책 조건과 일치하지 않아요");
+		ConditionMatch educationMatch = educationMatch(policy, profile.educationStatus());
+		if (educationMatch == ConditionMatch.NOT_MATCHED) {
+			return notEligible("학력 상태가 정책 조건과 일치하지 않아요");
 		}
-		if (householdMatch == ConditionMatch.MATCHED) {
-			score += 5;
-			if (hasHouseholdRestriction(policy)) {
-				reasons.add("가구 상태가 정책 조건과 일치해요");
+		if (educationMatch == ConditionMatch.MATCHED) {
+			score += 10;
+			if (hasRestrictedCodes(policy.schoolCodes(), SCHOOL_NO_LIMIT)) {
+				reasons.add("학력 상태가 정책 조건과 일치해요");
 			}
 		}
 
+		boolean financialReviewRequired = requiresFinancialReview(policy);
 		boolean requiresCheck = regionMatch == RegionMatch.UNKNOWN
 			|| employmentMatch == ConditionMatch.CHECK_REQUIRED
 			|| incomeMatch == ConditionMatch.CHECK_REQUIRED
-			|| householdMatch == ConditionMatch.CHECK_REQUIRED
-			|| hasUnresolvedConditions(policy, profile.householdStatus());
+			|| educationMatch == ConditionMatch.CHECK_REQUIRED
+			|| hasUnresolvedConditions(policy)
+			|| financialReviewRequired;
 		if (requiresCheck) {
-			reasons.add("소득·학력 등 세부 조건은 공고에서 확인해 주세요");
+			reasons.add(financialReviewRequired
+				? "보증·대출 심사 등 세부 자격을 확인해 주세요"
+				: "세부 자격 조건은 공고에서 확인해 주세요");
 		}
 		return new PolicyMatch(
 			requiresCheck ? PolicyMatchStatus.CHECK_REQUIRED : PolicyMatchStatus.ELIGIBLE,
@@ -323,8 +319,14 @@ public class PolicyQueryService {
 
 	private static ConditionMatch employmentMatch(YouthPolicySnapshot policy, CurrentStatus currentStatus) {
 		Set<String> codes = conditionCodes(policy.employmentCodes());
-		if (codes.isEmpty() || codes.contains(EMPLOYMENT_NO_LIMIT)) {
+		if (codes.isEmpty()) {
+			return ConditionMatch.CHECK_REQUIRED;
+		}
+		if (isExplicitNoLimit(codes, EMPLOYMENT_NO_LIMIT)) {
 			return ConditionMatch.MATCHED;
+		}
+		if (codes.contains(EMPLOYMENT_NO_LIMIT)) {
+			return ConditionMatch.CHECK_REQUIRED;
 		}
 		String currentCode = employmentCode(currentStatus);
 		if (currentCode == null) {
@@ -346,7 +348,10 @@ public class PolicyQueryService {
 
 	private static ConditionMatch incomeMatch(YouthPolicySnapshot policy, AnnualIncomeBand incomeBand) {
 		String code = policy.incomeConditionCode();
-		if (!hasText(code) || INCOME_NO_LIMIT.equals(code)) {
+		if (!hasText(code)) {
+			return ConditionMatch.CHECK_REQUIRED;
+		}
+		if (INCOME_NO_LIMIT.equals(code)) {
 			return ConditionMatch.MATCHED;
 		}
 		if (!INCOME_ANNUAL.equals(code) || incomeBand == AnnualIncomeBand.UNKNOWN) {
@@ -390,54 +395,52 @@ public class PolicyQueryService {
 		};
 	}
 
-	private static ConditionMatch householdMatch(YouthPolicySnapshot policy, HouseholdStatus householdStatus) {
-		String marriageCode = policy.marriageStatusCode();
-		if (MARRIAGE_MARRIED.equals(marriageCode)) {
-			return householdStatus == HouseholdStatus.MARRIED
-				? ConditionMatch.MATCHED : ConditionMatch.CHECK_REQUIRED;
-		}
-		if (MARRIAGE_UNMARRIED.equals(marriageCode)) {
-			return householdStatus == HouseholdStatus.MARRIED
-				? ConditionMatch.NOT_MATCHED : ConditionMatch.CHECK_REQUIRED;
-		}
-		if (hasText(marriageCode) && !MARRIAGE_NO_LIMIT.equals(marriageCode)) {
+	private static ConditionMatch educationMatch(YouthPolicySnapshot policy, EducationStatus educationStatus) {
+		Set<String> codes = conditionCodes(policy.schoolCodes());
+		if (codes.isEmpty()) {
 			return ConditionMatch.CHECK_REQUIRED;
 		}
-
-		Set<String> specialCodes = conditionCodes(policy.specialCodes());
-		if (specialCodes.contains(SPECIAL_SINGLE_PARENT)) {
-			return householdStatus == HouseholdStatus.SINGLE_PARENT
-				? ConditionMatch.MATCHED : ConditionMatch.CHECK_REQUIRED;
+		if (isExplicitNoLimit(codes, SCHOOL_NO_LIMIT)) {
+			return ConditionMatch.MATCHED;
 		}
-		return ConditionMatch.MATCHED;
+		if (codes.contains(SCHOOL_NO_LIMIT)) {
+			return ConditionMatch.CHECK_REQUIRED;
+		}
+		String educationCode = switch (educationStatus) {
+			case BELOW_HIGH_SCHOOL -> "0049001";
+			case HIGH_SCHOOL_STUDENT -> "0049002";
+			case HIGH_SCHOOL_EXPECTED_GRADUATION -> "0049003";
+			case HIGH_SCHOOL_GRADUATE -> "0049004";
+			case UNIVERSITY_STUDENT -> "0049005";
+			case UNIVERSITY_EXPECTED_GRADUATION -> "0049006";
+			case UNIVERSITY_GRADUATE -> "0049007";
+			case GRADUATE_SCHOOL -> "0049008";
+			case OTHER -> "0049009";
+		};
+		return codes.contains(educationCode) ? ConditionMatch.MATCHED : ConditionMatch.NOT_MATCHED;
 	}
 
-	private static boolean hasHouseholdRestriction(YouthPolicySnapshot policy) {
-		return MARRIAGE_MARRIED.equals(policy.marriageStatusCode())
-			|| MARRIAGE_UNMARRIED.equals(policy.marriageStatusCode())
-			|| conditionCodes(policy.specialCodes()).contains(SPECIAL_SINGLE_PARENT);
-	}
-
-	private static boolean hasUnresolvedConditions(YouthPolicySnapshot policy, HouseholdStatus householdStatus) {
+	private static boolean hasUnresolvedConditions(YouthPolicySnapshot policy) {
 		return hasText(policy.incomeConditionText())
 			|| hasText(policy.additionalConditionText()) || hasText(policy.participantTargetText())
-			|| hasRestrictedCodes(policy.majorCodes(), MAJOR_NO_LIMIT)
-			|| hasRestrictedCodes(policy.schoolCodes(), SCHOOL_NO_LIMIT)
-			|| hasUnresolvedSpecialConditions(policy.specialCodes(), householdStatus);
+			|| hasUnknownOrRestrictedCodes(policy.majorCodes(), MAJOR_NO_LIMIT)
+			|| !hasText(policy.marriageStatusCode())
+			|| !MARRIAGE_NO_LIMIT.equals(policy.marriageStatusCode())
+			|| hasUnknownOrRestrictedCodes(policy.specialCodes(), SPECIAL_NO_LIMIT);
 	}
 
-	private static boolean hasUnresolvedSpecialConditions(String rawCodes, HouseholdStatus householdStatus) {
+	private static boolean hasUnknownOrRestrictedCodes(String rawCodes, String noLimitCode) {
 		Set<String> codes = conditionCodes(rawCodes);
-		if (codes.isEmpty() || codes.contains(SPECIAL_NO_LIMIT)) {
-			return false;
-		}
-		return !(codes.size() == 1 && codes.contains(SPECIAL_SINGLE_PARENT)
-			&& householdStatus == HouseholdStatus.SINGLE_PARENT);
+		return !isExplicitNoLimit(codes, noLimitCode);
 	}
 
 	private static boolean hasRestrictedCodes(String rawCodes, String noLimitCode) {
 		Set<String> codes = conditionCodes(rawCodes);
-		return !codes.isEmpty() && !codes.contains(noLimitCode);
+		return !codes.isEmpty() && !isExplicitNoLimit(codes, noLimitCode);
+	}
+
+	private static boolean isExplicitNoLimit(Set<String> codes, String noLimitCode) {
+		return codes.size() == 1 && codes.contains(noLimitCode);
 	}
 
 	private static Set<String> conditionCodes(String value) {
@@ -501,18 +504,6 @@ public class PolicyQueryService {
 		);
 	}
 
-	private static PolicyProfile validatePreview(PolicyPreviewRequest request, PolicyProfile stored) {
-		if (request == null || request.currentStatus() == null || request.annualIncomeBand() == null
-			|| request.householdStatus() == null) {
-			throw new BusinessException(ProfileErrorCode.PROFILE_INCOMPLETE);
-		}
-		return new PolicyProfile(
-			stored.birthDate(), request.currentStatus(),
-			request.annualIncomeBand(), request.householdStatus(),
-			stored.ecoSidoCode(), stored.ecoSigunguCode(), stored.ecoAddressLabel()
-		);
-	}
-
 	private static void validatePage(int page, int size) {
 		if (page < 0 || size < 1 || size > 100) {
 			throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
@@ -531,9 +522,7 @@ public class PolicyQueryService {
 	}
 
 	private static String periodType(YouthPolicySnapshot policy) {
-		return policy.businessStartDate() == null && policy.businessEndDate() == null
-			? "SEPARATE_NOTICE"
-			: "LIMITED";
+		return "0057002".equals(policy.applicationPeriodCode()) ? "ALWAYS" : "LIMITED";
 	}
 
 	private static String ageCondition(YouthPolicySnapshot policy) {
@@ -549,8 +538,74 @@ public class PolicyQueryService {
 		return "만 " + policy.minAge() + "~" + policy.maxAge() + "세";
 	}
 
-	private static String condition(String text, String code, String empty, String fallback) {
-		return hasText(text) ? text : hasText(code) ? fallback : empty;
+	private static String incomeCondition(YouthPolicySnapshot policy) {
+		if (hasText(policy.incomeConditionText())) {
+			return policy.incomeConditionText();
+		}
+		if (!hasText(policy.incomeConditionCode())) {
+			return "세부 소득 조건 확인";
+		}
+		if (INCOME_NO_LIMIT.equals(policy.incomeConditionCode())) {
+			return "제한 없음";
+		}
+		if (INCOME_ANNUAL.equals(policy.incomeConditionCode())
+			&& validIncomeAmount(policy.incomeMinAmount()) && validIncomeAmount(policy.incomeMaxAmount())) {
+			return annualIncomeCondition(policy.incomeMinAmount(), policy.incomeMaxAmount());
+		}
+		return "세부 소득 조건 확인";
+	}
+
+	private static String annualIncomeCondition(Long minimum, Long maximum) {
+		if (minimum == null && maximum == null) {
+			return "세부 소득 조건 확인";
+		}
+		if (minimum == null) {
+			return "연소득 " + formatManwon(maximum) + "만원 이하";
+		}
+		if (maximum == null) {
+			return "연소득 " + formatManwon(minimum) + "만원 이상";
+		}
+		if (minimum > maximum) {
+			return "세부 소득 조건 확인";
+		}
+		return "연소득 " + formatManwon(minimum) + "만~" + formatManwon(maximum) + "만원";
+	}
+
+	private static String formatManwon(Long amount) {
+		return String.format(Locale.KOREA, "%,d", amount);
+	}
+
+	private static String employmentCondition(YouthPolicySnapshot policy) {
+		if (requiresFinancialReview(policy)) {
+			return "취업·재직 조건 확인";
+		}
+		return codedCondition(policy.employmentCodes(), EMPLOYMENT_NO_LIMIT, "세부 취업 상태 조건 확인");
+	}
+
+	private static String educationCondition(YouthPolicySnapshot policy) {
+		if (requiresFinancialReview(policy)) {
+			return "학업·취업 상태 조건 확인";
+		}
+		return codedCondition(policy.schoolCodes(), SCHOOL_NO_LIMIT, "세부 학력 조건 확인");
+	}
+
+	private static String specialCondition(YouthPolicySnapshot policy) {
+		if (hasText(policy.additionalConditionText())) {
+			return policy.additionalConditionText();
+		}
+		if (requiresFinancialReview(policy)) {
+			return "보증·대출 심사 조건 확인";
+		}
+		return codedCondition(policy.specialCodes(), SPECIAL_NO_LIMIT, "세부 공고 확인");
+	}
+
+	private static boolean requiresFinancialReview(YouthPolicySnapshot policy) {
+		return FINANCIAL_REVIEW_PROVISION_METHODS.contains(policy.provisionMethodCode());
+	}
+
+	private static String codedCondition(String rawCodes, String noLimitCode, String fallback) {
+		Set<String> codes = conditionCodes(rawCodes);
+		return isExplicitNoLimit(codes, noLimitCode) ? "제한 없음" : fallback;
 	}
 
 	private static boolean containsIgnoreCase(String value, String normalizedKeyword) {

@@ -8,14 +8,9 @@ const fake = async (value) => {
   return typeof value === 'function' ? value() : value
 }
 
-export function getPolicyRecommendations(params = {}) {
-  if (isFixtureMode()) return fake(() => buildPolicyList(params))
-  return client.get('/policies/recommendations', { params })
-}
-
-export function previewPolicyRecommendations(payload) {
-  if (isFixtureMode()) return fake(() => buildPolicyList(payload, true))
-  return client.post('/policies/recommendations/preview', payload)
+export function getPolicyRecommendations() {
+  if (isFixtureMode()) return fake(() => buildPolicyList({ size: 5, matchStatus: 'ELIGIBLE' }))
+  return client.get('/policies/recommendations')
 }
 
 export function getPolicies(params = {}) {
@@ -28,7 +23,11 @@ export function getPolicy(policyId) {
     return fake(() => {
       const policy = findPolicy(policyId)
       if (policy) return policy
-      throw new ApiError({ code: 'YOUTH_POLICY_NOT_FOUND', message: '청년정책을 찾을 수 없어요.', status: 404 })
+      throw new ApiError({
+        code: 'YOUTH_POLICY_NOT_FOUND',
+        message: '청년정책을 찾을 수 없어요.',
+        status: 404,
+      })
     })
   }
   return client.get(`/policies/${encodeURIComponent(policyId)}`)

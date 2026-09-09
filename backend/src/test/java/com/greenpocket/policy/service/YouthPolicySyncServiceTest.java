@@ -91,7 +91,7 @@ class YouthPolicySyncServiceTest {
 	private YouthPolicySourcePolicy policy(String id) {
 		return new YouthPolicySourcePolicy(
 			id, "정책", null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null,
+			null, null, null, null, null, null, null, null, null, null,
 			null, null, null, null, null, null, null, null, null,
 			"11620", null, null, null, null, null, null
 		);
