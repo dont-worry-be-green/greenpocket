@@ -372,9 +372,20 @@ export function markResultViewed(roundId) {
  * GET /eco/rounds/{roundId}/settlement — 마일리지 적립 내역 (B-5-03 · WF-11).
  * 결과와 같은 지난 회차다. `ECO_SETTLEMENT` 는 `ECO_RESULT` 와 같은 상수에서 뽑는다.
  */
-export function getSettlement(roundId) {
+export async function getSettlement(roundId) {
   if (isFixtureMode()) return fake(() => ({ ...ECO_SETTLEMENT, roundId: Number(roundId) }))
-  return client.get(`/eco/rounds/${roundId}/settlement`)
+  try {
+    return await client.get(`/eco/rounds/${roundId}/settlement`)
+  } catch (error) {
+    /*
+     * 배포 시연용 — 보관함(MY-04)의 고정 ECO 리포트(`data/demoEcoReport.js`, 회차 7)에서
+     * 「적립된 마일리지 30,000M ›」를 누르면 여기로 오는데, 서버에는 그 회차의 확정 결산이 없다.
+     * **그 회차만** 같은 상수(`ECO_SETTLEMENT`)로 대신한다 — 리포트와 다른 숫자가 보이면 안 된다.
+     * 서버가 실제 결산을 돌려주면 그쪽이 이긴다. 다른 회차의 에러는 그대로 던진다.
+     */
+    if (Number(roundId) === ECO_SETTLEMENT.roundId) return { ...ECO_SETTLEMENT }
+    throw error
+  }
 }
 
 /** POST /eco/rounds/{roundId}/application — 에코마일리지 회원 신청 (B-4-05) */

@@ -227,3 +227,23 @@ describe('픽스처 shim 동작', () => {
     expect(home.application.showBanner).toBe(false)
   })
 })
+
+describe('배포 시연용 결산 대체 (실 API 모드)', () => {
+  /*
+   * 보관함(MY-04)의 고정 ECO 리포트(회차 7)에서 「적립된 마일리지 30,000M ›」를 누르면 WF-11 이
+   * `GET /eco/rounds/7/settlement` 를 부르는데 서버에는 그 회차 결산이 없다. **그 회차만**
+   * 리포트와 같은 상수로 대신하고, 다른 회차의 에러는 그대로 던진다.
+   */
+  beforeEach(() => setDataSource(DATA_SOURCE.API))
+
+  it('회차 7 은 서버가 실패해도 리포트와 같은 30,000M 결산을 준다', async () => {
+    const settlement = await ecoApi.getSettlement(7)
+    expect(settlement.roundId).toBe(7)
+    expect(settlement.confirmedMileage).toBe(30000)
+    expect(settlement.tier).toBe('TIER_10')
+  })
+
+  it('다른 회차는 서버 에러를 그대로 던진다', async () => {
+    await expect(ecoApi.getSettlement(8)).rejects.toBeTruthy()
+  })
+})
