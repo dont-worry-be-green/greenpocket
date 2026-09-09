@@ -31,7 +31,9 @@ async function mountView(component, path) {
   })
   await router.push(path)
   await router.isReady()
-  const wrapper = mount(component, { global: { plugins: [pinia, router] } })
+  const wrapper = mount(component, {
+    global: { plugins: [pinia, router], stubs: { Teleport: true } },
+  })
   await flushPromises()
   return { wrapper, router }
 }
@@ -44,12 +46,13 @@ async function verifyPhone(wrapper) {
   await wrapper.find('input[autocomplete="name"]').setValue('이아영')
   await wrapper.find('input[autocomplete="bday"]').setValue('1998-03-15')
   await buttonWith(wrapper, '여성').trigger('click')
+  await buttonWith(wrapper, '휴대폰 본인인증').trigger('click')
   await buttonWith(wrapper, 'SKT').trigger('click')
   await wrapper.find('input[type="tel"]').setValue('01011111111')
   await buttonWith(wrapper, '인증번호 받기').trigger('click')
   await flushPromises()
   await wrapper.find('input[autocomplete="one-time-code"]').setValue('000000')
-  await buttonWith(wrapper, '확인').trigger('click')
+  await buttonWith(wrapper, '인증 완료').trigger('click')
   await flushPromises()
 }
 
@@ -123,11 +126,25 @@ describe('SignupView', () => {
     expect(wrapper.text()).not.toContain('아이디')
     expect(wrapper.find('input[autocomplete="bday"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('성별')
+    expect(wrapper.get('[data-testid="identity-detail-row"]').classes()).toContain('grid')
+    expect(wrapper.text()).not.toContain('가입을 위해 본인 명의 휴대폰을 인증해 주세요.')
+  })
+
+  it('휴대폰 본인인증을 누르면 인증 입력을 바텀시트로 연다', async () => {
+    const { wrapper } = await mountView(SignupView, '/onboarding/signup')
+
+    await buttonWith(wrapper, '휴대폰 본인인증').trigger('click')
+
+    expect(wrapper.get('[role="dialog"]').attributes('aria-modal')).toBe('true')
+    expect(wrapper.text()).toContain('가입을 위해 본인 명의 휴대폰을 인증해 주세요.')
+    expect(wrapper.text()).toContain('통신사')
+    expect(wrapper.find('input[type="tel"]').exists()).toBe(true)
   })
 
   it('본인정보를 모두 입력하기 전에는 인증번호를 요청할 수 없다', async () => {
     const { wrapper } = await mountView(SignupView, '/onboarding/signup')
     await wrapper.find('input[autocomplete="name"]').setValue('이아영')
+    await buttonWith(wrapper, '휴대폰 본인인증').trigger('click')
     await buttonWith(wrapper, 'SKT').trigger('click')
     await wrapper.find('input[type="tel"]').setValue('01011111111')
 
@@ -143,6 +160,7 @@ describe('SignupView', () => {
     await wrapper.find('input[autocomplete="name"]').setValue('이아영')
     await wrapper.find('input[autocomplete="bday"]').setValue('1998-03-15')
     await buttonWith(wrapper, '여성').trigger('click')
+    await buttonWith(wrapper, '휴대폰 본인인증').trigger('click')
     await buttonWith(wrapper, 'SKT').trigger('click')
     await wrapper.find('input[type="tel"]').setValue('01011111111')
     await buttonWith(wrapper, '인증번호 받기').trigger('click')
@@ -151,6 +169,25 @@ describe('SignupView', () => {
     expect(wrapper.find('input[autocomplete="name"]').attributes('disabled')).toBeDefined()
     expect(wrapper.find('input[autocomplete="bday"]').attributes('disabled')).toBeDefined()
     expect(wrapper.find('input[type="tel"]').attributes('disabled')).toBeDefined()
+  })
+
+  it('잘못된 인증번호는 바텀시트에서 오류를 안내하고 인증하지 않는다', async () => {
+    const { wrapper } = await mountView(SignupView, '/onboarding/signup')
+    await wrapper.find('input[autocomplete="name"]').setValue('이아영')
+    await wrapper.find('input[autocomplete="bday"]').setValue('1998-03-15')
+    await buttonWith(wrapper, '여성').trigger('click')
+    await buttonWith(wrapper, '휴대폰 본인인증').trigger('click')
+    await buttonWith(wrapper, 'SKT').trigger('click')
+    await wrapper.find('input[type="tel"]').setValue('01011111111')
+    await buttonWith(wrapper, '인증번호 받기').trigger('click')
+    await flushPromises()
+    await wrapper.find('input[autocomplete="one-time-code"]').setValue('123456')
+    await buttonWith(wrapper, '인증 완료').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('인증번호가 맞지 않아요. 다시 확인해 주세요.')
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(true)
+    expect(buttonWith(wrapper, '가입하고 시작하기').attributes('disabled')).toBeDefined()
   })
 
   it('본인확인 뒤 실제 signup 계약으로 가입한다', async () => {
