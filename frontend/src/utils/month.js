@@ -44,3 +44,34 @@ export function shiftMonth(yearMonth, delta) {
   const moved = new Date(Date.UTC(year, month - 1 + delta, 1))
   return `${moved.getUTCFullYear()}-${String(moved.getUTCMonth() + 1).padStart(2, '0')}`
 }
+
+/**
+ * 달의 계절. 백엔드 `EcoMissionService.season()` 과 같은 표다 — 3~5 봄 · 6~8 여름 · 9~11 가을 · 12~2 겨울.
+ * 오늘의 실천이 이 계절로 미션을 거르므로(B-3-05) 두 표가 어긋나면 화면과 서버가 다른 미션을 보여준다.
+ *   '2026-09' → 'AUTUMN'
+ */
+export function seasonOf(yearMonth) {
+  if (!isMonth(yearMonth)) return null
+  const month = Number(yearMonth.slice(5, 7))
+  if (month >= 3 && month <= 5) return 'SPRING'
+  if (month >= 6 && month <= 8) return 'SUMMER'
+  if (month >= 9 && month <= 11) return 'AUTUMN'
+  return 'WINTER'
+}
+
+/**
+ * 두 달 사이(양 끝 포함)에 걸치는 계절 집합 (결정 C-33).
+ * 목표 정하기는 「오늘부터 회차 끝까지」의 계절과 하나라도 맞는 미션만 보여준다.
+ *   seasonsBetween('2026-09', '2026-09') → ['AUTUMN']
+ *   seasonsBetween('2025-10', '2026-03') → ['AUTUMN', 'WINTER', 'SPRING']
+ * from 이 to 보다 뒤면(회차가 이미 끝남) 빈 배열이다.
+ */
+export function seasonsBetween(fromMonth, toMonth) {
+  if (!isMonth(fromMonth) || !isMonth(toMonth) || fromMonth > toMonth) return []
+  const seasons = []
+  for (let cursor = fromMonth; cursor <= toMonth; cursor = shiftMonth(cursor, 1)) {
+    const season = seasonOf(cursor)
+    if (!seasons.includes(season)) seasons.push(season)
+  }
+  return seasons
+}

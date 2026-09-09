@@ -21,13 +21,14 @@
  * 체크는 토글 1건이 아니라 **하루치 전량**을 올린다(PUT mission-logs/{date}). `change` 로 완료
  * 목록 전체를 넘긴다. 진행 수는 헤더 헤드라인(「N개가 남았어요」)이 서버 `completedCount` 로 말한다.
  * `emptyReason` 이 있는 응답도 **200 정상이다**(핵심 규칙 8). 서버는 코드만 주고 문구는 화면이 만든다.
+ * 목록은 고른 미션 전부다 — 계절로 거르지 않는다(결정 C-34). 계절 한정 미션은 「여름 전용」 칩으로만 알린다.
  */
 import { computed } from 'vue'
 
 import GpCard from '@/components/ui/GpCard.vue'
 import IconCheck from '@/components/ui/icons/IconCheck.vue'
 import IconChevronRight from '@/components/ui/icons/IconChevronRight.vue'
-import { formatUtilityType, formatWon } from '@/utils/format'
+import { formatSeasonTags, formatUtilityType, formatWon } from '@/utils/format'
 
 const props = defineProps({
   data: { type: Object, default: null },
@@ -40,7 +41,7 @@ const emit = defineEmits(['change'])
 /** 서버는 코드로 준다. 문장은 화면 몫이다 */
 const EMPTY_MESSAGE = {
   NO_GOAL: '평가 기간 목표를 정하면 오늘 할 실천이 생겨요.',
-  NO_MISSION: '목표를 정할 때 고른 실천 중 오늘 계절에 맞는 것이 없어요.',
+  NO_MISSION: '목표를 정할 때 고른 실천이 없어요. 실천을 골라 주세요.',
 }
 
 const missions = computed(() => props.data?.missions ?? [])
@@ -101,10 +102,22 @@ function toggle(mission) {
           </span>
           <span class="flex min-w-0 flex-1 flex-col items-start">
             <span
-              class="text-badge tracking-normal inline-flex items-center rounded-xs px-[5px] py-0.5"
-              :class="[UTILITY_TONE[mission.utilityType], mission.completed ? 'opacity-50' : '']"
+              class="inline-flex items-center gap-1"
+              :class="mission.completed ? 'opacity-50' : ''"
             >
-              {{ formatUtilityType(mission.utilityType) }}
+              <span
+                class="text-badge tracking-normal inline-flex items-center rounded-xs px-[5px] py-0.5"
+                :class="UTILITY_TONE[mission.utilityType]"
+              >
+                {{ formatUtilityType(mission.utilityType) }}
+              </span>
+              <!-- 계절 한정 미션(결정 C-34). 계절로 거르지 않고 알리기만 한다 -->
+              <span
+                v-if="formatSeasonTags(mission.seasonTags)"
+                class="text-badge tracking-normal bg-surface-sub text-muted inline-flex items-center rounded-xs px-[5px] py-0.5"
+              >
+                {{ formatSeasonTags(mission.seasonTags) }} 전용
+              </span>
             </span>
             <span
               class="text-body-strong tracking-body mt-1 block w-full truncate"

@@ -6,6 +6,7 @@ import {
   formatChangeRate,
   changeRateParts,
   formatDifficulty,
+  formatSeasonTags,
   formatUsage,
   formatMonth,
   formatPercent,
@@ -254,5 +255,18 @@ describe('formatRewardStatus', () => {
 
   it('값이 없으면 - 로 표시한다', () => {
     expect(formatRewardStatus(null)).toBe('-')
+  })
+})
+
+describe('formatSeasonTags — 계절 한정 미션 칩', () => {
+  it('한 계절이면 그 이름, 둘이면 · 로 잇는다', () => {
+    expect(formatSeasonTags(['SUMMER'])).toBe('여름')
+    expect(formatSeasonTags(['WINTER', 'AUTUMN'])).toBe('가을·겨울')
+  })
+
+  it('사계절이거나 비어 있으면 빈 문자열이다 — 늘 보이는 미션엔 칩을 달지 않는다', () => {
+    expect(formatSeasonTags(['SPRING', 'SUMMER', 'AUTUMN', 'WINTER'])).toBe('')
+    expect(formatSeasonTags([])).toBe('')
+    expect(formatSeasonTags(undefined)).toBe('')
   })
 })
