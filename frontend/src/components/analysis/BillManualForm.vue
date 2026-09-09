@@ -2,9 +2,9 @@
 import { computed, reactive, ref } from 'vue'
 
 import GpButton from '@/components/ui/GpButton.vue'
-import IconDrop from '@/components/ui/icons/IconDrop.vue'
-import IconFlame from '@/components/ui/icons/IconFlame.vue'
-import IconLightning from '@/components/ui/icons/IconLightning.vue'
+import electricIcon from '@/assets/icons/electric-144.png'
+import gasIcon from '@/assets/icons/gas-144.png'
+import waterIcon from '@/assets/icons/water-144.png'
 import { useAnalysisStore } from '@/stores/analysis'
 
 const props = defineProps({
@@ -21,9 +21,10 @@ const BILL_TYPES = [
   { value: 'GAS', label: '도시가스' },
 ]
 const UTILITIES = [
-  { value: 'ELECTRICITY', label: '전기', unit: 'kWh', icon: IconLightning, tone: 'text-elec' },
-  { value: 'WATER', label: '수도', unit: 'm3', icon: IconDrop, tone: 'text-water' },
-  { value: 'GAS', label: '도시가스', unit: 'm3', icon: IconFlame, tone: 'text-gas' },
+  // 아이콘은 디자이너 PNG(타일 바탕 포함) — eco/UtilityIcon 과 같은 그림. 도메인 경계 때문에 직접 import
+  { value: 'ELECTRICITY', label: '전기', unit: 'kWh', icon: electricIcon },
+  { value: 'WATER', label: '수도', unit: 'm3', icon: waterIcon },
+  { value: 'GAS', label: '도시가스', unit: 'm3', icon: gasIcon },
 ]
 
 const store = useAnalysisStore()
@@ -56,7 +57,12 @@ const visibleUtilities = computed(() =>
 const isValid = computed(() =>
   visibleUtilities.value.every((item) => {
     const value = values[item.value]
-    return value.amount !== '' && value.usage !== '' && Number(value.amount) >= 0 && Number(value.usage) >= 0
+    return (
+      value.amount !== '' &&
+      value.usage !== '' &&
+      Number(value.amount) >= 0 &&
+      Number(value.usage) >= 0
+    )
   }),
 )
 
@@ -135,7 +141,7 @@ function submit() {
         class="bg-surface rounded-lg p-5"
       >
         <h2 class="text-section text-ink mt-0 mb-4 flex items-center gap-2">
-          <component :is="utility.icon" :size="20" :class="utility.tone" />
+          <img :src="utility.icon" alt="" aria-hidden="true" class="block size-6 shrink-0" />
           {{ utility.label }}
         </h2>
         <div class="grid grid-cols-2 gap-3">
@@ -164,7 +170,9 @@ function submit() {
                 :aria-label="`${utility.label} 사용량`"
                 @input="keepDecimal($event, utility.value)"
               />
-              <span class="text-caption text-muted">{{ utility.unit === 'm3' ? '㎥' : utility.unit }}</span>
+              <span class="text-caption text-muted">{{
+                utility.unit === 'm3' ? '㎥' : utility.unit
+              }}</span>
             </span>
           </label>
         </div>
@@ -175,7 +183,9 @@ function submit() {
       청구 금액과 사용량을 모두 입력해 주세요.
     </p>
 
-    <div class="bg-canvas fixed inset-x-0 bottom-0 z-10 mx-auto max-w-(--gp-viewport-w) px-(--gp-gutter) py-4">
+    <div
+      class="bg-canvas fixed inset-x-0 bottom-0 z-10 mx-auto max-w-(--gp-viewport-w) px-(--gp-gutter) py-4"
+    >
       <GpButton :disabled="store.isSaving" @click="submit">
         {{ store.isSaving ? '저장 중...' : '등록하기' }}
       </GpButton>
