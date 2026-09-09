@@ -76,6 +76,13 @@ const canSubmit = computed(
     !store.isSigningUp,
 )
 const ctaHint = computed(() => (verified.value ? '' : '휴대폰 본인확인을 마치면 가입할 수 있어요'))
+/*
+ * 가입이 번호 때문에 거절되면(`PHONE_NUMBER_ALREADY_USED`, field=phoneNumber) 문구를 폼 맨 아래가 아니라
+ * 인증 진입 행 아래에 둔다. 완료 카드는 `submit` 에서 풀어 「미인증」으로 되돌린다.
+ */
+const phoneError = computed(() =>
+  store.error?.field === 'phoneNumber' ? String(store.error.message ?? '') : '',
+)
 
 async function requestCode() {
   const sent = await store.requestSmsCode()
@@ -119,7 +126,12 @@ async function submit() {
     email: trimmedEmail.value,
     password: password.value,
   })
-  if (created) router.replace('/analysis/eco-link')
+  if (created) {
+    router.replace('/analysis/eco-link')
+    return
+  }
+  // 인증된 번호가 거절됐으니 「본인인증 완료」를 그대로 둘 수 없다. 다른 번호로 다시 인증하게 푼다
+  if (store.error?.field === 'phoneNumber') resetVerification()
 }
 </script>
 
@@ -161,13 +173,14 @@ async function submit() {
         :max-birth-date="today"
         :sent="smsSent"
         :verified="verified"
-        :expires-in-seconds="store.smsExpiresInSeconds"
+        :expires-at="store.smsExpiresAt"
         :sending="store.isSendingSms"
         :verifying="store.isVerifyingCode"
         :error-message="codeError"
         :name-error="nameTouched ? nameMessage : ''"
         :birth-date-error="touched ? birthDateMessage : ''"
         :gender-error="touched ? genderMessage : ''"
+        :phone-error="phoneError"
         @request="requestCode"
         @verify="verifyCode"
         @resend="resendCode"
@@ -188,7 +201,7 @@ async function submit() {
         <p v-if="showValidation && passwordMessage" class="text-body-sm text-negative mt-0 mb-3">
           {{ passwordMessage }}
         </p>
-        <p v-else-if="store.error" class="text-body-sm text-negative mt-0 mb-3">
+        <p v-else-if="store.error && !phoneError" class="text-body-sm text-negative mt-0 mb-3">
           {{ store.error.message }}
         </p>
 

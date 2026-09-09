@@ -15,6 +15,7 @@ vi.mock('@/api/auth', () => ({
 }))
 
 import * as authApi from '@/api/auth'
+import { ApiError } from '@/api/client'
 import { DATA_SOURCE, setDataSource } from '@/api/dataSource'
 import routes from '@/router/routes/onboarding'
 import LoginView from '@/views/onboarding/LoginView.vue'
@@ -219,5 +220,65 @@ describe('SignupView', () => {
     })
     expect(router.currentRoute.value.path).toBe('/analysis/eco-link')
     expect(JSON.stringify(localStorage)).not.toContain('password1234')
+  })
+
+  it('재전송하면 입력한 인증번호를 비우고 타이머를 다시 돌린다', async () => {
+    const { wrapper } = await mountView(SignupView, '/onboarding/signup')
+    await wrapper.find('input[autocomplete="name"]').setValue('이아영')
+    await wrapper.find('input[autocomplete="bday"]').setValue('1998-03-15')
+    await buttonWith(wrapper, '여성').trigger('click')
+    await wrapper.get('button[aria-label="휴대폰 본인인증 시작"]').trigger('click')
+    await buttonWith(wrapper, 'SKT').trigger('click')
+    await wrapper.find('input[type="tel"]').setValue('01011111111')
+    await buttonWith(wrapper, '인증번호 받기').trigger('click')
+    await flushPromises()
+    await wrapper.find('input[autocomplete="one-time-code"]').setValue('123456')
+
+    await buttonWith(wrapper, '재전송').trigger('click')
+    await flushPromises()
+
+    expect(authApi.requestSmsCode).toHaveBeenCalledTimes(2)
+    expect(wrapper.find('input[autocomplete="one-time-code"]').element.value).toBe('')
+    expect(wrapper.text()).toContain('03:00')
+    expect(wrapper.text()).not.toContain('만료')
+  })
+
+  it('가입된 번호로 거절되면 인증을 풀고 다른 번호로 다시 인증할 수 있다', async () => {
+    authApi.signup.mockRejectedValue(
+      new ApiError({
+        code: 'PHONE_NUMBER_ALREADY_USED',
+        message: '이미 가입된 휴대전화번호예요.',
+        field: 'phoneNumber',
+        status: 409,
+      }),
+    )
+    const { wrapper } = await mountView(SignupView, '/onboarding/signup')
+    await verifyPhone(wrapper)
+    await wrapper.find('input[autocomplete="email"]').setValue('user@example.com')
+    const passwords = wrapper.findAll('input[type="password"]')
+    await passwords[0].setValue('password1234')
+    await passwords[1].setValue('password1234')
+    await buttonWith(wrapper, '가입하고 시작하기').trigger('click')
+    await flushPromises()
+
+    // 완료 카드가 풀리고 문구는 인증 진입 행 아래에 놓인다
+    expect(wrapper.text()).not.toContain('휴대폰 본인인증 완료')
+    expect(wrapper.text()).toContain('이미 가입된 휴대전화번호예요.')
+    expect(wrapper.find('input[autocomplete="name"]').attributes('disabled')).toBeUndefined()
+
+    await wrapper.get('button[aria-label="휴대폰 본인인증 시작"]').trigger('click')
+    await buttonWith(wrapper, 'SKT').trigger('click')
+    await wrapper.find('input[type="tel"]').setValue('01022222222')
+    await buttonWith(wrapper, '인증번호 받기').trigger('click')
+    await flushPromises()
+    await wrapper.find('input[autocomplete="one-time-code"]').setValue('000000')
+
+    expect(wrapper.text()).not.toContain('이미 가입된 휴대전화번호예요.')
+    expect(wrapper.text()).toContain('03:00')
+    expect(buttonWith(wrapper, '인증 완료').attributes('disabled')).toBeUndefined()
+    await buttonWith(wrapper, '인증 완료').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('010-2222-2222')
+    expect(wrapper.text()).toContain('휴대폰 본인인증 완료')
   })
 })

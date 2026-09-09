@@ -15,7 +15,11 @@ import { clearAccessToken } from '@/api/client'
 export const useAuthStore = defineStore('auth', () => {
   const pending = ref('')
   const error = ref(null)
-  const smsExpiresInSeconds = ref(0)
+  /*
+   * 인증번호 만료 **시각**(ms). 초 단위로 두면 재전송·번호 변경 때 같은 값(180)이 다시 와서
+   * 화면 watch 가 깨지 않는다 — 두 번째 발송부터 타이머가 죽고 「인증 완료」가 잠기던 버그.
+   */
+  const smsExpiresAt = ref(0)
   const authenticated = ref(false)
   const onboardingCompleted = ref(false)
   const sessionChecked = ref(false)
@@ -77,7 +81,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function requestSmsCode() {
     const data = await run(requestSmsCodeApi, 'SMS')
-    if (data) smsExpiresInSeconds.value = data.expiresInSeconds ?? 0
+    if (data) smsExpiresAt.value = Date.now() + (data.expiresInSeconds ?? 0) * 1000
     return data
   }
 
@@ -122,7 +126,7 @@ export const useAuthStore = defineStore('auth', () => {
     isVerifyingCode,
     isSigningUp,
     error,
-    smsExpiresInSeconds,
+    smsExpiresAt,
     requestSmsCode,
     verifyCode,
     signup,
