@@ -186,7 +186,7 @@ function goToRegistration() {
 
         <button
           type="button"
-          class="bg-surface shadow-card text-primary-on-soft flex size-9 cursor-pointer items-center justify-center rounded-full border-0 p-0"
+          class="bg-surface shadow-card text-ink-soft flex size-9 cursor-pointer items-center justify-center rounded-full border-0 p-0"
           aria-label="고지서 등록"
           @click="goToRegistration"
         >
