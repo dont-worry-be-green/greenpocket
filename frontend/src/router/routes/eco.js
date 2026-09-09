@@ -44,7 +44,7 @@ export default [
      * 지난 회차 번호가 URL 에 들어오면 서버가 거절한다. 뷰가 스토어에서 가져온다.
      */
     component: () => import('@/views/eco/GoalSettingView.vue'),
-    meta: { tab: 'whatif', title: '평가 기간 목표 정하기' },
+    meta: { tab: 'whatif', title: '목표 설정' },
   },
   {
     path: '/whatif/report',
