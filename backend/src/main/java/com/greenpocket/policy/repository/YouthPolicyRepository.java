@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import lombok.RequiredArgsConstructor;
 
@@ -62,8 +63,18 @@ public class YouthPolicyRepository {
 			.optional();
 	}
 
-	public void deactivateAll() {
-		jdbcClient.sql("UPDATE youth_policy SET is_active = 0, updated_at = CURRENT_TIMESTAMP")
+	public Set<String> findActiveExternalIds() {
+		return Set.copyOf(jdbcClient.sql("SELECT external_policy_id FROM youth_policy WHERE is_active = 1")
+			.query(String.class)
+			.list());
+	}
+
+	public void deleteAllExcept(Set<String> externalPolicyIds) {
+		if (externalPolicyIds.isEmpty()) {
+			throw new IllegalArgumentException("유지할 청년정책 ID가 비어 있을 수 없습니다.");
+		}
+		jdbcClient.sql("DELETE FROM youth_policy WHERE external_policy_id NOT IN (:externalPolicyIds)")
+			.param("externalPolicyIds", externalPolicyIds)
 			.update();
 	}
 
