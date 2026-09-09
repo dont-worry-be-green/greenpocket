@@ -88,7 +88,16 @@ public record DiagnosisResponse(
 		String sourceName,
 		String referencePeriod,
 		BaselineCalculationBasis calculationBasis,
-		String note
+		String note,
+		List<SingleHouseholdSeriesPoint> series
+	) {
+	}
+
+	@JsonInclude(JsonInclude.Include.ALWAYS)
+	public record SingleHouseholdSeriesPoint(
+		String yearMonth,
+		BigDecimal myUsage,
+		BigDecimal averageUsage
 	) {
 	}
 

@@ -13,6 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.IntStream;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -122,7 +123,7 @@ public class DiagnosisResultService {
 			profile.map(UserDiagnosisProfile::profileSummary).orElse(""),
 			createSummary(currentRecords, previousRecords),
 			createLastYearComparison(currentRecords, previousRecords),
-			createSingleHouseholdComparison(targetMonth, currentRecords),
+			createSingleHouseholdComparison(targetMonth, billsByMonth),
 			createWhatIfLink(userId)
 		);
 	}
@@ -183,14 +184,16 @@ public class DiagnosisResultService {
 
 	private DiagnosisResponse.SingleHouseholdComparison createSingleHouseholdComparison(
 		YearMonth targetMonth,
-		List<MonthlyRecord> currentRecords
+		Map<YearMonth, List<MonthlyRecord>> billsByMonth
 	) {
+		List<MonthlyRecord> currentRecords = billsByMonth.getOrDefault(targetMonth, List.of());
 		Map<UtilityType, MonthlyRecord> currentByUtility = byUtility(currentRecords);
 		List<DiagnosisResponse.SingleHouseholdTab> tabs = UTILITY_ORDER.stream()
 			.map(utilityType -> createSingleHouseholdTab(
 				targetMonth,
 				currentByUtility.get(utilityType),
-				utilityType
+				utilityType,
+				billsByMonth
 			))
 			.toList();
 		return new DiagnosisResponse.SingleHouseholdComparison(
@@ -202,7 +205,8 @@ public class DiagnosisResultService {
 	private DiagnosisResponse.SingleHouseholdTab createSingleHouseholdTab(
 		YearMonth targetMonth,
 		MonthlyRecord currentRecord,
-		UtilityType utilityType
+		UtilityType utilityType,
+		Map<YearMonth, List<MonthlyRecord>> billsByMonth
 	) {
 		Optional<Baseline> baseline = baselineCatalog.find(targetMonth, utilityType);
 		BigDecimal myUsage = currentRecord == null ? null : currentRecord.usage();
@@ -220,7 +224,8 @@ public class DiagnosisResultService {
 				null,
 				null,
 				null,
-				null
+				null,
+				List.of()
 			);
 		}
 		Baseline value = baseline.get();
@@ -242,8 +247,35 @@ public class DiagnosisResultService {
 			value.sourceName(),
 			value.referencePeriod(),
 			value.calculationBasis(),
-			value.note()
+			value.note(),
+			createSingleHouseholdSeries(targetMonth, utilityType, billsByMonth)
 		);
+	}
+
+	private List<DiagnosisResponse.SingleHouseholdSeriesPoint> createSingleHouseholdSeries(
+		YearMonth targetMonth,
+		UtilityType utilityType,
+		Map<YearMonth, List<MonthlyRecord>> billsByMonth
+	) {
+		return IntStream.rangeClosed(0, 5)
+			.mapToObj(offset -> targetMonth.minusMonths(5L - offset))
+			.map(yearMonth -> baselineCatalog.find(yearMonth, utilityType)
+				.map(baseline -> new DiagnosisResponse.SingleHouseholdSeriesPoint(
+					yearMonth.toString(),
+					findUsage(billsByMonth.getOrDefault(yearMonth, List.of()), utilityType),
+					baseline.averageUsage()
+				))
+				.orElse(null))
+			.filter(java.util.Objects::nonNull)
+			.toList();
+	}
+
+	private static BigDecimal findUsage(List<MonthlyRecord> records, UtilityType utilityType) {
+		return records.stream()
+			.filter(record -> record.utilityType() == utilityType)
+			.map(MonthlyRecord::usage)
+			.findFirst()
+			.orElse(null);
 	}
 
 	private DiagnosisResponse.WhatIfLink createWhatIfLink(Long userId) {
