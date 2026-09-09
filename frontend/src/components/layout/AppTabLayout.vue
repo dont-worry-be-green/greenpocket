@@ -30,15 +30,15 @@ function onChange(key) {
 </script>
 
 <template>
-  <div class="bg-canvas min-h-dvh">
+  <div class="bg-canvas flex h-dvh flex-col">
     <GpPageHeader v-if="title" :title="title" :subtitle="subtitle">
       <template v-if="$slots.headerAction" #action>
         <slot name="headerAction" />
       </template>
     </GpPageHeader>
 
-    <!-- 탭바가 떠 있는 만큼 아래 여백을 둔다. 없으면 마지막 카드가 탭바에 가린다 -->
-    <main class="px-(--gp-gutter) pb-(--gp-safe-bottom)">
+    <!-- 스크롤이 window가 아닌 main 안에서만 일어나야 GpTabBar(fixed)가 움직이지 않는다 -->
+    <main class="flex-1 overflow-y-auto px-(--gp-gutter) pb-(--gp-safe-bottom)">
       <slot />
     </main>
 
