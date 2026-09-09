@@ -46,7 +46,7 @@ async function verifyPhone(wrapper) {
   await wrapper.find('input[autocomplete="name"]').setValue('이아영')
   await wrapper.find('input[autocomplete="bday"]').setValue('1998-03-15')
   await buttonWith(wrapper, '여성').trigger('click')
-  await buttonWith(wrapper, '휴대폰 본인인증').trigger('click')
+  await wrapper.get('button[aria-label="휴대폰 본인인증 시작"]').trigger('click')
   await buttonWith(wrapper, 'SKT').trigger('click')
   await wrapper.find('input[type="tel"]').setValue('01011111111')
   await buttonWith(wrapper, '인증번호 받기').trigger('click')
@@ -121,6 +121,8 @@ describe('LoginView', () => {
 describe('SignupView', () => {
   it('아이디 중복확인 없이 이메일과 비밀번호를 받는다', async () => {
     const { wrapper } = await mountView(SignupView, '/onboarding/signup')
+    expect(wrapper.text()).toContain('오늘도, 작은 실천이')
+    expect(wrapper.find('img[alt*="그린포켓 캐릭터"]').exists()).toBe(true)
     expect(wrapper.find('input[autocomplete="email"]').exists()).toBe(true)
     expect(wrapper.text()).not.toContain('중복확인')
     expect(wrapper.text()).not.toContain('아이디')
@@ -133,7 +135,7 @@ describe('SignupView', () => {
   it('휴대폰 본인인증을 누르면 인증 입력을 바텀시트로 연다', async () => {
     const { wrapper } = await mountView(SignupView, '/onboarding/signup')
 
-    await buttonWith(wrapper, '휴대폰 본인인증').trigger('click')
+    await wrapper.get('button[aria-label="휴대폰 본인인증 시작"]').trigger('click')
 
     expect(wrapper.get('[role="dialog"]').attributes('aria-modal')).toBe('true')
     expect(wrapper.text()).toContain('가입을 위해 본인 명의 휴대폰을 인증해 주세요.')
@@ -144,7 +146,7 @@ describe('SignupView', () => {
   it('본인정보를 모두 입력하기 전에는 인증번호를 요청할 수 없다', async () => {
     const { wrapper } = await mountView(SignupView, '/onboarding/signup')
     await wrapper.find('input[autocomplete="name"]').setValue('이아영')
-    await buttonWith(wrapper, '휴대폰 본인인증').trigger('click')
+    await wrapper.get('button[aria-label="휴대폰 본인인증 시작"]').trigger('click')
     await buttonWith(wrapper, 'SKT').trigger('click')
     await wrapper.find('input[type="tel"]').setValue('01011111111')
 
@@ -160,7 +162,7 @@ describe('SignupView', () => {
     await wrapper.find('input[autocomplete="name"]').setValue('이아영')
     await wrapper.find('input[autocomplete="bday"]').setValue('1998-03-15')
     await buttonWith(wrapper, '여성').trigger('click')
-    await buttonWith(wrapper, '휴대폰 본인인증').trigger('click')
+    await wrapper.get('button[aria-label="휴대폰 본인인증 시작"]').trigger('click')
     await buttonWith(wrapper, 'SKT').trigger('click')
     await wrapper.find('input[type="tel"]').setValue('01011111111')
     await buttonWith(wrapper, '인증번호 받기').trigger('click')
@@ -176,7 +178,7 @@ describe('SignupView', () => {
     await wrapper.find('input[autocomplete="name"]').setValue('이아영')
     await wrapper.find('input[autocomplete="bday"]').setValue('1998-03-15')
     await buttonWith(wrapper, '여성').trigger('click')
-    await buttonWith(wrapper, '휴대폰 본인인증').trigger('click')
+    await wrapper.get('button[aria-label="휴대폰 본인인증 시작"]').trigger('click')
     await buttonWith(wrapper, 'SKT').trigger('click')
     await wrapper.find('input[type="tel"]').setValue('01011111111')
     await buttonWith(wrapper, '인증번호 받기').trigger('click')
