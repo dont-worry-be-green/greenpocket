@@ -71,14 +71,14 @@ describe('WF-07 전달 리포트', () => {
   })
 
   /*
-   * 조정이 필요한 사람이 스크롤 끝까지 내려야 버튼을 찾는 일이 없어야 한다.
-   * 문구의 요금 이름은 서버의 `adjustTargetUtility` 에서 온다 — 화면이 고르지 않는다.
+   * 「N 미션 다시 고르기」 하단 CTA 는 결정 C-41 로 뺐다(2026-09-10 수현). 미션은 홈 → 목표 관리(WF-04)에서
+   * 고친다. 제목은 「7월 리포트」다(「7월분 페이스」 아님).
    */
-  it('미션 다시 고르기가 하단 고정 CTA 로 있다', async () => {
+  it('제목이 「N월 리포트」이고 미션 다시 고르기 CTA 는 없다', async () => {
     const { wrapper } = await openPath('/whatif/report')
+    expect(wrapper.get('h1').text()).toMatch(/^\d{1,2}월 리포트$/)
     const cta = wrapper.findAll('button').filter((node) => node.text().includes('다시 고르기'))
-    expect(cta).toHaveLength(1)
-    expect(cta[0].text()).toMatch(/^(전기|도시가스|수도) 미션 다시 고르기$/)
+    expect(cta).toHaveLength(0)
     wrapper.unmount()
   })
 

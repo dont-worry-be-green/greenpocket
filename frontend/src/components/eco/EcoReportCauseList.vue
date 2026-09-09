@@ -66,7 +66,8 @@ function shareText(row) {
 </script>
 
 <template>
-  <GpCard title="어디가 발목을 잡았나" badge="온실가스 환산">
+  <!-- 제목 옆 「온실가스 환산」 배지는 뺐다(2026-09-10 수현 · C-41). 환산 근거는 행 안 비중 해설이 말한다 -->
+  <GpCard title="어디가 발목을 잡았나">
     <div class="border-divider divide-divider divide-y border-t">
       <div v-for="row in rows" :key="row.utilityType">
         <button

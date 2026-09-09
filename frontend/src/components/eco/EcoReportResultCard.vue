@@ -17,7 +17,7 @@ import { computed } from 'vue'
 
 import GpCard from '@/components/ui/GpCard.vue'
 import GpDelta from '@/components/ui/GpDelta.vue'
-import { formatMonthDay, formatMonthOnly, formatPercent } from '@/utils/format'
+import { formatMonthOnly, formatPercent } from '@/utils/format'
 
 const props = defineProps({
   result: { type: Object, required: true },
@@ -26,12 +26,11 @@ const props = defineProps({
   billRegisteredAt: { type: String, default: null },
 })
 
-/** '7월 고지서 · 8월 3일 등록' — 무엇으로 계산했는지 제목 옆에 붙인다 */
-const sourceBadge = computed(() => {
-  const parts = [`${formatMonthOnly(props.reportMonth)} 고지서`]
-  if (props.billRegisteredAt) parts.push(`${formatMonthDay(props.billRegisteredAt)} 등록`)
-  return parts.join(' · ')
-})
+/**
+ * '7월 고지서' — 무엇으로 계산했는지 제목 옆에 붙인다.
+ * 등록일(`billRegisteredAt` · 「8월 3일 등록」)은 서버가 주지만 화면에 안 쓴다(2026-09-10 수현 · C-41).
+ */
+const sourceBadge = computed(() => `${formatMonthOnly(props.reportMonth)} 고지서`)
 
 const basisLabel = computed(() => {
   const target = `목표는 ${formatPercent(props.result.targetRate)} 줄이기였어요`
