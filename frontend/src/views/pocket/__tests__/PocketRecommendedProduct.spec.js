@@ -76,11 +76,14 @@ describe('D-4-01 KB 금융상품 추천', () => {
   it('포켓 홈에서 추천 상품을 보여주고 상품 상세로 이동한다', async () => {
     const { wrapper, router } = await mountView(PocketHomeView, '/pocket')
 
-    expect(wrapper.text()).not.toContain('친환경 실천과 가장 잘 어울리는 적금')
-    expect(wrapper.find('[aria-label="추천 금융 상품"]').exists()).toBe(true)
+    // 홈 카드는 이름 · 한 줄(recommendation.title) · 우대 미션 칩까지만 (결정 C-31)
+    expect(wrapper.text()).toContain('추천 상품')
+    expect(wrapper.text()).toContain('친환경 실천과 가장 잘 어울리는 적금')
+    expect(wrapper.text()).toContain('종이통장 줄이기')
+    expect(wrapper.text()).not.toContain('자유적립식')
     expect(wrapper.text()).toContain('KB맑은하늘적금')
-    const viewButton = wrapper.findAll('button').find((button) => button.text() === '상품 보기')
-    expect(viewButton).toBeTruthy()
+    const viewButton = wrapper.find('button[aria-label="추천 금융 상품"]')
+    expect(viewButton.exists()).toBe(true)
     await viewButton.trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.path).toBe('/pocket/recommended-product')
@@ -88,10 +91,7 @@ describe('D-4-01 KB 금융상품 추천', () => {
 
   it('상품 상세에 API 조건을 표시하고 신청 버튼으로 외부 페이지를 연다', async () => {
     const open = vi.spyOn(window, 'open').mockImplementation(() => null)
-    const { wrapper } = await mountView(
-      PocketProductDetailView,
-      '/pocket/recommended-product',
-    )
+    const { wrapper } = await mountView(PocketProductDetailView, '/pocket/recommended-product')
     const text = wrapper.text()
 
     expect(text).toContain('KB맑은하늘적금')
