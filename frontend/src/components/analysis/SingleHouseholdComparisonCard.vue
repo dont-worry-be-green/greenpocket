@@ -14,6 +14,7 @@ const props = defineProps({
 })
 
 const selectedUtilityType = ref('ELECTRICITY')
+const activePointIndex = ref(null)
 const tabs = computed(() => props.comparison?.tabs ?? [])
 const selectedTab = computed(
   () =>
@@ -21,6 +22,21 @@ const selectedTab = computed(
 )
 const series = computed(() => selectedTab.value?.series ?? [])
 const usageUnit = computed(() => formatUnit(selectedTab.value?.usageUnit))
+const activePoint = computed(() =>
+  activePointIndex.value === null ? null : series.value[activePointIndex.value],
+)
+const tooltipPosition = computed(() => {
+  if (activePointIndex.value === null || !series.value.length) return 50
+
+  const centered = ((activePointIndex.value + 0.5) / series.value.length) * 100
+  return Math.min(82, Math.max(18, centered))
+})
+const shortSourceName = computed(() => {
+  const sourceName = selectedTab.value?.sourceName ?? ''
+  if (sourceName.includes('에너지경제연구원')) return '에너지경제연구원'
+  if (sourceName.includes('서울물연구원')) return '서울물연구원'
+  return sourceName
+})
 
 watch(
   tabs,
@@ -28,9 +44,14 @@ watch(
     if (!nextTabs.some((tab) => tab.utilityType === selectedUtilityType.value)) {
       selectedUtilityType.value = nextTabs[0]?.utilityType ?? 'ELECTRICITY'
     }
+    activePointIndex.value = null
   },
   { immediate: true },
 )
+
+watch(selectedUtilityType, () => {
+  activePointIndex.value = null
+})
 
 const chartBounds = computed(() => {
   const values = series.value.flatMap((point) =>
@@ -40,18 +61,18 @@ const chartBounds = computed(() => {
 
   const minimum = Math.min(...values)
   const maximum = Math.max(...values)
-  const padding = Math.max((maximum - minimum) * 0.15, maximum * 0.05, 1)
+  const padding = Math.max((maximum - minimum) * 0.06, maximum * 0.02, 0.5)
   const min = Math.max(0, minimum - padding)
   return { min, range: maximum + padding - min || 1 }
 })
 
 function pointX(index) {
-  return 8 + (index * 84) / Math.max(series.value.length - 1, 1)
+  return 25 + index * 50
 }
 
 function pointY(value) {
   if (value === null || value === undefined) return null
-  return 80 - ((Number(value) - chartBounds.value.min) / chartBounds.value.range) * 64
+  return 92 - ((Number(value) - chartBounds.value.min) / chartBounds.value.range) * 84
 }
 
 function linePath(key) {
@@ -66,6 +87,14 @@ function linePath(key) {
 
 function usageLabel(value) {
   return formatUsage(value, 1, usageUnit.value)
+}
+
+function myUsageLabel(value) {
+  return value === null || value === undefined ? '고지서 없음' : usageLabel(value)
+}
+
+function activatePoint(index) {
+  activePointIndex.value = index
 }
 
 const differenceLabel = computed(() => {
@@ -139,76 +168,118 @@ const differenceLabel = computed(() => {
         <span class="flex items-center gap-1.5"><i class="bg-control-off size-2 rounded-full" />1인 가구 평균</span>
       </div>
 
-      <svg
-        class="mt-2 h-40 w-full overflow-visible"
-        viewBox="0 0 100 100"
-        role="img"
-        :aria-label="`${formatUtilityType(selectedTab.utilityType)} 최근 6개월 1인 가구 평균 사용량 비교 그래프`"
-      >
-        <line
-          v-for="y in [16, 48, 80]"
-          :key="y"
-          x1="6"
-          :y1="y"
-          x2="94"
-          :y2="y"
-          class="stroke-divider"
-          stroke-width="0.5"
-        />
-        <path
-          :d="linePath('averageUsage')"
-          fill="none"
-          class="stroke-control-off"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          data-testid="average-line"
-        />
-        <path
-          :d="linePath('myUsage')"
-          fill="none"
-          class="stroke-primary"
-          stroke-width="2.4"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          data-testid="my-line"
-        />
-        <template v-for="(point, index) in series" :key="point.yearMonth">
-          <circle
-            :cx="pointX(index)"
-            :cy="pointY(point.averageUsage)"
-            r="1.6"
-            class="fill-control-off"
+      <div class="relative" @mouseleave="activePointIndex = null">
+        <div
+          v-if="activePoint"
+          class="bg-ink text-caption text-surface pointer-events-none absolute top-0 z-10 min-w-36 -translate-x-1/2 rounded-md px-3 py-2 shadow-card"
+          :style="{ left: `${tooltipPosition}%` }"
+          role="status"
+          data-testid="usage-tooltip"
+        >
+          <strong class="block">{{ formatMonthOnly(activePoint.yearMonth) }}</strong>
+          <span class="mt-1 block">나 {{ myUsageLabel(activePoint.myUsage) }}</span>
+          <span class="block">1인 가구 평균 {{ usageLabel(activePoint.averageUsage) }}</span>
+        </div>
+
+        <svg
+          class="h-40 w-full overflow-visible"
+          viewBox="0 0 300 100"
+          role="img"
+          :aria-label="`${formatUtilityType(selectedTab.utilityType)} 최근 6개월 1인 가구 평균 사용량 비교 그래프`"
+        >
+          <line
+            v-for="y in [8, 50, 92]"
+            :key="y"
+            x1="25"
+            :y1="y"
+            x2="275"
+            :y2="y"
+            class="stroke-divider"
+            stroke-width="0.5"
           />
-          <circle
-            v-if="point.myUsage !== null && point.myUsage !== undefined"
-            :cx="pointX(index)"
-            :cy="pointY(point.myUsage)"
-            r="2"
-            class="fill-primary stroke-surface"
-            stroke-width="1"
-            data-testid="my-point"
+          <line
+            v-if="activePointIndex !== null"
+            :x1="pointX(activePointIndex)"
+            y1="6"
+            :x2="pointX(activePointIndex)"
+            y2="94"
+            class="stroke-divider"
+            stroke-width="0.8"
+            stroke-dasharray="2 2"
           />
-        </template>
-      </svg>
-      <div class="text-caption-sm text-muted -mt-2 flex justify-between px-2">
-        <span v-for="point in series" :key="point.yearMonth">
-          {{ formatMonthOnly(point.yearMonth) }}
-        </span>
+          <path
+            :d="linePath('averageUsage')"
+            fill="none"
+            class="stroke-control-off"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            data-testid="average-line"
+          />
+          <path
+            :d="linePath('myUsage')"
+            fill="none"
+            class="stroke-primary"
+            stroke-width="2.4"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            data-testid="my-line"
+          />
+          <template v-for="(point, index) in series" :key="point.yearMonth">
+            <circle
+              :cx="pointX(index)"
+              :cy="pointY(point.averageUsage)"
+              r="2.8"
+              class="fill-control-off"
+              data-testid="average-point"
+            />
+            <circle
+              v-if="point.myUsage !== null && point.myUsage !== undefined"
+              :cx="pointX(index)"
+              :cy="pointY(point.myUsage)"
+              r="3.2"
+              class="fill-primary stroke-surface"
+              stroke-width="1"
+              data-testid="my-point"
+            />
+            <rect
+              :x="index * 50"
+              y="0"
+              width="50"
+              height="100"
+              fill="transparent"
+              tabindex="0"
+              :aria-label="`${formatMonthOnly(point.yearMonth)}, 나 ${myUsageLabel(point.myUsage)}, 1인 가구 평균 ${usageLabel(point.averageUsage)}`"
+              data-testid="chart-hit-area"
+              @mouseenter="activatePoint(index)"
+              @focus="activatePoint(index)"
+              @click="activatePoint(index)"
+            />
+          </template>
+        </svg>
+        <div class="grid grid-cols-6">
+          <button
+            v-for="(point, index) in series"
+            :key="point.yearMonth"
+            type="button"
+            class="text-caption-sm text-muted min-h-11 border-0 bg-transparent p-0"
+            data-testid="month-axis"
+            @mouseenter="activatePoint(index)"
+            @focus="activatePoint(index)"
+            @click="activatePoint(index)"
+          >
+            {{ formatMonthOnly(point.yearMonth) }}
+          </button>
+        </div>
       </div>
 
       <p v-if="series.some((point) => point.myUsage === null)" class="text-caption text-muted mt-4 mb-0">
         고지서가 없는 달은 나의 사용량 선을 연결하지 않았어요.
       </p>
 
-      <dl class="border-divider text-caption text-muted mt-5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 border-t pt-4">
-        <dt>기준</dt>
-        <dd class="m-0 text-right">{{ selectedTab.referencePeriod }}</dd>
-        <dt>출처</dt>
-        <dd class="m-0 text-right">{{ selectedTab.sourceName }}</dd>
-        <dt>산출</dt>
-        <dd class="m-0 text-right break-keep">{{ selectedTab.calculationBasis }}</dd>
-      </dl>
+      <p class="border-divider text-caption text-muted mt-5 mb-0 border-t pt-4">
+        출처 · {{ shortSourceName }}
+      </p>
       <p v-if="selectedTab.note" class="text-caption-sm text-muted mt-3 mb-0 break-keep">
         {{ selectedTab.note }}
       </p>

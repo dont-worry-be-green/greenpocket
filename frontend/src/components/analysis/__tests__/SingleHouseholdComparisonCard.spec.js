@@ -14,7 +14,7 @@ const comparison = {
       differenceRate: -18.483,
       usageUnit: 'kWh',
       comparisonLabel: '전국 1인 가구',
-      sourceName: '에너지경제연구원 가구에너지패널조사',
+      sourceName: '에너지경제연구원 2023년 기준 14차 가구에너지패널조사 마이크로데이터',
       referencePeriod: '2023년 기준',
       calculationBasis: '1인 가구 1,221가구의 가구 횡단가중 평균',
       note: '전국 표본 조사 추정치예요.',
@@ -47,6 +47,27 @@ describe('SingleHouseholdComparisonCard', () => {
     expect(wrapper.text()).toContain('3월')
     expect(wrapper.text()).toContain('8월')
     expect(wrapper.find('[data-testid="average-line"]').attributes('d')).toContain('L')
+    expect(wrapper.find('svg').attributes('viewBox')).toBe('0 0 300 100')
+    expect(wrapper.text()).toContain('출처 · 에너지경제연구원')
+    expect(wrapper.text()).not.toContain('2023년 기준')
+
+    const averagePoints = wrapper.findAll('[data-testid="average-point"]')
+    const averagePointYValues = averagePoints.map((point) => Number(point.attributes('cy')))
+    expect(Math.min(...averagePointYValues)).toBeLessThan(15)
+    expect(Math.max(...averagePointYValues)).toBeGreaterThan(85)
+    expect(averagePoints[0].attributes('r')).toBe('2.8')
+    expect(wrapper.find('[data-testid="my-point"]').attributes('r')).toBe('3.2')
+  })
+
+  it('월 축에 마우스를 올리면 해당 월의 나와 평균 사용량을 표시한다', async () => {
+    const wrapper = mount(SingleHouseholdComparisonCard, { props: { comparison } })
+
+    await wrapper.findAll('[data-testid="month-axis"]')[0].trigger('mouseenter')
+
+    const tooltip = wrapper.get('[data-testid="usage-tooltip"]')
+    expect(tooltip.text()).toContain('3월')
+    expect(tooltip.text()).toContain('나 195.0kWh')
+    expect(tooltip.text()).toContain('1인 가구 평균 189.7kWh')
   })
 
   it('고지서가 없는 달은 나의 선을 연결하지 않고 점도 그리지 않는다', () => {
