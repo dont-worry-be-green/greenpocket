@@ -156,7 +156,7 @@ public class EcoProgressRepository {
 			)).list();
 	}
 
-	/** 홈 「오늘 실천 N개」 요약. 오늘의 실천 목록과 같은 기준 — 고른 미션 전부, 계절 필터 없음(결정 C-34) */
+	/** 홈 「오늘 실천 N개」 요약. 오늘의 실천 목록과 같은 기준 — 고른 미션 전부, 계절 필터 없음(결정 C-35) */
 	public MissionProgressSnapshot findMissionProgress(Long userId, Long roundId, LocalDate today) {
 		int totalCount = jdbcClient.sql("""
 				SELECT COUNT(*)

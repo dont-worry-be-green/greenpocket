@@ -5,7 +5,7 @@
  * 특히 지키려는 것 셋:
  *   ① 계좌번호를 그리지 않는다 — 응답에는 있다
  *   ② MY-03 탭 배지가 목록 길이가 아니라 `counts` 다(A-2-12 완료 조건)
- *   ③ MY-06 임시 추천과 MY-02 추천 조건 저장은 서로 다른 동작이다
+ *   ③ MY-06은 정책 상세만 표시하고 조건 수정은 MY-02에서만 한다
  */
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
@@ -20,23 +20,33 @@ import PolicyListView from '@/views/mypage/PolicyListView.vue'
 import ProfileEditView from '@/views/mypage/ProfileEditView.vue'
 import ReportArchiveView from '@/views/mypage/ReportArchiveView.vue'
 
-const { getMypage, getPolicyPreferences, updatePolicyPreferences, getBills, getReports } = vi.hoisted(() => ({
-  getMypage: vi.fn(),
-  getPolicyPreferences: vi.fn(),
-  updatePolicyPreferences: vi.fn(),
-  getBills: vi.fn(),
-  getReports: vi.fn(),
+const { getMypage, getPolicyPreferences, updatePolicyPreferences, getBills, getReports } =
+  vi.hoisted(() => ({
+    getMypage: vi.fn(),
+    getPolicyPreferences: vi.fn(),
+    updatePolicyPreferences: vi.fn(),
+    getBills: vi.fn(),
+    getReports: vi.fn(),
+  }))
+
+vi.mock('@/api/mypage', () => ({
+  getMypage,
+  getPolicyPreferences,
+  updatePolicyPreferences,
+  getBills,
+  getReports,
 }))
 
-vi.mock('@/api/mypage', () => ({ getMypage, getPolicyPreferences, updatePolicyPreferences, getBills, getReports }))
-
-const { getPolicies, getPolicyRecommendations, getPolicy, previewPolicyRecommendations } = vi.hoisted(() => ({
+const { getPolicies, getPolicyRecommendations, getPolicy } = vi.hoisted(() => ({
   getPolicies: vi.fn(),
   getPolicyRecommendations: vi.fn(),
   getPolicy: vi.fn(),
-  previewPolicyRecommendations: vi.fn(),
 }))
-vi.mock('@/api/policy', () => ({ getPolicies, getPolicyRecommendations, getPolicy, previewPolicyRecommendations }))
+vi.mock('@/api/policy', () => ({
+  getPolicies,
+  getPolicyRecommendations,
+  getPolicy,
+}))
 
 const MYPAGE = {
   profile: {
@@ -66,10 +76,17 @@ const MYPAGE = {
     profileCompleted: true,
     regionLinked: true,
     recommendedCount: 1,
-    preview: [{
-      policyId: 'policy-1', title: '청년 주거 지원', category: 'HOUSING', subCategory: '주거',
-      applicationStatus: 'OPEN', applicationEndDate: '2026-12-31', matchStatus: 'ELIGIBLE',
-    }],
+    preview: [
+      {
+        policyId: 'policy-1',
+        title: '청년 주거 지원',
+        category: 'HOUSING',
+        subCategory: '주거',
+        applicationStatus: 'OPEN',
+        applicationEndDate: '2026-12-31',
+        matchStatus: 'ELIGIBLE',
+      },
+    ],
     lastSyncedAt: '2026-09-09T01:00:00+09:00',
   },
 }
@@ -78,7 +95,8 @@ const PREFERENCES = {
   birthDate: '1998-03-14',
   currentStatus: 'EMPLOYED',
   annualIncomeBand: 'FROM_24M_TO_36M',
-  householdStatus: 'ONE_PERSON',
+  educationStatus: 'UNIVERSITY_GRADUATE',
+  interestCategories: ['JOB', 'HOUSING'],
   ecoAddress: { label: '서울 관악구', sidoCode: '11', sigunguCode: '11620' },
   birthDateEditable: false,
   regionEditable: false,
@@ -87,19 +105,40 @@ const PREFERENCES = {
 
 const POLICY_LIST = {
   content: MYPAGE.youthPolicy.preview,
-  page: 0, size: 20, totalElements: 1, totalPages: 1, hasNext: false,
+  page: 0,
+  size: 20,
+  totalElements: 1,
+  totalPages: 1,
+  hasNext: false,
   region: { linked: true, label: '서울 관악구', appliedLevels: ['NATIONAL', 'SIDO', 'SIGUNGU'] },
-  lastSyncedAt: '2026-09-09T01:00:00+09:00', preview: false,
+  lastSyncedAt: '2026-09-09T01:00:00+09:00',
 }
 
 const POLICY_DETAIL = {
   ...POLICY_LIST.content[0],
-  description: '정책 설명', supportContent: '지원 내용',
-  application: { status: 'OPEN', startDate: '2026-01-01', endDate: '2026-12-31', method: '온라인 신청', url: 'https://example.com' },
+  description: '정책 설명',
+  supportContent: '지원 내용',
+  application: {
+    status: 'OPEN',
+    startDate: '2026-01-01',
+    endDate: '2026-12-31',
+    method: '온라인 신청',
+    url: 'https://example.com',
+  },
   organizations: { supervising: '서울특별시', operating: '청년센터' },
-  conditions: { age: '만 19~39세', income: '확인 필요', employment: '재직자', education: '제한 없음', major: '제한 없음', marriage: '제한 없음', special: '공고 확인' },
+  conditions: {
+    age: '만 19~39세',
+    income: '확인 필요',
+    employment: '재직자',
+    education: '제한 없음',
+    major: '제한 없음',
+    marriage: '제한 없음',
+    special: '공고 확인',
+  },
   match: { status: 'ELIGIBLE', score: 100, reasons: ['연령이 일치해요'] },
-  source: '온통청년', referenceUrls: [], lastSyncedAt: '2026-09-09T01:00:00+09:00',
+  source: '온통청년',
+  referenceUrls: [],
+  lastSyncedAt: '2026-09-09T01:00:00+09:00',
 }
 
 const BILLS = {
@@ -186,13 +225,15 @@ beforeEach(() => {
   vi.clearAllMocks()
   getMypage.mockResolvedValue(MYPAGE)
   getPolicyPreferences.mockResolvedValue(PREFERENCES)
-  updatePolicyPreferences.mockResolvedValue({ policyProfileCompleted: true, recommendationsUpdated: true })
+  updatePolicyPreferences.mockResolvedValue({
+    policyProfileCompleted: true,
+    recommendationsUpdated: true,
+  })
   getBills.mockResolvedValue(BILLS)
   getReports.mockResolvedValue(REPORTS)
   getPolicies.mockResolvedValue(POLICY_LIST)
   getPolicyRecommendations.mockResolvedValue(POLICY_LIST)
   getPolicy.mockResolvedValue(POLICY_DETAIL)
-  previewPolicyRecommendations.mockResolvedValue({ ...POLICY_LIST, preview: true })
 })
 
 describe('MY-01 마이페이지 메인', () => {
@@ -212,7 +253,7 @@ describe('MY-01 마이페이지 메인', () => {
     const { wrapper } = await mountView(MypageHomeView)
     expect(wrapper.text()).toContain('나를 위한 청년정책')
     expect(wrapper.text()).toContain('청년 주거 지원')
-    expect(wrapper.text()).toContain('1개 추천 전체 보기')
+    expect(wrapper.text()).toContain('전체 청년정책 보기')
   })
 
   it('계좌번호를 그리지 않는다 — 응답에는 있다', async () => {
@@ -237,6 +278,9 @@ describe('MY-01 마이페이지 메인', () => {
     expect(wrapper.text()).not.toContain('고지서 보관함')
     expect(wrapper.text()).toContain('월별 리포트')
     expect(wrapper.text()).toContain('ECO 리포트')
+    expect(wrapper.text().indexOf('월별 리포트')).toBeLessThan(
+      wrapper.text().indexOf('나를 위한 청년정책'),
+    )
 
     await buttons[0].trigger('click')
     await flushPromises()
@@ -415,7 +459,7 @@ describe('MY-02 정책 추천 조건 설정', () => {
     expect(wrapper.get('[role="radio"][aria-checked="true"]').text()).toBe('재직 중')
   })
 
-  it('세 가지 선택값만 저장한다', async () => {
+  it('저장된 네 가지 추천 조건을 유지해서 저장한다', async () => {
     const { wrapper } = await mountView(ProfileEditView, '/mypage/policy-preferences')
 
     const save = wrapper.findAll('button').find((button) => button.text() === '저장하고 추천받기')
@@ -425,7 +469,8 @@ describe('MY-02 정책 추천 조건 설정', () => {
     expect(updatePolicyPreferences).toHaveBeenCalledWith({
       currentStatus: 'EMPLOYED',
       annualIncomeBand: 'FROM_24M_TO_36M',
-      householdStatus: 'ONE_PERSON',
+      educationStatus: 'UNIVERSITY_GRADUATE',
+      interestCategories: ['JOB', 'HOUSING'],
     })
   })
 })
@@ -433,13 +478,43 @@ describe('MY-02 정책 추천 조건 설정', () => {
 describe('MY-05 청년정책 목록', () => {
   it('맞춤 추천 목록과 전체 정책을 전환한다', async () => {
     const { wrapper } = await mountView(PolicyListView, '/mypage/policies?mode=recommended')
-    expect(getPolicyRecommendations).toHaveBeenCalledWith({ page: 0, size: 20 })
+    expect(getPolicyRecommendations).toHaveBeenCalledWith()
     expect(wrapper.text()).toContain('청년 주거 지원')
 
     const all = wrapper.findAll('[role="tab"]').find((tab) => tab.text() === '전체 정책')
     await all.trigger('click')
     await flushPromises()
-    expect(getPolicies).toHaveBeenCalledWith({ page: 0, size: 20 })
+    expect(getPolicies).toHaveBeenCalledWith({ page: 0, size: 6 })
+    expect(wrapper.text()).toContain('모든 정책 분야')
+    expect(wrapper.text()).toContain('저장된 내 관심 분야는 바뀌지 않아요')
+  })
+
+  it('전체 정책을 페이지당 6개씩 번호로 이동한다', async () => {
+    getPolicies
+      .mockResolvedValueOnce({
+        ...POLICY_LIST,
+        size: 6,
+        totalElements: 20,
+        totalPages: 4,
+        hasNext: true,
+      })
+      .mockResolvedValueOnce({
+        ...POLICY_LIST,
+        page: 1,
+        size: 6,
+        totalElements: 20,
+        totalPages: 4,
+        hasNext: true,
+      })
+
+    const { wrapper } = await mountView(PolicyListView, '/mypage/policies')
+    expect(getPolicies).toHaveBeenCalledWith({ page: 0, size: 6 })
+
+    await wrapper.get('[aria-label="2페이지"]').trigger('click')
+    await flushPromises()
+
+    expect(getPolicies).toHaveBeenLastCalledWith({ page: 1, size: 6 })
+    expect(wrapper.get('[aria-label="2페이지"]').attributes('aria-current')).toBe('page')
   })
 })
 
@@ -452,22 +527,28 @@ describe('MY-06 청년정책 상세', () => {
     expect(wrapper.text()).toContain('실제 신청 자격은 반드시 공고에서 확인해 주세요')
   })
 
-  it('임시 추천과 내 정보 저장을 분리한다', async () => {
+  it('상시 신청 정책은 일정 확인 대신 상시 신청으로 표시한다', async () => {
+    getPolicy.mockResolvedValueOnce({
+      ...POLICY_DETAIL,
+      application: {
+        ...POLICY_DETAIL.application,
+        periodType: 'ALWAYS',
+        startDate: null,
+        endDate: null,
+      },
+    })
+
     const { wrapper } = await mountView(PolicyDetailView, '/mypage/policies/policy-1')
-    await wrapper.findAll('button').find((button) => button.text() === '조건을 바꿔 다시 추천하기').trigger('click')
-    await flushPromises()
 
-    await wrapper.findAll('button').find((button) => button.text() === '이 조건으로 다시 추천').trigger('click')
-    await flushPromises()
-    expect(previewPolicyRecommendations).toHaveBeenCalledWith({
-      currentStatus: 'EMPLOYED', annualIncomeBand: 'FROM_24M_TO_36M', householdStatus: 'ONE_PERSON', page: 0, size: 5,
-    })
-    expect(updatePolicyPreferences).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('상시 신청')
+    expect(wrapper.text()).not.toContain('일정 확인')
+  })
 
-    await wrapper.findAll('button').find((button) => button.text() === '내 정보에 저장').trigger('click')
-    await flushPromises()
-    expect(updatePolicyPreferences).toHaveBeenCalledWith({
-      currentStatus: 'EMPLOYED', annualIncomeBand: 'FROM_24M_TO_36M', householdStatus: 'ONE_PERSON',
-    })
+  it('상세 화면에서 추천 조건 수정 기능을 제공하지 않는다', async () => {
+    const { wrapper } = await mountView(PolicyDetailView, '/mypage/policies/policy-1')
+
+    expect(wrapper.text()).not.toContain('조건을 바꿔 다시 추천하기')
+    expect(wrapper.text()).not.toContain('임시 조건으로 다시 추천')
+    expect(wrapper.text()).not.toContain('새 조건 추천 Top 5')
   })
 })

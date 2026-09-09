@@ -3,8 +3,8 @@ import GpTag from '@/components/ui/GpTag.vue'
 import IconChevronRight from '@/components/ui/icons/IconChevronRight.vue'
 import {
   formatApplicationStatus,
+  formatPolicyDeadline,
   formatPolicyCategory,
-  formatPolicyDate,
   policyMatchMeta,
 } from '@/utils/policy'
 
@@ -39,11 +39,13 @@ const match = () => policyMatchMeta(props.policy.matchStatus)
       {{ policy.supportSummary }}
     </p>
 
-    <div class="border-divider mt-3 flex flex-wrap items-center justify-between gap-2 border-0 border-t pt-3">
+    <div
+      class="border-divider mt-3 flex flex-wrap items-center justify-between gap-2 border-0 border-t pt-3"
+    >
       <GpTag :tone="match().tone" small>{{ match().label }}</GpTag>
       <span class="text-caption text-muted">
         {{ formatApplicationStatus(policy.applicationStatus) }} ·
-        {{ formatPolicyDate(policy.applicationEndDate) }}
+        {{ formatPolicyDeadline(policy.applicationStatus, policy.applicationEndDate) }}
       </span>
     </div>
   </button>

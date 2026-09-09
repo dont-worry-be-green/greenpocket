@@ -28,7 +28,7 @@ public class EcoMissionService {
 
 	private static final ZoneId KOREA_ZONE_ID = ZoneId.of("Asia/Seoul");
 	private static final Pattern DATE_PATTERN = Pattern.compile("\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])");
-	/** 고른 미션이 하나도 없을 때. 계절 필터는 없다(결정 C-34) — 목록이 비는 이유는 이것뿐이다 */
+	/** 고른 미션이 하나도 없을 때. 계절 필터는 없다(결정 C-35) — 목록이 비는 이유는 이것뿐이다 */
 	private static final String NO_MISSION = "NO_MISSION";
 
 	private final EcoMissionRepository ecoMissionRepository;
@@ -48,7 +48,7 @@ public class EcoMissionService {
 	public EcoTodayMissionsResponse getTodayMissions(Long userId, Long roundId, String dateValue) {
 		validateRound(userId, roundId);
 		LocalDate date = dateValue == null ? LocalDate.now(clock) : parseDate(dateValue);
-		// 계절은 정보로만 내려준다. 목록은 고른 미션 전부다(결정 C-34) — 화면이 「여름 전용」 칩으로 알린다
+		// 계절은 정보로만 내려준다. 목록은 고른 미션 전부다(결정 C-35) — 화면이 「여름 전용」 칩으로 알린다
 		String season = season(date);
 		List<TodayMissionSnapshot> missions = ecoMissionRepository.findTodayMissions(userId, roundId, date);
 		int completedCount = (int)missions.stream().filter(TodayMissionSnapshot::completed).count();

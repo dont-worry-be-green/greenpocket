@@ -7,7 +7,10 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Component;
 
@@ -24,8 +27,42 @@ import com.greenpocket.profile.entity.PolicyInterestCategory;
 public class YouthPolicyNormalizer {
 
 	private static final int NATIONAL_REGION_CODE_COUNT = 200;
+	private static final String APPROVED = "0044002";
+	private static final String APPLICATION_FIXED = "0057001";
+	private static final String APPLICATION_ALWAYS = "0057002";
+	private static final String APPLICATION_CLOSED = "0057003";
+	private static final Pattern BASIC_DATE = Pattern.compile("(?<!\\d)(\\d{8})(?!\\d)");
+	private static final Set<String> INDIVIDUAL_PROVISION_METHODS = Set.of(
+		"0042002", // 프로그램
+		"0042003", // 직접대출
+		"0042006", // 보조금
+		"0042007", // 대출보증
+		"0042008", // 공적보험
+		"0042009", // 조세지출
+		"0042010"  // 바우처
+	);
+	private static final Set<String> NON_ACTIONABLE_APPLICATION_METHODS = Set.of(
+		"-", "해당없음", "해당 없음", "별도문의", "별도 문의",
+		"온라인", "온라인 신청", "방문", "방문 신청", "우편", "이메일", "전화", "홈페이지"
+	);
+
+	public Optional<NormalizedPolicy> normalizeRecommendable(YouthPolicySourcePolicy source, LocalDateTime syncedAt) {
+		NormalizedPolicy normalized = normalize(source, syncedAt);
+		if (!APPROVED.equals(source.approvalStatusCode())
+			|| !INDIVIDUAL_PROVISION_METHODS.contains(source.provisionMethodCode())
+			|| normalized.policy().applicationStatus() != PolicyApplicationStatus.OPEN
+			|| normalized.policy().interestCategory() == null
+			|| normalized.regions().isEmpty()
+			|| !hasConcreteApplicationRoute(normalized.policy())) {
+			return Optional.empty();
+		}
+		return Optional.of(normalized);
+	}
 
 	public NormalizedPolicy normalize(YouthPolicySourcePolicy source, LocalDateTime syncedAt) {
+		ApplicationWindow applicationWindow = applicationWindow(
+			source.applicationPeriodCode(), source.applicationDateText(), syncedAt.toLocalDate()
+		);
 		YouthPolicyCacheRecord policy = new YouthPolicyCacheRecord(
 			truncate(source.externalPolicyId(), 30),
 			truncate(source.title(), 300),
@@ -37,7 +74,11 @@ public class YouthPolicyNormalizer {
 			source.supportContent(),
 			truncate(source.supervisingOrgName(), 200),
 			truncate(source.operatingOrgName(), 200),
+			truncate(source.approvalStatusCode(), 20),
+			truncate(source.provisionMethodCode(), 20),
 			truncate(source.applicationPeriodCode(), 20),
+			applicationWindow.startDate(),
+			applicationWindow.endDate(),
 			source.businessStartDate(),
 			source.businessEndDate(),
 			truncate(source.applicationDateText(), 500),
@@ -59,7 +100,7 @@ public class YouthPolicyNormalizer {
 			truncate(source.employmentCodes(), 500),
 			truncate(source.schoolCodes(), 500),
 			truncate(source.specialCodes(), 500),
-			applicationStatus(source.businessStartDate(), source.businessEndDate(), syncedAt.toLocalDate()),
+			applicationWindow.status(),
 			source.sourceRegisteredAt(),
 			source.sourceModifiedAt(),
 			syncedAt
@@ -142,21 +183,65 @@ public class YouthPolicyNormalizer {
 		return null;
 	}
 
-	private static PolicyApplicationStatus applicationStatus(
-		LocalDate startDate,
-		LocalDate endDate,
-		LocalDate 기준일
-	) {
-		if (startDate != null && 기준일.isBefore(startDate)) {
-			return PolicyApplicationStatus.UPCOMING;
+	private static ApplicationWindow applicationWindow(String periodCode, String dateText, LocalDate 기준일) {
+		if (APPLICATION_ALWAYS.equals(periodCode)) {
+			return new ApplicationWindow(PolicyApplicationStatus.OPEN, null, null);
 		}
-		if (endDate != null && 기준일.isAfter(endDate)) {
-			return PolicyApplicationStatus.CLOSED;
+		if (APPLICATION_CLOSED.equals(periodCode)) {
+			return new ApplicationWindow(PolicyApplicationStatus.CLOSED, null, null);
 		}
-		if (startDate != null || endDate != null) {
-			return PolicyApplicationStatus.OPEN;
+		if (!APPLICATION_FIXED.equals(periodCode)) {
+			return new ApplicationWindow(PolicyApplicationStatus.UNKNOWN, null, null);
 		}
-		return PolicyApplicationStatus.UNKNOWN;
+
+		List<LocalDate> dates = basicDates(dateText);
+		List<ApplicationWindow> windows = new ArrayList<>();
+		for (int index = 0; index + 1 < dates.size(); index += 2) {
+			LocalDate startDate = dates.get(index);
+			LocalDate endDate = dates.get(index + 1);
+			if (!startDate.isAfter(endDate)) {
+				windows.add(new ApplicationWindow(PolicyApplicationStatus.UNKNOWN, startDate, endDate));
+			}
+		}
+		for (ApplicationWindow window : windows) {
+			if (!기준일.isBefore(window.startDate()) && !기준일.isAfter(window.endDate())) {
+				return new ApplicationWindow(PolicyApplicationStatus.OPEN, window.startDate(), window.endDate());
+			}
+		}
+		return windows.stream()
+			.filter(window -> 기준일.isBefore(window.startDate()))
+			.min(java.util.Comparator.comparing(ApplicationWindow::startDate))
+			.map(window -> new ApplicationWindow(PolicyApplicationStatus.UPCOMING, window.startDate(), window.endDate()))
+			.orElseGet(() -> windows.stream()
+				.max(java.util.Comparator.comparing(ApplicationWindow::endDate))
+				.map(window -> new ApplicationWindow(PolicyApplicationStatus.CLOSED, window.startDate(), window.endDate()))
+				.orElse(new ApplicationWindow(PolicyApplicationStatus.UNKNOWN, null, null)));
+	}
+
+	private static List<LocalDate> basicDates(String value) {
+		if (value == null || value.isBlank()) {
+			return List.of();
+		}
+		List<LocalDate> dates = new ArrayList<>();
+		Matcher matcher = BASIC_DATE.matcher(value);
+		while (matcher.find()) {
+			try {
+				dates.add(LocalDate.parse(matcher.group(1), java.time.format.DateTimeFormatter.BASIC_ISO_DATE));
+			}
+			catch (java.time.DateTimeException ignored) {
+				// 잘못된 원본 날짜는 추천 가능한 신청기간으로 간주하지 않는다.
+			}
+		}
+		return List.copyOf(dates);
+	}
+
+	private static boolean hasConcreteApplicationRoute(YouthPolicyCacheRecord policy) {
+		if (policy.applicationUrl() != null || policy.referenceUrl1() != null || policy.referenceUrl2() != null) {
+			return true;
+		}
+		String method = policy.applicationMethod();
+		return method != null && !method.isBlank()
+			&& !NON_ACTIONABLE_APPLICATION_METHODS.contains(method.strip());
 	}
 
 	private static String httpUrl(String value) {
@@ -206,6 +291,13 @@ public class YouthPolicyNormalizer {
 		YouthPolicyCacheRecord policy,
 		List<PolicyRegionRecord> regions,
 		List<PolicyConditionRecord> conditions
+	) {
+	}
+
+	private record ApplicationWindow(
+		PolicyApplicationStatus status,
+		LocalDate startDate,
+		LocalDate endDate
 	) {
 	}
 }

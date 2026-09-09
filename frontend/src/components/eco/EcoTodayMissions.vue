@@ -21,7 +21,7 @@
  * 체크는 토글 1건이 아니라 **하루치 전량**을 올린다(PUT mission-logs/{date}). `change` 로 완료
  * 목록 전체를 넘긴다. 진행 수는 헤더 헤드라인(「N개가 남았어요」)이 서버 `completedCount` 로 말한다.
  * `emptyReason` 이 있는 응답도 **200 정상이다**(핵심 규칙 8). 서버는 코드만 주고 문구는 화면이 만든다.
- * 목록은 고른 미션 전부다 — 계절로 거르지 않는다(결정 C-34). 계절 한정 미션은 「여름 전용」 칩으로만 알린다.
+ * 목록은 고른 미션 전부다 — 계절로 거르지 않는다(결정 C-35). 계절 한정 미션은 「여름 전용」 칩으로만 알린다.
  */
 import { computed } from 'vue'
 
@@ -111,7 +111,7 @@ function toggle(mission) {
               >
                 {{ formatUtilityType(mission.utilityType) }}
               </span>
-              <!-- 계절 한정 미션(결정 C-34). 계절로 거르지 않고 알리기만 한다 -->
+              <!-- 계절 한정 미션(결정 C-35). 계절로 거르지 않고 알리기만 한다 -->
               <span
                 v-if="formatSeasonTags(mission.seasonTags)"
                 class="text-badge tracking-normal bg-surface-sub text-muted inline-flex items-center rounded-xs px-[5px] py-0.5"

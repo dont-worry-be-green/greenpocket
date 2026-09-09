@@ -56,7 +56,7 @@ describe('currentMonth', () => {
   })
 })
 
-describe('seasonOf · seasonsBetween — 회차 남은 기간의 계절 (결정 C-33)', () => {
+describe('seasonOf · seasonsBetween — 회차 남은 기간의 계절 (결정 C-34)', () => {
   it('달의 계절은 백엔드와 같은 표다', () => {
     expect(seasonOf('2026-03')).toBe('SPRING')
     expect(seasonOf('2026-08')).toBe('SUMMER')

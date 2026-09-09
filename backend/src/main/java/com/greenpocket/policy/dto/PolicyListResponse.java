@@ -13,8 +13,7 @@ public record PolicyListResponse(
 	int totalPages,
 	boolean hasNext,
 	Region region,
-	OffsetDateTime lastSyncedAt,
-	boolean preview
+	OffsetDateTime lastSyncedAt
 ) {
 
 	public record Region(

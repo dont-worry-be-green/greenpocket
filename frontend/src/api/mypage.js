@@ -20,11 +20,7 @@
  * `fake()` 를 async + 지연으로 둔 이유는 `api/eco.js` 와 같다 — 로딩 경로를 실제로 돌린다.
  */
 
-import {
-  buildBillArchive,
-  buildReportArchive,
-  MYPAGE,
-} from '@/fixtures/mypage'
+import { buildBillArchive, buildReportArchive, MYPAGE } from '@/fixtures/mypage'
 import { POLICY_PREFERENCES } from '@/fixtures/policy'
 
 import client from './client'
@@ -55,7 +51,7 @@ export function getPolicyPreferences() {
   return client.get('/profile/policy-preferences')
 }
 
-/** PUT /profile/policy-preferences — 현재 상태·연소득·가구 상태 저장 (MY-02·MY-06) */
+/** PUT /profile/policy-preferences — 현재 상태·연소득·학력·관심 분야 저장 (MY-02) */
 export function updatePolicyPreferences(payload) {
   if (isFixtureMode()) {
     return fake(() => {

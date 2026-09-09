@@ -117,7 +117,7 @@ export const ECO_HOME_RESULT_READY = {
  * GET /eco/rounds/{roundId}/missions/today — 오늘의 실천 (B-3-05).
  *
  *
- * 계절로 거르지 않는다(결정 C-34) — 고른 미션 전부 내려오고 `seasonTags` 로 계절 한정만 표시한다.
+ * 계절로 거르지 않는다(결정 C-35) — 고른 미션 전부 내려오고 `seasonTags` 로 계절 한정만 표시한다.
  * ⚠️ `computedRate`·`evidenceText`·`calculationBasis` 가 없다.
  * `GpMissionRow` 는 그 셋을 전제하므로 **여기에 재사용하지 않는다.**
  */

@@ -73,7 +73,8 @@ public class YouthPolicyRepository {
 				    external_policy_id, title, keyword_name, description,
 				    large_category_name, medium_category_name, interest_category,
 				    support_content, supervising_org_name, operating_org_name,
-				    application_period_code, business_start_date, business_end_date,
+				    approval_status_code, provision_method_code, application_period_code,
+				    application_start_date, application_end_date, business_start_date, business_end_date,
 				    application_date_text, application_method, application_url,
 				    reference_url1, reference_url2, age_limit_yn, min_age, max_age,
 				    marriage_status_code, income_condition_code, income_min_amount,
@@ -85,7 +86,8 @@ public class YouthPolicyRepository {
 				    :externalPolicyId, :title, :keywordName, :description,
 				    :largeCategoryName, :mediumCategoryName, :interestCategory,
 				    :supportContent, :supervisingOrgName, :operatingOrgName,
-				    :applicationPeriodCode, :businessStartDate, :businessEndDate,
+				    :approvalStatusCode, :provisionMethodCode, :applicationPeriodCode,
+				    :applicationStartDate, :applicationEndDate, :businessStartDate, :businessEndDate,
 				    :applicationDateText, :applicationMethod, :applicationUrl,
 				    :referenceUrl1, :referenceUrl2, :ageLimitYn, :minAge, :maxAge,
 				    :marriageStatusCode, :incomeConditionCode, :incomeMinAmount,
@@ -101,7 +103,11 @@ public class YouthPolicyRepository {
 				    interest_category = VALUES(interest_category), support_content = VALUES(support_content),
 				    supervising_org_name = VALUES(supervising_org_name),
 				    operating_org_name = VALUES(operating_org_name),
+				    approval_status_code = VALUES(approval_status_code),
+				    provision_method_code = VALUES(provision_method_code),
 				    application_period_code = VALUES(application_period_code),
+				    application_start_date = VALUES(application_start_date),
+				    application_end_date = VALUES(application_end_date),
 				    business_start_date = VALUES(business_start_date), business_end_date = VALUES(business_end_date),
 				    application_date_text = VALUES(application_date_text), application_method = VALUES(application_method),
 				    application_url = VALUES(application_url), reference_url1 = VALUES(reference_url1),
@@ -130,7 +136,11 @@ public class YouthPolicyRepository {
 			.param("supportContent", policy.supportContent())
 			.param("supervisingOrgName", policy.supervisingOrgName())
 			.param("operatingOrgName", policy.operatingOrgName())
+			.param("approvalStatusCode", policy.approvalStatusCode())
+			.param("provisionMethodCode", policy.provisionMethodCode())
 			.param("applicationPeriodCode", policy.applicationPeriodCode())
+			.param("applicationStartDate", policy.applicationStartDate())
+			.param("applicationEndDate", policy.applicationEndDate())
 			.param("businessStartDate", policy.businessStartDate())
 			.param("businessEndDate", policy.businessEndDate())
 			.param("applicationDateText", policy.applicationDateText())
@@ -216,7 +226,11 @@ public class YouthPolicyRepository {
 			resultSet.getString("support_content"),
 			resultSet.getString("supervising_org_name"),
 			resultSet.getString("operating_org_name"),
+			resultSet.getString("approval_status_code"),
+			resultSet.getString("provision_method_code"),
 			resultSet.getString("application_period_code"),
+			toLocalDate(resultSet.getDate("application_start_date")),
+			toLocalDate(resultSet.getDate("application_end_date")),
 			toLocalDate(resultSet.getDate("business_start_date")),
 			toLocalDate(resultSet.getDate("business_end_date")),
 			resultSet.getString("application_date_text"),
@@ -277,7 +291,11 @@ public class YouthPolicyRepository {
 		String supportContent,
 		String supervisingOrgName,
 		String operatingOrgName,
+		String approvalStatusCode,
+		String provisionMethodCode,
 		String applicationPeriodCode,
+		LocalDate applicationStartDate,
+		LocalDate applicationEndDate,
 		LocalDate businessStartDate,
 		LocalDate businessEndDate,
 		String applicationDateText,
@@ -333,7 +351,11 @@ public class YouthPolicyRepository {
 		String supportContent,
 		String supervisingOrgName,
 		String operatingOrgName,
+		String approvalStatusCode,
+		String provisionMethodCode,
 		String applicationPeriodCode,
+		LocalDate applicationStartDate,
+		LocalDate applicationEndDate,
 		LocalDate businessStartDate,
 		LocalDate businessEndDate,
 		String applicationDateText,

@@ -28,7 +28,7 @@ public class EcoMissionRepository {
 	}
 
 	/**
-	 * 오늘의 실천 — 목표에서 고른 미션 **전부**다(결정 C-34). 계절로 거르지 않는다.
+	 * 오늘의 실천 — 목표에서 고른 미션 **전부**다(결정 C-35). 계절로 거르지 않는다.
 	 * 계절 태그는 화면이 「여름 전용」 칩으로 알리는 용도로만 함께 내려준다.
 	 */
 	public List<TodayMissionSnapshot> findTodayMissions(Long userId, Long roundId, LocalDate date) {

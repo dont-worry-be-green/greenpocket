@@ -60,7 +60,7 @@ export function seasonOf(yearMonth) {
 }
 
 /**
- * 두 달 사이(양 끝 포함)에 걸치는 계절 집합 (결정 C-33).
+ * 두 달 사이(양 끝 포함)에 걸치는 계절 집합 (결정 C-34).
  * 목표 정하기는 「오늘부터 회차 끝까지」의 계절과 하나라도 맞는 미션만 보여준다.
  *   seasonsBetween('2026-09', '2026-09') → ['AUTUMN']
  *   seasonsBetween('2025-10', '2026-03') → ['AUTUMN', 'WINTER', 'SPRING']
