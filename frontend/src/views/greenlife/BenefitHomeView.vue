@@ -24,6 +24,12 @@
  * ⚠️ **현황과 목록을 같은 달로 함께 받는다.** 둘이 갈리면 카드 합계와 목록 합계가 어긋나
  * C-2-01 완료 조건("두 금액이 실적 내역 합계와 일치한다")이 깨진다.
  *
+ * ── 확정 시안(결정 C-32) ────────────────────────────────────────────────
+ * 홈(WF-06)과 같은 문법 — 헤더 「혜택」 + 「누리집 연동 ↻」 알약, 헤드라인 두 줄 + 오른쪽 일러스트,
+ * 흰 카드. 참여 중은 「이번 달 44건 / 실천했어요」 → 「N월 적립」 → 「실천 항목」, 미참여는
+ * 「17가지 실천으로 / 연 최대 70,000원」 → 「참여 방법」(3단계 + 외부 CTA) → 「실천 항목」(대표 4개).
+ * 기준 연도·연동 시각 캡션은 홈에서 뺐다(상세 BN-03 에 남는다).
+ *
  * ── 복귀 시 자동 재조회를 넣지 않았다 ───────────────────────────────────
  * C-1-01 은 "누리집 복귀 시 상태를 갱신한다" 지만 `focus`·`visibilitychange` 는 탭 전환·알림·
  * 화면잠금에도 걸린다. 시연 중 화면이 제멋대로 다시 로딩되는 쪽이 위험이 크다. 시안에 있는
@@ -32,21 +38,20 @@
 import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import greenlifeHero from '@/assets/greenlife-hero.png'
 import GreenlifeItemList from '@/components/greenlife/GreenlifeItemList.vue'
 import GreenlifeItemRow from '@/components/greenlife/GreenlifeItemRow.vue'
-import GreenlifeProgramCard from '@/components/greenlife/GreenlifeProgramCard.vue'
 import GreenlifeState from '@/components/greenlife/GreenlifeState.vue'
 import GreenlifeStepList from '@/components/greenlife/GreenlifeStepList.vue'
 import GreenlifeSummaryCard from '@/components/greenlife/GreenlifeSummaryCard.vue'
 import AppTabLayout from '@/components/layout/AppTabLayout.vue'
 import GpButton from '@/components/ui/GpButton.vue'
 import GpCard from '@/components/ui/GpCard.vue'
-import GpTag from '@/components/ui/GpTag.vue'
-import IconChevronDown from '@/components/ui/icons/IconChevronDown.vue'
+import IconCaretDown from '@/components/ui/icons/IconCaretDown.vue'
 import IconExternalLink from '@/components/ui/icons/IconExternalLink.vue'
 import IconRefresh from '@/components/ui/icons/IconRefresh.vue'
 import { useGreenlifeStore } from '@/stores/greenlife'
-import { formatDateTime } from '@/utils/format'
+import { formatNumber, formatWon } from '@/utils/format'
 import { currentMonth, isMonth, shiftMonth } from '@/utils/month'
 
 const route = useRoute()
@@ -81,7 +86,10 @@ const canNext = computed(() => month.value < maxMonth)
 
 /** 히스토리를 쌓지 않는다. 탭 홈에서 뒤로가기가 달 이동을 되짚으면 탭을 벗어나기 어렵다 */
 function goMonth(delta) {
-  router.replace({ path: '/benefit', query: { ...route.query, month: shiftMonth(month.value, delta) } })
+  router.replace({
+    path: '/benefit',
+    query: { ...route.query, month: shiftMonth(month.value, delta) },
+  })
 }
 
 /*
@@ -126,14 +134,25 @@ function openExternal() {
 </script>
 
 <template>
-  <AppTabLayout
-    tab="benefit"
-    title="혜택"
-    :subtitle="participating ? '탄소중립포인트 녹색생활실천' : '친환경 실천으로 받는 혜택을 확인해요'"
-  >
-    <template v-if="participating" #headerAction>
-      <GpTag tone="primary">누리집 연동</GpTag>
-    </template>
+  <!-- 홈처럼 헤더를 직접 그린다. AppTabLayout 의 공통 헤더는 title 이 비면 안 그린다 -->
+  <AppTabLayout tab="benefit" title="">
+    <header class="flex items-start justify-between gap-3 pt-5 pb-1">
+      <h1 class="text-title tracking-title text-ink m-0">혜택</h1>
+      <button
+        type="button"
+        class="bg-surface shadow-card text-caption text-ink-soft flex min-h-9 cursor-pointer items-center gap-1 rounded-full border-0 px-3 py-2 font-bold disabled:cursor-progress"
+        :disabled="store.linkLoading"
+        aria-label="누리집 연동 새로고침"
+        @click="store.refreshLink({ month })"
+      >
+        누리집 연동
+        <IconRefresh
+          :size="13"
+          class="text-icon-off"
+          :class="store.linkLoading && 'animate-spin'"
+        />
+      </button>
+    </header>
 
     <GreenlifeState
       :loading="bootstrapping"
@@ -141,94 +160,105 @@ function openExternal() {
       @retry="store.fetchStatus({ month })"
     >
       <!-- ── BN-02 참여 중 ─────────────────────────────────────────── -->
-      <div v-if="participating" class="space-y-5">
-        <!-- 달은 서버 응답의 것을 쓴다. 요청한 달과 응답이 갈리면 응답이 사실이다 -->
-        <GreenlifeSummaryCard
-          :month="store.status.month"
-          :month-summary="store.status.monthSummary"
-          :annual="store.status.annual"
-          :can-prev="canPrev"
-          :can-next="canNext"
-          @prev="goMonth(-1)"
-          @next="goMonth(1)"
-        />
-
-        <p v-if="store.status.delayNotice" class="text-caption text-muted m-0 px-1">
-          {{ store.status.delayNotice }}
-        </p>
-
-        <GreenlifeState
-          :loading="store.itemsLoading && !store.items"
-          :error="store.itemsError"
-          @retry="store.fetchItems({ month })"
-        >
-          <GreenlifeItemList
-            v-if="store.items"
-            :items="store.items.items"
-            :total-count="store.items.totalCount"
-            :collapsed-after="store.items.collapsedAfter"
-            @select="goToItem"
+      <template v-if="participating">
+        <div class="relative min-h-[120px] pt-6 pb-3.5">
+          <img
+            :src="greenlifeHero"
+            alt=""
+            aria-hidden="true"
+            class="pointer-events-none absolute right-0.5 -bottom-1.5 z-0 w-[138px] drop-shadow-[0_3px_7px_rgb(20_50_36/0.12)] select-none"
           />
-        </GreenlifeState>
-
-        <div class="text-caption text-muted space-y-1 pt-1 text-center">
-          <p class="m-0">{{ store.status.standardYear }}년 공식 적립 기준</p>
-          <button
-            type="button"
-            class="mx-auto flex items-center gap-1.5"
-            :disabled="store.linkLoading"
-            @click="store.refreshLink({ month })"
-          >
-            <span>최근 연동 {{ formatDateTime(store.status.linkedAt) }}</span>
-            <IconRefresh :size="14" :class="store.linkLoading && 'animate-spin'" />
-          </button>
+          <p class="text-title tracking-title text-ink relative m-0 max-w-[214px]">
+            이번 달
+            <span class="text-primary tabular-nums"
+              >{{ formatNumber(store.status.monthSummary?.activityCount ?? 0) }}건</span
+            >
+            <br />실천했어요
+          </p>
         </div>
-      </div>
+
+        <div class="relative z-[1] flex flex-col gap-(--gp-card-gap)">
+          <!-- 달은 서버 응답의 것을 쓴다. 요청한 달과 응답이 갈리면 응답이 사실이다 -->
+          <GreenlifeSummaryCard
+            :month="store.status.month"
+            :month-summary="store.status.monthSummary"
+            :annual="store.status.annual"
+            :delay-notice="store.status.delayNotice"
+            :can-prev="canPrev"
+            :can-next="canNext"
+            @prev="goMonth(-1)"
+            @next="goMonth(1)"
+          />
+
+          <GreenlifeState
+            :loading="store.itemsLoading && !store.items"
+            :error="store.itemsError"
+            @retry="store.fetchItems({ month })"
+          >
+            <GreenlifeItemList
+              v-if="store.items"
+              :items="store.items.items"
+              :total-count="store.items.totalCount"
+              :collapsed-after="store.items.collapsedAfter"
+              @select="goToItem"
+            />
+          </GreenlifeState>
+        </div>
+      </template>
 
       <!-- ── BN-01 미참여 ──────────────────────────────────────────── -->
-      <div v-else-if="programInfo" class="space-y-4">
-        <GreenlifeProgramCard :program-info="programInfo" />
+      <template v-else-if="programInfo">
+        <div class="relative min-h-[120px] pt-6 pb-3.5">
+          <img
+            :src="greenlifeHero"
+            alt=""
+            aria-hidden="true"
+            class="pointer-events-none absolute right-0.5 -bottom-1.5 z-0 w-[138px] drop-shadow-[0_3px_7px_rgb(20_50_36/0.12)] select-none"
+          />
+          <p class="text-title tracking-title text-ink relative m-0 max-w-[214px]">
+            {{ programInfo.itemCount }}가지 실천으로<br />
+            연 최대
+            <span class="text-primary tabular-nums">{{ formatWon(programInfo.annualLimit) }}</span>
+          </p>
+        </div>
 
-        <GpCard title="참여 방법">
-          <GreenlifeStepList :steps="programInfo.joinSteps" />
-        </GpCard>
+        <div class="relative z-[1] flex flex-col gap-(--gp-card-gap)">
+          <GpCard title="참여 방법">
+            <GreenlifeStepList :steps="programInfo.joinSteps" />
+            <!-- 실제 가입은 누리집에서 한다(C-1-01). 외부 이동이라 아이콘을 붙인다 -->
+            <GpButton class="mt-4" @click="openExternal">
+              공식 누리집에서 참여하기
+              <IconExternalLink :size="15" class="ml-1.5" />
+            </GpButton>
+          </GpCard>
 
-        <GpCard title="대표 실천 항목">
-          <div class="space-y-2">
-            <GreenlifeItemRow v-for="item in featuredItems" :key="item.itemId" :item="item" compact />
-          </div>
+          <GpCard title="실천 항목">
+            <template #action>
+              <span class="text-list-title text-ink tabular-nums">
+                {{ programInfo.itemCount
+                }}<span class="text-caption text-muted ml-px font-medium">개</span>
+              </span>
+            </template>
 
-          <div v-if="!featuredExpanded" class="mt-3 flex justify-center">
-            <GpButton
-              variant="pill"
-              size="pill"
+            <ul class="divide-divider -mt-1 m-0 list-none divide-y p-0">
+              <li v-for="item in featuredItems" :key="item.itemId">
+                <GreenlifeItemRow :item="item" compact />
+              </li>
+            </ul>
+
+            <button
+              v-if="!featuredExpanded"
+              type="button"
+              class="text-caption text-muted border-divider mt-1 flex w-full cursor-pointer items-center justify-center gap-1 border-0 border-t bg-transparent pt-3 font-bold disabled:cursor-progress"
               :disabled="store.itemsLoading"
               @click="store.fetchItems({ month })"
             >
               {{ programInfo.itemCount }}개 전체 보기
-              <IconChevronDown :size="12" class="ml-1" />
-            </GpButton>
-          </div>
-        </GpCard>
-
-        <GpButton @click="openExternal">
-          공식 누리집에서 참여하기
-          <IconExternalLink :size="16" class="ml-1.5" />
-        </GpButton>
-
-        <div class="space-y-1 pt-1 text-center">
-          <p class="text-caption text-muted m-0">이미 참여하고 있다면</p>
-          <button
-            type="button"
-            class="text-body-strong text-primary-on-soft mx-auto flex items-center gap-1.5"
-            :disabled="store.linkLoading"
-            @click="store.refreshLink({ month })"
-          >
-            <IconRefresh :size="16" :class="store.linkLoading && 'animate-spin'" />
-            연동 상태 새로고침
-          </button>
+              <IconCaretDown :size="12" />
+            </button>
+          </GpCard>
         </div>
-      </div>
+      </template>
 
       <!--
         새로고침했는데 여전히 미참여. 오류가 아니라 정상 응답이라(12.2 · 핵심 규칙 8)
