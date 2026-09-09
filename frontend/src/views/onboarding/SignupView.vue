@@ -144,11 +144,6 @@ async function submit() {
         더 좋은 지구를 만듭니다
       </p>
 
-      <div
-        class="bg-surface text-body-strong text-ink-soft absolute top-7 right-4 z-10 rounded-[50%] px-5 py-3 text-center -rotate-8 shadow-card"
-      >
-        함께<br />지구를 지켜요!
-      </div>
       <img
         :src="signupHero"
         alt="두 손을 모으고 반가워하는 그린포켓 캐릭터"
