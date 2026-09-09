@@ -4,7 +4,7 @@
  * 진단 탭에서도 같은 기준 사용량 카드를 쓰지만, 이 인사와 목표 안내는 What-if에만 보인다.
  */
 import characterPush from '@/assets/character/push.png'
-import IconLeaf from '@/components/ui/icons/IconLeaf.vue'
+import gpLogo from '@/assets/그린포켓 로고 .png'
 
 defineProps({
   name: { type: String, default: '' },
@@ -14,12 +14,7 @@ defineProps({
 <template>
   <header class="relative z-0 pt-3">
     <div class="flex items-center gap-2">
-      <span
-        class="bg-primary-soft text-on-primary flex size-8 shrink-0 items-center justify-center rounded-full shadow-[0_2px_6px_rgb(6_137_79/0.3)]"
-        aria-hidden="true"
-      >
-        <IconLeaf :size="19" />
-      </span>
+      <img :src="gpLogo" alt="" aria-hidden="true" class="size-10 shrink-0 object-contain select-none" />
       <b class="text-list-title text-ink tracking-title">{{ name ? `${name}님` : '안녕하세요' }}</b>
     </div>
 
