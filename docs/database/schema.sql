@@ -144,7 +144,7 @@ CREATE TABLE `youth_policy` (
 	`school_codes`	VARCHAR(500)	NULL	COMMENT '학력 코드 schoolCd 원문',
 	`special_codes`	VARCHAR(500)	NULL	COMMENT '특화 대상 코드 sbizCd 원문',
 	`application_status`	ENUM('OPEN', 'UPCOMING', 'CLOSED', 'UNKNOWN')	NOT NULL	DEFAULT 'UNKNOWN'	COMMENT '신청 상태 | 신청기간 aplyYmd와 기준일로 정규화',
-	`is_active`	TINYINT(1)	NOT NULL	DEFAULT 1	COMMENT '승인·현재 신청 가능·개인 대상·신청 경로 검증을 통과한 정책 여부',
+	`is_active`	TINYINT(1)	NOT NULL	DEFAULT 1	COMMENT '검증 카탈로그 60건 중 현재 활성 조건을 통과한 정책 여부',
 	`source_registered_at`	DATETIME	NULL	COMMENT '온통청년 최초 등록일 frstRegDt',
 	`source_modified_at`	DATETIME	NULL	COMMENT '온통청년 최종 수정일 lastMdfcnDt',
 	`synced_at`	DATETIME	NOT NULL	COMMENT '마지막 정상 동기화 시각',
@@ -153,7 +153,7 @@ CREATE TABLE `youth_policy` (
 	PRIMARY KEY (`id`),
 	UNIQUE KEY `uq_youth_policy_external` (`external_policy_id`),
 	KEY `ix_youth_policy_search` (`interest_category`,`application_status`,`is_active`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='온통청년 청년정책 캐시';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='검증된 온통청년 정책 60건 운영 캐시';
 
 CREATE TABLE `youth_policy_region` (
 	`id`	BIGINT	NOT NULL	AUTO_INCREMENT	COMMENT '정책 지역 ID',

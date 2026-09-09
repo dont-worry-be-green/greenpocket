@@ -48,6 +48,7 @@ public class YouthPolicySyncService {
 
 	@EventListener(ApplicationReadyEvent.class)
 	public void syncOnStartup() {
+		youthPolicyPersistenceService.ensureCuratedCache();
 		if (syncEnabled && syncOnStartup) {
 			sync();
 		}
