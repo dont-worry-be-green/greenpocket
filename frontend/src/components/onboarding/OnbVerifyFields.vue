@@ -23,6 +23,8 @@
  * ── 타이머는 여기 있다 ──────────────────────────────────────────────────
  * 남은 시간은 화면에서만 의미가 있는 값이라 스토어에 두지 않는다. 스토어가 타이머를 들면
  * 테스트에서 시간을 흘려야 해 검증이 어려워진다(`GoalSettingView` 의 디바운스와 같은 이유).
+ * 스토어는 만료 **시각**만 준다. 발송할 때마다 값이 달라져야 재전송·번호 변경 뒤에도
+ * 타이머가 다시 돈다(초 단위 180 은 두 번째부터 같은 값이라 watch 가 깨지 않았다).
  */
 import { computed, onUnmounted, ref, watch } from 'vue'
 
@@ -48,8 +50,8 @@ const props = defineProps({
   /** 인증번호를 보냈나. `false` 로 돌아오면 입력을 비운다(번호 변경·재입력) */
   sent: { type: Boolean, default: false },
   verified: { type: Boolean, default: false },
-  /** 서버(모의)가 준 만료 시간(초). 재전송하면 다시 내려와 타이머가 되살아난다 */
-  expiresInSeconds: { type: Number, default: 0 },
+  /** 서버(모의)가 준 만료 시각(ms). 발송·재전송마다 새 값이 와서 타이머가 되살아난다 */
+  expiresAt: { type: Number, default: 0 },
   /*
    * 로딩은 **버튼별로 받는다.** 하나로 두면 「확인」을 눌렀는데 「인증번호 받기」까지
    * 「보내는 중」이 된다(`stores/auth.js` 의 `pending`).
@@ -62,6 +64,8 @@ const props = defineProps({
   nameError: { type: String, default: '' },
   birthDateError: { type: String, default: '' },
   genderError: { type: String, default: '' },
+  /** 가입 요청이 번호 때문에 거절됐을 때(409 `phoneNumber`) 인증 진입 행 아래에 놓는 서버 문구 */
+  phoneError: { type: String, default: '' },
 })
 const emit = defineEmits(['request', 'verify', 'resend', 'reset', 'name-blur'])
 
@@ -130,23 +134,27 @@ function stopTimer() {
   timer = null
 }
 
+function secondsLeft() {
+  return Math.max(0, Math.ceil((props.expiresAt - Date.now()) / 1000))
+}
+
 function startTimer() {
   stopTimer()
   timer = window.setInterval(() => {
-    remaining.value -= 1
+    remaining.value = secondsLeft()
     if (remaining.value <= 0) stopTimer()
   }, 1000)
 }
 
 onUnmounted(stopTimer)
 
-// 발송·재전송하면 만료 시간이 새로 내려온다. 입력도 비우고 타이머를 다시 돌린다
+// 발송·재전송하면 만료 시각이 새로 내려온다. 입력도 비우고 타이머를 다시 돌린다
 watch(
-  () => props.expiresInSeconds,
-  (value) => {
-    remaining.value = value
+  () => props.expiresAt,
+  () => {
+    remaining.value = secondsLeft()
     code.value = ''
-    if (value > 0) startTimer()
+    if (remaining.value > 0) startTimer()
   },
 )
 
@@ -296,6 +304,7 @@ function changePhoneNumber() {
         <span class="text-label text-negative bg-negative-bg shrink-0 rounded-full px-2.5 py-1">미인증</span>
         <IconChevronRight :size="18" class="text-muted shrink-0" />
       </button>
+      <span v-if="phoneError" class="text-body-sm text-negative mt-1.5 block">{{ phoneError }}</span>
     </div>
 
     <GpModal :open="sheetOpen" title="휴대폰 본인인증" @close="sheetOpen = false">
