@@ -221,7 +221,7 @@ function changePhoneNumber() {
 
     <!-- 좁은 화면에서도 생년월일과 성별을 한 행으로 유지한다. -->
     <div
-      class="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] items-start gap-3"
+      class="grid grid-cols-2 items-start gap-3"
       data-testid="identity-detail-row"
     >
       <label class="min-w-0 overflow-hidden">
