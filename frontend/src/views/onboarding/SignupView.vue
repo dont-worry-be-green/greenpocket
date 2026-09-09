@@ -124,7 +124,7 @@ async function submit() {
 
 <template>
   <AppSubLayout title="회원가입" back="/onboarding/start">
-    <form class="space-y-6 pt-2" @submit.prevent="submit">
+    <form class="space-y-4 pt-2" @submit.prevent="submit">
       <OnbVerifyFields
         v-model:name="name"
         v-model:birth-date="birthDate"
