@@ -117,8 +117,9 @@ export const ECO_HOME_RESULT_READY = {
  * GET /eco/rounds/{roundId}/missions/today — 오늘의 실천 (B-3-05).
  *
  *
- * 계절로 거르지 않는다(결정 C-35) — 고른 미션 전부 내려오고 `seasonTags` 로 계절 한정만 표시한다.
- * ⚠️ `computedRate`·`evidenceText`·`calculationBasis` 가 없다.
+ * 목표를 정할 때 고른 미션 중 **오늘 계절에 맞는 것만** 내려온다(`season`).
+ * 그래서 `ECO_GOAL.missions` 보다 목록이 짧을 수 있다.
+ * ⚠️ 필드가 다섯 개뿐이다 — `computedRate`·`evidenceText`·`calculationBasis` 가 없다.
  * `GpMissionRow` 는 그 셋을 전제하므로 **여기에 재사용하지 않는다.**
  */
 export const ECO_TODAY_MISSIONS = {
@@ -132,7 +133,6 @@ export const ECO_TODAY_MISSIONS = {
       title: '냉방 온도 26℃로 맞추기',
       utilityType: 'ELECTRICITY',
       difficulty: 'EASY',
-      seasonTags: ['SUMMER'],
       completed: true,
     },
     {
@@ -140,7 +140,6 @@ export const ECO_TODAY_MISSIONS = {
       title: '에어컨 하루 1시간 줄이기',
       utilityType: 'ELECTRICITY',
       difficulty: 'NORMAL',
-      seasonTags: ['SUMMER'],
       completed: true,
     },
     {
@@ -148,7 +147,6 @@ export const ECO_TODAY_MISSIONS = {
       title: '온수 온도 55℃ → 40℃로 낮추기',
       utilityType: 'GAS',
       difficulty: 'EASY',
-      seasonTags: ['WINTER'],
       completed: true,
     },
     {
@@ -156,7 +154,6 @@ export const ECO_TODAY_MISSIONS = {
       title: '양치할 때 컵 사용하기',
       utilityType: 'WATER',
       difficulty: 'EASY',
-      seasonTags: ['SPRING', 'SUMMER', 'AUTUMN', 'WINTER'],
       completed: false,
     },
     {
@@ -164,7 +161,6 @@ export const ECO_TODAY_MISSIONS = {
       title: '설거지통에 물 받아서 하기',
       utilityType: 'WATER',
       difficulty: 'EASY',
-      seasonTags: ['SPRING', 'SUMMER', 'AUTUMN', 'WINTER'],
       completed: false,
     },
   ],

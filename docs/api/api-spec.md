@@ -1474,15 +1474,15 @@ Request 본문은 9.2 미리보기와 **동일**합니다.
   "completedCount": 3,
   "totalCount": 5,
   "missions": [
-    { "missionId": 12, "title": "냉방 온도 26℃로 맞추기", "utilityType": "ELECTRICITY", "difficulty": "EASY", "seasonTags": ["SUMMER"], "completed": true  },
-    { "missionId": 31, "title": "온수 온도 55℃ → 40℃로 낮추기", "utilityType": "GAS", "difficulty": "NORMAL", "seasonTags": ["WINTER"], "completed": false }
+    { "missionId": 12, "title": "냉방 온도 26℃로 맞추기", "utilityType": "ELECTRICITY", "difficulty": "EASY", "completed": true  },
+    { "missionId": 31, "title": "온수 온도 55℃ → 40℃로 낮추기", "utilityType": "GAS", "difficulty": "NORMAL", "completed": false }
   ],
   "emptyReason": null
 }
 ```
 
-- 목표 설정 때 고른 미션을 **전부** 노출한다. 계절로 거르지 않는다(결정 C-35). `season` 은 오늘 계절 정보이고, 계절 한정 미션은 `seasonTags` 로 FE 가 「여름 전용」 칩을 단다.
-- 고른 미션이 없으면 `missions: []` + `emptyReason: "NO_MISSION"` → 실천 고르기 유도. `SEASON_FILTERED_EMPTY` 는 더 이상 내려가지 않는다. 홈(`GET /eco/home`)의 `todayMissions` 요약도 같은 기준(고른 미션 전부)이다.
+- 목표 설정 때 고른 미션 중 **현재 계절 태그(`FIND_IN_SET`)에 맞는 것만** 노출 (B-3-05). 계절은 3~5월 봄 · 6~8월 여름 · 9~11월 가을 · 12~2월 겨울. FE 는 `season` 으로 「가을에 맞는 실천만 보여요」를 밝힌다.
+- 계절 필터 후 0개면 `missions: []` + `emptyReason: "SEASON_FILTERED_EMPTY"` → "다시 고르기" 유도.
 
 ## 9.6 오늘의 실천 체크 저장
 
