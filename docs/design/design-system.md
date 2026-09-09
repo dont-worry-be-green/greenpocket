@@ -1,7 +1,11 @@
-# 그린포켓 디자인 시스템 v2.0
+# 그린포켓 디자인 시스템 v3.0
 
 팀 돈워리비그린 · 2026 KB IT's Your Life 해커톤 본선
-2026-09-02 · 프론트엔드 Vue.js
+2026-09-09 · 프론트엔드 Vue.js · Tailwind CSS v4
+
+v3 는 **줄이기 홈(WF-06) 확정 시안**에서 값을 다시 잡은 판이다. v2(2026-09-02)의 토큰 **이름은 하나도 지우거나
+바꾸지 않았다.** 값이 바뀌고 토큰이 늘었다. 이미 v2 토큰으로 만든 화면은 그대로 컴파일되고, 새 팔레트와
+새 글자 스케일로 다시 칠해진다. 무엇이 어떻게 바뀌었는지는 10절에 있다.
 
 ---
 
@@ -9,203 +13,294 @@
 
 | 파일 | 무엇 | 누가 고치나 |
 |---|---|---|
-| `tokens.css` | **정본.** 모든 값의 유일한 출처 | 디자인 |
-| `tokens.json` | tokens.css에서 생성. Figma Variables·Style Dictionary 임포트용 | 자동 생성 (직접 고치지 말 것) |
-| `greenpocket.css` | 컴포넌트 클래스. 토큰만 참조 | 디자인 + FE |
-| `components/*.vue` | Vue 컴포넌트 골격 | FE |
+| `frontend/src/assets/main.css` | **정본.** `@theme static` 블록 하나. 토큰이 곧 Tailwind 클래스다 | 디자인 + FE |
+| `docs/design/tokens.json` | `main.css`에서 생성. Figma Variables·Style Dictionary 임포트용 | 자동 생성 (직접 고치지 말 것) |
+| `frontend/scripts/tokens-json.mjs` | 위 생성기. `node scripts/tokens-json.mjs` | — |
+| `frontend/src/components/ui/*.vue` | 공통 컴포넌트. 토큰만 참조한다 | FE |
 
-```js
-// main.js
-import './styles/tokens.css'
-import './styles/greenpocket.css'
+```bash
+cd frontend && node scripts/tokens-json.mjs   # main.css → docs/design/tokens.json
 ```
 
-**규칙 셋**
+**규칙 넷**
 
-1. 화면 코드에 hex를 쓰지 않는다. 없으면 `tokens.css`에 토큰을 추가한다.
-2. 원시값(`--gp-green-700`)을 화면에서 참조하지 않는다. 반드시 의미 토큰(`--gp-color-primary`)을 거친다.
-3. 폰트 13단계·radius 7단계 밖의 값을 새로 만들지 않는다.
+1. 화면 코드에 hex를 쓰지 않는다. 없으면 `main.css`에 토큰을 **추가**한다.
+2. 원시값(`--gp-green-700`)을 화면에서 참조하지 않는다. 반드시 의미 토큰(`bg-primary`)을 거친다.
+3. 글자 16단계·radius 8단계 밖의 값을 새로 만들지 않는다.
+4. **토큰을 지우거나 이름을 바꾸지 않는다.** 넷이 같은 파일을 보고 있다. 값을 바꾸는 건 된다.
 
 ---
 
 ## 1. 토큰 구조 — 3계층
 
 ```
-원시값 primitive      --gp-green-700: #078753          값의 출처
+원시값 primitive      --gp-green-800: #057441          값의 출처
    ↓
-의미   semantic       --gp-color-primary: var(--gp-green-700)    화면이 쓰는 층
+의미   semantic       --color-primary: var(--gp-green-800)    화면이 쓰는 층 → bg-primary
    ↓
-컴포넌트 component     --gp-cta-h: 48px                 특정 컴포넌트 치수
+컴포넌트 component     --gp-cta-h: 46px                 특정 컴포넌트 치수 → h-(--gp-cta-h)
 ```
 
-총 **205개** — 원시값 42 · 의미 136 · 컴포넌트 27.
+총 **228개** — 원시값 52 · 의미 145 · 컴포넌트 31. (v2 는 205개였다. 39개가 늘었고 지운 것은 없다.)
 
-왜 3계층인가: 지금까지는 의미 계층만 있어서 "이 회색은 어디서 왔나"를 추적할 수 없었다.
-구분선용 회색이 `#E1E3E2 · #E8EBE9 · #E5E8E6 · #DDE1DF · #EAECEB · #EFF2F0` 여섯 종으로
-번져 있었는데, 사람 눈에 구분되지 않는 차이라 대부분 실수였다.
+왜 3계층인가: 의미 계층만 있으면 "이 회색은 어디서 왔나"를 추적할 수 없다.
+v1 때 구분선용 회색이 여섯 종으로 번져 있었는데 사람 눈에 구분되지 않는 차이라 대부분 실수였다.
 
 ---
 
 ## 2. 색
 
-### 2-1. 브랜드
+### 2-1. 브랜드 — 초록 넷의 역할이 다르다
 
-신한 슈퍼SOL 스크린샷 11장을 픽셀 추출한 뒤 OKLCH 색상만 261.6° → 157.3°로 회전했다.
-157.3°는 그린포켓 앱 아이콘 그린이다. 명도(L)와 채도(C)는 원본을 유지하고 대비 미달분만 보정했다.
+색은 신한 슈퍼SOL 홈을 실측해 정한 것이 아니라, 그린포켓 앱 아이콘 그린(`#06894F`)을 기준색으로 두고
+**용도별로 대비가 맞는 단계**를 골랐다. 괄호 안은 흰 카드 위 대비.
 
-| 토큰 | 값 | 어디에 |
-|---|---|---|
-| `--gp-color-primary` | `#078753` | 채움 버튼 · 탭 활성 |
-| `--gp-color-primary-pressed` | `#026A3F` | 누른 상태 |
-| `--gp-color-primary-on-soft` | `#037D4C` | 연한 배경 위 그린 텍스트 |
-| `--gp-color-primary-soft` | `#00A968` | 아이콘 · 그래프 |
-| `--gp-color-primary-bg` | `#E7F3EC` | pill 버튼 배경 |
+| 토큰 | 값 | 어디에 | 대비 |
+|---|---|---|---|
+| `--color-primary` | `#057441` | 채움 버튼 · 탭 활성 · **초록 글자** | 5.86 (흰 글씨를 얹어도 5.86) |
+| `--color-primary-soft` | `#06894F` | 아이콘 · 그래프 · 체크 채움 — **브랜드 기준색** | 4.47 — 글자 금지 |
+| `--color-primary-on-soft` | `#046B3E` | 연한 배경(워시) 위 초록 글자 | 워시 위 5.62 |
+| `--color-primary-pressed` | `#046B3E` | 누른 상태 | |
+| `--color-primary-bg` | `#E2F0E8` | pill 버튼 배경 · 아이콘 바탕 (워시) | |
 
-### 2-2. 의미 계층 — 이 서비스의 핵심
+v2 는 `primary`가 `#078753`이었고 흰 글씨를 얹으면 **4.47 로 AA 에 못 미쳤다.** 버튼 26곳이 그 상태였다.
+v3 에서 `primary`를 한 단계 어두운 `#057441`로 내리고, 브랜드 기준색은 `primary-soft`로 옮겨 채움 전용으로 뒀다.
 
-돈이 세 단계를 거치기 때문에 색도 세 갈래다.
+**초록 solid 는 화면당 한 곳.** 홈에서는 탭바 가운데 원 하나다. 늘리면 그것이 안 보인다.
+
+### 2-2. 중립 · 표면 — 순회색이 아니라 초록으로 기울였다
+
+| 토큰 | 값 | 어디에 | 대비 |
+|---|---|---|---|
+| `--color-canvas` | `#F2F7F4` | 앱 배경 | 흰 카드 대비 **1.083** |
+| `--color-surface` | `#FFFFFF` | 카드 | |
+| `--color-surface-sub` | `#F6FAF8` | 카드 안 서브 블록 · 기간 칩 | 1.05 |
+| `--color-ink` | `#16201B` | 제목 · 금액 | 16.71 |
+| `--color-ink-soft` | `#3B4741` | 본문 | 9.71 |
+| `--color-muted` | `#616F67` | 캡션 · 출처 · 작은 링크 | 5.28 · 배경 위 4.87 |
+| `--color-icon-off` | `#AFB8B2` | 비활성 아이콘 · chevron | 2.03 (글자 아님) |
+
+**`muted`는 두 후보를 재고 어두운 쪽을 골랐다.** 시안의 `#8A958E`는 3.10 으로 12.5px 캡션에서 읽기 힘들었고,
+팔레트 정리 때 나온 `#6B766F`(4.72)는 흰 카드에선 통과하지만 **앱 배경 위에서 4.36 으로 미달**이다.
+`#616F67`은 두 면에서 다 통과한다(5.28 / 4.87). 캡션은 카드 밖(배경 위)에도 놓이므로 이 값이어야 한다.
+
+**배경과 카드의 면 대비 1.083 은 카드를 구분하는 첫 번째 수단이다.** 신한 SOL 을 재보니 그림자를 안 쓰고
+`#FFFFFF → #F0F4FA`(1.104) 면 대비 하나로 카드를 세운다. 우리는 한 톤 옅게 잡았다.
+**1.06 아래로 내리면 「카드가 안 보인다」는 팀 피드백이 돌아온다.** 그 위에 그림자를 얹는다(4절).
+
+### 2-3. 돈의 3단계 — 이 서비스의 핵심
 
 | 상태 | 토큰 | 뜻 |
 |---|---|---|
-| **예상** | `--gp-color-estimated` | 아직 확정되지 않은 값. 아웃라인 배지 전용 |
-| **확정된 돈** | `--gp-color-confirmed` | 적립됐지만 아직 현금이 아닌 마일리지 |
-| **성공** | `--gp-color-positive` | 절감 달성 |
-| **오류** | `--gp-color-negative` | 화면의 유일한 빨강 |
+| **예상** | `--color-estimated` (= muted) | 아직 확정되지 않은 값. **색을 주지 않는다.** 회색 + 「예상」 라벨 |
+| **확정된 돈** | `--color-confirmed` 앰버 | 적립됐지만 아직 현금이 아닌 마일리지 |
+| **성공** | `--color-positive` | 절감 달성 |
+| **오류** | `--color-negative` | 빨강 |
 
-**배경 위에 올라가는 텍스트 색을 반드시 짝으로 쓴다.** v1에서는 배경 토큰만 있고
-그 위에 뭘 올릴지가 없어 `#0A5C39`, `#8A6512` 같은 값이 화면에 하드코딩돼 있었다.
+**배경 위에 올라가는 텍스트 색을 반드시 짝으로 쓴다.**
 
-| 배경 | 그 위 텍스트 | 그 위 구분선 |
+| 배경 | 그 위 텍스트 | 대비 |
 |---|---|---|
-| `--gp-color-positive-bg` | `--gp-color-on-positive` | — |
-| `--gp-color-confirmed-bg` | `--gp-color-on-confirmed` / `--gp-color-on-confirmed-muted` | `--gp-color-confirmed-divider` |
-| `--gp-color-primary` | `--gp-color-on-primary` | — |
+| `--color-positive-bg` `#E6F6ED` | `--color-on-positive` `#0A5C39` | 7.21 |
+| `--color-confirmed-bg` `#FFEED2` | `--color-on-confirmed` `#906603` / `-muted` `#8A6512` | 4.50 / 4.66 |
+| `--color-primary` | `--color-on-primary` 흰색 | 5.86 |
+| `--color-primary-bg` | `--color-primary-on-soft` | 5.62 |
 
-### 2-3. 증감 표기
+### 2-4. 증감 표기 — 늘어난 것은 빨강이다
 
-부호(`−12%`)는 늘었다는 뜻인지 줄었다는 뜻인지 매번 판단해야 한다.
-게다가 이 서비스에서는 `−`가 좋은 뜻이고 `+`가 나쁜 뜻이라 더 헷갈렸다.
-
+부호(`−12%`)는 늘었다는 뜻인지 줄었다는 뜻인지 매번 판단해야 한다. 이 서비스에서는 `−`가 좋은 뜻이라 더 헷갈린다.
 **화살표 + 숫자 + 말 세 겹으로 방향을 못 박는다. 색만으로 구분하지 않는다.**
 
 ```
-↓ 12% 줄었어요   --gp-color-decrease
-↑ 2%  늘었어요   --gp-color-increase
+↓ 12% 줄었어요   --color-decrease #046B3E   바탕 --color-decrease-bg #E2F0E8   (5.62)
+↑ 2%  늘었어요   --color-increase #BA2B28   바탕 --color-increase-bg #FFEDEB   (5.36)
 ```
 
+v2 의 `increase`는 앰버(`#8A6512`)였다. v3 에서 앰버가 **확정된 돈**과 **전기 요금** 두 곳에 이미 쓰여
+세 뜻이 한 색에 겹치게 됐고, 요금이 늘어난 것은 나쁜 소식이므로 빨강으로 옮겼다.
 컴포넌트: `<GpDelta :value="12" />` · `<GpDelta :value="-2" />`
 
-### 2-4. 요금 계열
+### 2-5. 요금 계열 — 채움 · 글자 · 바탕 세 벌
 
-진단 탭 그래프와 아이콘 타일이 쓴다. v1에는 없어서 생성 스크립트에만 있던 값이다.
+한 값으로 쓰면 막대에서 선명한 색이 글자에선 안 읽힌다. 전기 채움색 `#D99A1E`는 흰 바탕에서 **2.44** 다.
+그래서 요금마다 세 벌을 둔다. **`text-elec`은 글자용이라 AA 를 통과하고, 막대·선·아이콘은 `*-fill`을 쓴다.**
 
-| 요금 | 선·아이콘 | 배경 |
+| 요금 | 글자 `--color-{u}` | 채움 `--color-{u}-fill` | 바탕 `--color-{u}-bg` | 글자 대비 (흰 / 바탕) |
+|---|---|---|---|---|
+| 전기 | `#8A6508` | `#D99A1E` | `#FDF3E0` | 5.32 / 4.83 |
+| 도시가스 | `#94411A` | `#D2692C` | `#FCEEE4` | 6.93 / 6.10 |
+| 수도 | `#145E85` | `#2B7BB8` | `#E4F0F9` | 7.07 / 6.11 |
+
+- v2 의 전기색은 **브랜드 초록과 같은 값**이라 전기가 「성공」처럼 보였다. 앰버 계열로 옮겼다.
+- 도시가스 채움은 `#C9601F`에서 `#D2692C`로 오렌지 쪽으로 벌렸다 — 경고색과 육안 구분이 안 됐다.
+- **요금색은 배지·세로선·막대에만 쓴다. 카드 배경을 요금색으로 칠하지 않는다** — 화면이 무지개가 된다.
+- 요금 배지(「전기」「도시가스」「수도」)는 `bg-elec-bg text-elec text-badge rounded-xs` 다.
+  **색만으로 구분하지 않는다**(COM-07). 글자가 구분을 맡고, 색은 그 글자가 무슨 계열인지 설명만 한다.
+
+### 2-6. 페이스 4단계 — 감축률이 목표 대비 어디 있나
+
+홈 감축률 카드의 상태색이다. **목표 대비 상대값**이라 같은 마일리지 구간이라도 목표가 다르면 색이 뒤집힌다.
+채움 · 바탕 · 연한 채움(구간 바의 지나온 칸) 세 벌.
+
+| 상태 | 뜻 | `--color-pace-*` | `-bg` | `-soft` | 채움 대비 |
+|---|---|---|---|---|---|
+| `behind` | 남은 기간으로는 회복이 어렵다 | `#E03B2A` | `#FCECEA` | `#F6C3BC` | 4.35 |
+| `near` | 부족하지만 회복 가능 | `#D87C16` | `#FDF0DF` | `#F8D3A0` | 3.08 |
+| `on` | 목표 구간 달성 | `#12A05F` | `#E6F6ED` | `#A9DFC2` | 3.38 |
+| `ahead` | 목표 초과 | `#06894F` | `#E2F0E8` | `#9BD8B7` | 4.47 |
+
+- 채움색은 **36px 대형 수치(`text-display-lg`)와 구간 바·핸들에만** 쓴다. 대형 글자 기준 3:1 을 넘기면 된다.
+  16px 이하 글자에 쓰지 않는다 — `near`·`on`은 4.5 에 못 미친다.
+- 시안의 `near`는 `#E8861A`(2.67)였는데 대형 글자 기준에도 미달이라 한 단계 내렸다.
+- **고정값에 상태색을 쓰지 않는다.** 목표 구간 배지가 `--tone`을 써서 빨강→주황→초록으로 같이 바뀌던 것을
+  잉크색 마커로 바꾼 이유다. 고정값이 평가 대상처럼 읽힌다.
+
+### 2-7. 하단 탭바 — 레퍼런스 실측색
+
+| 토큰 | 값 | 대비 |
 |---|---|---|
-| 전기 | `--gp-color-elec` `#078753` | `--gp-color-elec-bg` |
-| 도시가스 | `--gp-color-gas` `#E08A1E` | `--gp-color-gas-bg` |
-| 수도 | `--gp-color-water` `#1B7FC4` | `--gp-color-water-bg` |
+| `--color-nav-on` | `#146E3A` | 6.32 |
+| `--color-nav-off` | `#818C85` | 3.49 — 14px 600 라벨에서만 |
+| `--gp-grad-fab` | `150deg #74BA52 → #2E8443` | 가운데 원 |
 
-### 2-5. 차트
+가운데 What-if 라벨은 **활성 여부와 무관하게 늘 `nav-on`** 이다. 브랜드 진입점이라서다.
 
-| 토큰 | 규칙 |
-|---|---|
-| `--gp-chart-reference` | 작년·지역 평균은 **회색 기준선** |
-| `--gp-chart-current` | 이번 기간만 상태색 |
-| `--gp-chart-below-goal` | 목표 미달 막대는 앰버 |
+### 2-8. 접근성 — 대비 실측표
 
-세 요금을 한 차트에 그릴 때는 **축척을 공유**한다. 이중 축을 쓰지 않는다.
+WCAG AA(글자 4.5:1 · 대형 글자/UI 3:1). 전부 계산한 실측이다. 흰 카드 기준.
 
-### 2-6. 선은 3단계뿐
+| 조합 | 대비 | |
+|---|---|---|
+| ink / 흰 카드 · 앱 배경 | 16.71 · 15.43 | ✓ |
+| ink-soft / 흰 카드 · 앱 배경 | 9.71 · 8.96 | ✓ |
+| muted / 흰 카드 · 앱 배경 | 5.28 · 4.87 | ✓ 12.5px 캡션까지 |
+| primary 글자 · primary 위 흰 글씨 | 5.86 | ✓ |
+| primary-on-soft / primary-bg | 5.62 | ✓ |
+| nav-on · nav-off | 6.32 · 3.49 | ✓ · △ 14px 600 라벨만 |
+| 요금 글자 / 바탕 (전기·가스·수도) | 4.83 · 6.10 · 6.11 | ✓ |
+| 페이스 채움 (behind·near·on·ahead) | 4.35 · 3.08 · 3.38 · 4.47 | ✓ 대형 수치 전용 |
+| negative · increase / increase-bg | 6.06 · 5.36 | ✓ |
+| on-positive / positive-bg | 7.21 | ✓ |
+| on-confirmed / confirmed-bg | 4.50 | ✓ (경계값. 더 밝게 하지 말 것) |
+| primary-soft `#06894F` 글자 | 4.47 | ✗ **글자 금지** — 채움·아이콘만 |
+| 에코마일리지 마크 `#79AF12` | 2.64 | 로고라 기준 안 받음. 브랜드 초록과 한 카드에 같이 선다 |
 
-| 토큰 | 어디에 |
-|---|---|
-| `--gp-color-border` | 카드 테두리 · 입력 |
-| `--gp-color-divider` | 카드 안 행 구분선 |
-| `--gp-color-track` | 슬라이더 · 비교 바 트랙 |
+### 2-9. 선은 3단계뿐
+
+| 토큰 | 값 | 어디에 | 카드 대비 |
+|---|---|---|---|
+| `--color-border` | `#EBEFEC` | 카드 테두리 · 입력 · 헤어라인 | 1.16 |
+| `--color-divider` | `#EEF1EF` | 카드 안 행 구분선 | 1.14 |
+| `--color-track` | `#E4E9E6` | 슬라이더 · 구간 바 · 진행 바 트랙 | 1.23 |
 
 이 밖의 회색을 새로 만들지 않는다.
-
-### 2-7. 접근성
-
-WCAG AA(4.5:1) 실측. `#9A9E9C`(비활성 탭)이 **2.71:1로 미달**이라 `--gp-color-text-muted`로 올렸다.
-
-| 조합 | 대비 |
-|---|---|
-| 본문 / 흰 배경 | 10.41:1 ✓ |
-| 본문 / 앱 배경 | 9.73:1 ✓ |
-| primary 위 흰 글씨 | 4.57:1 ✓ |
-| positive-bg 위 텍스트 | 7.24:1 ✓ |
-| confirmed-bg 위 제목 | 4.50:1 ✓ |
-| confirmed-bg 위 보조 | 4.66:1 ✓ |
-| 비활성 탭 (수정 후) | 4.92:1 ✓ |
 
 ---
 
 ## 3. 타이포
 
-Pretendard. 393pt 기준. **13단계만 쓴다.**
+Pretendard Variable. 393pt 기준. **16단계만 쓴다.** 크기·굵기·행간이 한 클래스에 묶여 있다 — `text-section` 하나로 셋이 붙는다.
 
-| 토큰 | px | 용도 |
-|---|---|---|
-| `--gp-font-size-50` | 11 | 탭바 라벨 · 마이크로 배지 |
-| `--gp-font-size-100` | 12 | 보조 캡션 · 차트 축 |
-| `--gp-font-size-200` | 13 | 캡션 · 출처 · 기준일 |
-| `--gp-font-size-300` | 14 | 리스트 보조 · 배지 |
-| `--gp-font-size-400` | 15 | 본문 |
-| `--gp-font-size-500` | 16 | 버튼 · 입력 |
-| `--gp-font-size-600` | 17 | 리스트 제목 |
-| `--gp-font-size-700` | 20 | 카드 섹션 제목 |
-| `--gp-font-size-800` | 24 | 강조 수치 |
-| `--gp-font-size-900` | 26 | 페이지 타이틀 |
-| `--gp-font-size-1000` | 28 | 금액 히어로 |
-| `--gp-font-size-1100` | 34 | 대형 수치 (진행률) |
-| `--gp-font-size-1200` | 42 | 결과 화면 대형 수치 |
+| 토큰 | v2 | **v3** | 굵기 | 용도 |
+|---|---|---|---|---|
+| `text-display-lg` | 42 | **36** | 900 | 감축률 헤드라인 · 결과 화면 대형 수치 |
+| `text-display` | 34 | **32** | 800 | 진행률 등 대형 수치 |
+| `text-amount-hero` | 28 | 28 | 800 | 포켓 잔액 히어로 |
+| `text-title` | 26 | **24** | 800 | 홈 헤드라인 「오늘 실천 N개가 남았어요」 · 페이지 타이틀 |
+| `text-amount` | 24 | **21.5** | 900 | 강조 수치 (예상 적립 30,000M) |
+| `text-section` | 20 | **18.5** | 800 | 카드 제목 |
+| `text-list-title` | 17 | **16** | 800 | 강조 한 줄 (상태 문장) · 리스트 제목 |
+| `text-button` | 16 | **15** | 700 | 버튼 · 입력 |
+| `text-body-strong` | 15 | **14** | 700 | 목록 항목 (미션명) |
+| `text-body` | 15 | **14** | 400 | 본문 |
+| `text-label` | 14 | **13** | 600 | 태그 · pill 버튼 라벨 |
+| `text-body-sm` | 14 | **12.5** | 400 | 리스트 보조 |
+| `text-caption` | 13 | **12.5** | 400 | 캡션 · 출처 · 기준일 · 작은 링크 |
+| `text-caption-sm` | 12 | **11** | 500 | 구간 축 라벨 · 기간 칩 |
+| `text-badge` | — | **10.5** | 700 | 요금 배지 · 목표 마커 (신설) |
+| `text-nav` | 11 | **14** | 600 | 탭바 라벨 — **유일하게 커졌다** |
 
-시안에서는 30종이 쓰이고 있었다 (`15.5px` 33회, `13.5px` 45회, `14.5px` 18회 …).
-빌드 마지막에 `_snap.py`가 스케일로 강제 정렬한다 — 생성기가 무엇을 쓰든 산출물은 스케일 안에 있다.
+### 어떻게 정했나 — 잉크 높이를 직접 맞췄다
 
-합성 토큰(`font` 축약형)도 함께 제공한다: `--gp-text-title` · `--gp-text-body` · `--gp-text-caption` 등 15종.
+같은 1179×2556(@3x)로 찍은 신한 SOL 홈과 우리 홈을 픽셀 비교했다. 배율 검증은 상태바 시각 잉크(SOL 36px / 우리 35px).
 
-**금액·사용량 숫자에는 예외 없이 `font-variant-numeric: tabular-nums`.** (`.num` 클래스)
+| 역할 | v2 px | 우리 잉크 | SOL 잉크 | 배수 |
+|---|---|---|---|---|
+| 카드 제목 | 24 | 68 | 52 | 1.30 |
+| 강조 한 줄 | 21 | 60 | 46 | 1.32 |
+| 보조 캡션 | 16 | 43 | 34 | 1.26 |
+| 탭 라벨 | 14 | 33 | 32 | 1.03 ← 이미 맞다 |
+
+**탭바를 뺀 전 항목이 1.29배 컸다.** 전부 ×0.773 했고 적용 후 잉크가 53 · 47 · 33 · 34 로 SOL 과 일치한다.
+
+⚠️ **처음 틀렸던 이유** — 한글 잉크 비율을 0.73 으로 가정하고 환산했다. 받침 있는 한글은 약 0.93 이라
+그 상수 하나가 1.27배 부풀렸다. **가정한 비율로 환산하지 말고 잉크 높이를 직접 맞춘다.**
+
+⚠️ **측정은 Noto Sans KR 로 했고 앱은 Pretendard 다.** 두 서체의 한글 잉크 비율은 0.9 안팎으로 비슷하지만,
+홈을 옮긴 뒤 같은 방법으로 한 번 다시 재야 한다. 서체를 바꾸는 건 범위 밖이다(의존성 변경).
+
+**금액·사용량 숫자에는 예외 없이 `tabular-nums`.** 자간은 `tracking-display`(-0.05em, 대형 수치) ·
+`tracking-title`(-0.04em) · `tracking-body`(-0.03em) · `tracking-normal`(-0.02em, 캡션·배지).
 
 ---
 
-## 4. 형태
+## 4. 형태 · 그림자
 
 | 토큰 | px | 어디에 |
 |---|---|---|
-| `--gp-radius-xs` | 5 | 수치·상태 배지 (알약 아님) |
-| `--gp-radius-sm` | 8 | 작은 칩 · 막대 끝 |
-| `--gp-radius-md` | 12 | 입력 · CTA · 아이콘 타일 · 배너 |
-| `--gp-radius-lg` | 16 | 카드 |
-| `--gp-radius-xl` | 20 | 히어로 카드 · 세그먼트 |
-| `--gp-radius-2xl` | 26 | 바텀시트 상단 |
-| `--gp-radius-full` | 999 | pill · 필터 칩 · 토스트 · 원형 |
+| `rounded-xs` | 5 | 수치·상태 배지 · 요금 배지 (알약 아님) |
+| `rounded-sm` | 8 | 작은 칩 · 막대 끝 |
+| `rounded-md` | 12 | 입력 · CTA · 아이콘 타일 · 배너 · 카드 안 버튼 |
+| `rounded-lg` | 16 | 카드 안 서브 블록 · 드롭다운 |
+| `rounded-xl` | 20 | 그라데이션 배너(포켓 잔액 요약) · 세그먼트 |
+| **`rounded-card`** | **24** | **카드** (신설. v2 의 `rounded-lg` 카드는 이걸로) |
+| `rounded-2xl` | 26 | 바텀시트 상단 |
+| `rounded-full` | 999 | pill · 필터 칩 · 토스트 · 탭바 · 원형 |
 
-**원과 알약은 `--gp-radius-full`로 쓴다.** 크기의 절반값(예: 54px FAB에 27px)을 적지 않는다 —
-크기가 바뀌면 원이 깨진다. 실제로 스케일 정리 중에 이 방식으로 FAB·토글·라디오가 한 번 깨졌다.
+**원과 알약은 `rounded-full`로 쓴다.** 크기의 절반값을 적지 않는다 — 크기가 바뀌면 원이 깨진다.
 
-**카드에 그림자를 쓰지 않는다.** 떠 있는 것(탭바·토스트·모달)만 `--gp-shadow-float`.
+### 카드는 그림자를 쓴다 — v2 와 반대다
+
+v2 는 「카드에 그림자를 쓰지 않는다」였다. 팀 피드백 「카드가 배경과 같은 색이라 안 보인다 / 그림자로 구별하는 게 별로다」에서
+**면 대비(2-2절)를 먼저 세우고, 그 위에 그림자를 얹는** 것으로 바꿨다. 둘 중 하나만 쓰면 안 된다 —
+그림자만 쓰면 밝은 화면·야외에서 사라지고, 면 대비만 쓰면 눌러지지 않을 것처럼 보인다.
+
+| 토큰 | 값 | 어디에 |
+|---|---|---|
+| `shadow-card` | `0 1px 3px 0 rgb(16 40 28/.08), 0 8px 20px -6px rgb(16 40 28/.16)` | 카드 |
+| `shadow-float` | `0 0 0 1px rgb(20 40 32/.05), 0 6px 18px rgb(16 40 28/.10)` | 탭바 · 토스트 |
+| `shadow-fab` | `0 4px 12px rgb(16 60 32/.26)` | 탭바 가운데 원 |
+| `shadow-sheet` | `0 -6px 24px rgb(19 26 21/.12)` | 바텀시트 |
+
+- **2겹 구조**(Material 3 / Tailwind `shadow-lg`) — 접촉(key light: y·blur 작게) + 확산(ambient: y·blur 크게,
+  **음수 spread** 로 옆 번짐 차단). 한 겹은 평평해 보인다.
+- **색은 검정이 아니라 잉크 `rgb(16 40 28)`** — 초록 기미 배경 위에서 검정 그림자는 회색으로 죽어 배경 색을 흐린다.
+  접촉점 `#BFC8C3` · 배경 대비 1.582.
+- Tailwind 기본 `shadow-sm` · `shadow-lg` 를 쓰지 않는다. v4 에서 스케일이 한 칸 밀린 데다 색이 검정이다.
 
 ---
 
 ## 5. 간격 · 치수
 
-4px 베이스: `--gp-space-1`(4) ~ `--gp-space-10`(40).
+간격은 Tailwind 기본 4px 스케일을 그대로 쓴다(`p-4`=16 · `p-5`=20 · `gap-3`=12). 별도 토큰이 없다.
+컴포넌트 치수는 시안·레퍼런스 실측값이다. **4/8 그리드로 반올림하지 말 것.**
 
-컴포넌트 치수는 슈퍼SOL 스크린샷 연결성분 실측값이다. **4/8 그리드로 반올림하지 말 것.**
-
-| 토큰 | px | |
-|---|---|---|
-| `--gp-gutter` | 12 | 화면 좌우 여백 (카드 폭 369 @393) |
-| `--gp-card-pad` | 16 | 카드 내부 |
-| `--gp-card-gap` | 20 | 카드 사이 |
-| `--gp-safe-bottom` | 112 | 탭바 + 여백 |
-| `--gp-row-h` | 60 | 리스트 행 (행 전체가 터치 영역) |
-| `--gp-cta-h` | 48 | 화면 하단 CTA |
-| `--gp-tabbar-h` | 60 | |
-| `--gp-fab` | 56 | 가운데 What-if 버튼 |
-| `--gp-min-touch` | 44 | 최소 터치 영역 |
+| 토큰 | v2 | **v3** | |
+|---|---|---|---|
+| `--gp-gutter` | 12 | **16** | 화면 좌우 여백 (카드 폭 361 @393) |
+| `--gp-card-pad` | 16 | **20** | 카드 내부. 감축률 카드만 18/16 |
+| `--gp-card-gap` | 20 | **12** | 카드 사이 |
+| `--gp-safe-bottom` | 112 | 112 | 탭바 64 + 하단 8 + 돌출 18 + 여백 |
+| `--gp-row-h` | 60 | **62** | 리스트 행 (행 전체가 터치 영역) |
+| `--gp-cta-h` | 48 | **46** | 화면 하단 CTA |
+| `--gp-wbtn-h` | 40 | 40 | 카드 안 전체폭 버튼 · pill 3개 |
+| `--gp-tabbar-h` | 60 | **64** | 레퍼런스 275 → 64 |
+| `--gp-fab` | 56 | **50** | 가운데 원 지름 (바의 0.85) |
+| `--gp-fab-lift` | — | **18** | 원이 바 위로 솟는 높이 (0.29) — 신설 |
+| `--gp-tab-icon` | — | **20** | 탭 아이콘 — 신설 |
+| `--gp-checkbox` | 22 | 22 | 오늘의 실천 체크 원 |
+| `--gp-seg-bar-h` | — | **9** | 감축률 구간 바 — 신설 |
+| `--gp-min-touch` | 44 | 44 | 최소 터치 영역 |
 
 ---
 
@@ -218,9 +313,7 @@ Pretendard. 393pt 기준. **13단계만 쓴다.**
 | `--gp-duration-base` | 220 | 아코디언 · 탭 전환 |
 | `--gp-duration-slow` | 320 | 바텀시트 · 화면 전환 |
 
-이징: `--gp-ease-standard` (기본) · `--gp-ease-enter` · `--gp-ease-exit`.
-
-`greenpocket.css`에 `prefers-reduced-motion` 대응이 들어 있다.
+이징: `ease-standard` (기본) · `ease-enter` · `ease-exit`. `prefers-reduced-motion` 은 화면 셸에서 처리한다.
 
 ---
 
@@ -228,11 +321,11 @@ Pretendard. 393pt 기준. **13단계만 쓴다.**
 
 | 토큰 | |
 |---|---|
-| `--gp-focus-ring` | `:focus-visible` 전역 적용 |
-| `--gp-color-disabled-bg` / `-text` | 비활성 |
-| `--gp-color-skeleton` / `-shine` | 로딩 |
-| `--gp-color-overlay` | 모달 뒤 딤 |
-| `--gp-color-control-border` / `-off` / `-on` | 체크박스 · 라디오 · 토글 |
+| `:focus-visible` | primary 35% 링 3px, 전역 |
+| `--color-disabled-bg` / `-text` | 비활성 (비활성 글자는 대비 기준을 받지 않는다) |
+| `--color-skeleton` / `-shine` | 로딩 |
+| `--color-overlay` | 모달 뒤 딤 |
+| `--color-control-border` / `-off` / `-on` | 체크박스 · 라디오 · 토글. **켜진 상태는 브랜드 초록**(v2 는 회색) |
 
 z-index는 8단계로 고정: `base 0 · sticky 10 · tabbar 20 · fab 30 · sheet 40 · overlay 50 · modal 60 · toast 70`.
 
@@ -240,24 +333,23 @@ z-index는 8단계로 고정: `base 0 · sticky 10 · tabbar 20 · fab 30 · she
 
 ## 8. Vue 컴포넌트
 
-| 컴포넌트 | props | 비고 |
+| 컴포넌트 | props | v3 에서 바뀐 것 |
 |---|---|---|
-| `GpButton` | `variant` (primary\|pill\|wide\|ghost) · `size` (cta\|wide\|pill) · `disabled` | 하단 CTA는 `primary` + `cta` 하나만 |
-| `GpCard` | `title` · `caption` · `badge` · `tone` (default\|sub\|estimated\|confirmed) | 그림자 없음 |
-| `GpTag` | `tone` (sub\|primary\|positive\|confirmed\|negative\|estimated) · `small` | radius-xs 사각형 |
-| `GpDelta` | `value` · `size` · `digits` · `word` · `showWord` | **증감은 반드시 이걸로** |
-| `GpBandPicker` | `v-model` · `bands` | 슬라이더 대신 구간 칩 |
-| `GpMissionRow` | `mission` · `v-model` · `muted` · `recommended` | 출처·근거를 행 안에 |
-| `GpTabBar` | `active` · `tabs` | 떠 있는 pill. 가운데 What-if는 FAB |
-| `GpPageHeader` | `title` · `subtitle` · `#action` | 탭 최상위 화면 |
-| `GpBackHeader` | `title` · `#action` · `@back` | 하위 화면 (COM-02) |
+| `GpButton` | `variant` (primary\|pill\|wide\|ghost) · `size` (cta\|wide\|pill) · `disabled` | 값만 (CTA 46 · 글자 15) |
+| `GpCard` | `title` · `caption` · `badge` · `tone` (default\|sub\|estimated\|confirmed) | **`rounded-card` + `shadow-card`** |
+| `GpTag` | `tone` (sub\|primary\|positive\|confirmed\|negative\|estimated) · `small` | 값만 |
+| `GpDelta` | `value` · `size` · `digits` · `word` · `showWord` | 늘어남이 빨강 |
+| `GpBandPicker` | `v-model` · `bands` | — |
+| `GpMissionRow` | `mission` · `v-model` · `muted` · `recommended` | — (홈의 「오늘의 실천」 행은 9절) |
+| `GpTabBar` | `active` · `tabs` | **레퍼런스 비율로 재구성** — 바 64 · 원 50 · 돌출 18 · 아이콘 20 · nav-on/off |
+| `GpPageHeader` | `title` · `subtitle` · `#action` | 값만 |
+| `GpBackHeader` | `title` · `#action` · `@back` | 값만 |
 
 ### 아이콘
 
 `components/ui/icons/`에 파일 1개당 1개씩 둔다. 공통 규약은 `currentColor` · `size` prop(기본 24) ·
 `aria-hidden="true"` · `focusable="false"` 네 가지다. **`viewBox`는 출처에 따라 다르다** —
-직접 그린 것은 `0 0 24 24`, Phosphor에서 뽑은 것은 `0 0 256 256`이다. `size`로 렌더 크기를 맞추므로
-섞여 있어도 화면에서는 같은 크기로 나온다.
+직접 그린 것은 `0 0 24 24`, Phosphor에서 뽑은 것은 `0 0 256 256`이다. `size`로 렌더 크기를 맞춘다.
 
 **새 아이콘은 Phosphor에서 뽑아 쓴다.**
 
@@ -266,20 +358,16 @@ cd frontend
 npm run icon -- PhCaretLeft IconChevronLeft fill   # <PhosphorName> <IconName> [weight]
 ```
 
-`@phosphor-icons/vue`는 **devDependency다.** 컴포넌트를 그대로 `import`하면 아이콘 하나당 6가지
-weight(thin·light·regular·bold·fill·duotone)가 전부 번들에 실려 **gzip 기준 약 0.9kB**가 붙는다.
-스크립트(`scripts/add-icon.mjs`)는 지정한 weight의 `<path>`만 뽑아 일반 SFC로 저장하므로 런타임
-의존성이 0이고 아이콘당 수백 바이트로 끝난다. **`@phosphor-icons/vue`를 화면 코드에서 직접 import 하지 않는다.**
-시안이 채워진 스타일이므로 기본 weight는 `fill`이다.
+`@phosphor-icons/vue`는 **devDependency다.** 컴포넌트를 그대로 `import`하면 아이콘 하나당 6가지 weight가 전부
+번들에 실려 gzip 약 0.9kB가 붙는다. 스크립트(`scripts/add-icon.mjs`)는 지정한 weight의 `<path>`만 뽑아 SFC로
+저장하므로 런타임 의존성이 0이다. **`@phosphor-icons/vue`를 화면 코드에서 직접 import 하지 않는다.** 기본 weight는 `fill`이다.
 
 **탭 아이콘 5개(`IconChart` `IconGift` `IconLeaf` `IconPocket` `IconUser`)만 예외로 직접 그렸다.**
-Phosphor 후보(`PhChartBar` `PhGift` `PhLeaf` `PhWallet` `PhUser`)와 8배 확대 대조한 결과 시안과
-형태가 달랐다 — 포켓은 시안이 가운데 원인데 `PhWallet`은 오른쪽 카드 슬롯이고, 잎은 시안에 줄기가
-없는데 `PhLeaf`는 있으며, 혜택은 시안이 2×2 블록인데 `PhGift`는 리본 선물상자다. 탭바는 앱의 얼굴이라
-시안 일치를 우선했다. **이 5개를 라이브러리 아이콘으로 바꾸지 않는다.**
+Phosphor 후보와 8배 확대 대조한 결과 시안과 형태가 달랐다. **이 5개를 라이브러리 아이콘으로 바꾸지 않는다.**
+뒤가 비쳐야 하는 부분은 선을 덧그리지 않고 `fill-rule="evenodd"`로 뚫는다.
 
-잎맥·포켓 손잡이처럼 **뒤가 비쳐야 하는 부분은 선을 덧그리지 않고 `fill-rule="evenodd"`로 뚫는다.**
-흰 아이콘 위에 흰 선을 그을 수 없기 때문이다.
+**에코마일리지 마크**(`docs.local/design-reference/eco.png`, 잉크 1144×650 가로형)는 높이 17px·너비 자동으로 쓴다.
+⚠️ 서울시 공식 심볼인지 확인하지 못했다. 확인 전까지 다른 화면으로 번지게 하지 않는다.
 
 ### 화면 셸
 
@@ -288,59 +376,133 @@ Phosphor 후보(`PhChartBar` `PhGift` `PhLeaf` `PhWallet` `PhUser`)와 8배 확�
 | `AppTabLayout` | `tab` · `title` · `subtitle` · `#headerAction` | 헤더 + 본문 + 탭바 |
 | `AppSubLayout` | `title` · `back` · `hasFooter` · `#headerAction` · `#footer` | 뒤로가기 헤더 + 본문 |
 
-`components/layout/`에 있다. `ui/`와 나눈 기준은 **라우터를 아느냐**다 — `GpTabBar`는 표시만 하고,
-`AppTabLayout`이 `tabs.js`를 보고 실제로 이동시킨다. **탭 목록은 `components/layout/tabs.js` 하나뿐이다.**
-
-### 미션 데이터 형태
-
-```js
-{
-  id: 'e2',
-  title: '에어컨 하루 1시간 줄이기',
-  sub: '켜 두는 시간만 줄여도 크게 달라져요',
-  group: '냉방',          // 같은 그룹은 합계에서 최대값 하나만
-  effect: 18,             // 우리 집 기준 추정 감축률 %
-  claim: '월 40kWh · 4,880원',
-  basis: '15평형 2kW를 20일 기준 · 40kWh ÷ 우리 집 223kWh',
-  source: '한국에너지공단',
-  level: '보통',           // 쉬움 | 보통 | 어려움
-  season: 'summer',       // all | summer | winter
-}
-```
-
-합계는 **그룹별 최대값만 더한다.** "에어컨 1시간 줄이기"와 "에어컨 대신 선풍기"를
-둘 다 고르면 158kWh가 되지만 실제로는 그렇게 줄지 않는다.
+`components/layout/`에 있다. `ui/`와 나눈 기준은 **라우터를 아느냐**다. **탭 목록은 `components/layout/tabs.js` 하나뿐이다.**
+탭 라벨은 `진단 · 혜택 · What-if · 포켓 · 마이` 로 확정(2026-09-09). 가운데 돌출 원을 쓰려면 What-if 가 3번째여야 한다.
 
 ---
 
-## 9. 남은 일
+## 9. 홈(WF-06) 확정 시안 — 컴포넌트 해부
 
-- [ ] **Figma Variables 동기화** — `tokens.json`은 준비됨. Figma MCP 할당량이 10월 1일 리셋되면 업로드
-- [x] 아이콘 SVG를 컴포넌트로 분리 — `components/ui/icons/`. 단일 `GpIcon` 대신 파일 1개당 1개로 나눴다.
-      넷이 동시에 아이콘을 추가하면 한 파일에 몰아넣은 쪽이 매번 충돌하기 때문이다
+혜택·포켓 리디자인이 같은 문법을 쓰도록, 홈에서 정한 것을 부품 단위로 적어 둔다. 값은 전부 위 토큰이다.
+
+### 9-1. 헤더 — 배경 없음, 캐릭터는 카드 뒤에서 빼꼼
+
+```
+[로고 32 원형 primary-soft] 수현님(text-list-title)              ← 로고·이름 줄
+                                                                   30px
+오늘 실천                                                          ← text-title 24 · 최대폭 214
+3개가 남았어요                                             [캐릭터 126px, 카드 뒤 z-0, bottom:-30]
+┌──────────────── 감축률 카드 (첫 카드, z-1) ─────────────────┐
+```
+
+- 하늘·언덕 배경 일러스트와 「다 지키면 이번 달 ~원」 보조문은 **뺐다.** 너무 귀여워지고 헤더가 길어졌다.
+- 헤드라인은 이 화면에서 가장 먼저 읽히는 문장이라 카드 제목(18.5)보다 두 단계 위(24)다.
+- 캐릭터 PNG 는 320px · 192색 팔레트로 줄여 쓴다(개당 약 13KB). 원본째 넣으면 아티팩트 렌더가 죽었다(230KB 에서 빈 화면).
+- 다른 네 탭은 이 헤더 없이 `GpPageHeader` + 흰 카드로 바로 시작한다.
+
+### 9-2. 감축률 카드 — 위아래가 서로 다른 축이다
+
+```
+평균 감축률 (text-section)                          [2026.04~09  기간 칩: surface-sub · caption-sm]
+9.0%  (text-display-lg · pace 채움색)
+                    목표▾  (잉크색 고정 마커, 3번째 칸 위 · text-badge)
+[■■■■][■■■■][    ][    ]   구간 바 4칸 · gap 4 · h 9 · rounded-xs · 지나온 칸 -soft · 현재 칸 채움
+ 0~5%  5~10%  10~15%  15%+   축 라벨 caption-sm · 현재 칸 pace색 800 · 목표 칸 ink 700
+───────────────────────────── divider
+(아이콘 22) 아직 부족하지만 회복 가능해요 (text-list-title)
+            남은 2개월 매달 11.0% 필요 (text-caption · muted)
+(에코마일리지 마크 h17) 예상 에코마일리지 적립 (caption · muted)
+                        30,000M (text-amount · ink)
+───────────────────────────── divider
+   내 목표    |   월 리포트   |   실천 바꾸기      (caption · muted · 세로 구분선)
+```
+
+- **구간은 지급 구간과 같다** — `0~5 / 5~10 / 10~15 / 15%+`. 목표는 구간 선택이라 11.3% 같은 임의 수치를 쓰지 않는다.
+- **목표는 배지가 아니라 바 위 마커다.** 배지가 `--tone`을 써서 고정값이 상태색으로 같이 바뀌었고, 바가 「내가 어디 있나」만 말하고
+  「어디로 가야 하나」를 안 말했다. 목표 칸 트랙에 링(`inset 0 0 0 1.5px rgb(22 32 27/.30)`)을 넣고,
+  현재 위치가 목표 칸일 땐 상태색이 이긴다.
+- **우상단 기간 칩**은 「평균」이 무엇의 평균인지 밝힌다(규칙 7). 고정값이라 중립 회색, 범위 구분자는 `~`.
+- **홈 문구는 요구 감축률을 말하고 지급액을 약속하지 않는다.** 「평균 감축률」은 회복 축(`Σ monthlyRate ÷ 개월`),
+  「예상 에코마일리지 적립」은 지급 축(탄소가중 `cumulativeRate`)이다. 편중된 달엔 1.75%p 까지 벌어진다 — **BE 계약 때 같이 볼 것.**
+- 예상 적립은 캡션 위 · 값 아래 2줄이다. 한 줄로 두면 로고 39 + 라벨 201 + 값 85 = 325px 로 카드 안쪽 폭에 꽉 찼다.
+
+### 9-3. 오늘의 실천 — 체크 왼쪽 · 색 라벨 · 오른쪽 비움
+
+```
+오늘의 실천 (text-section)                              달력 보기 > (caption · muted)
+(●22 체크) [전기]배지        ← bg-elec-bg text-elec text-badge rounded-xs · padding 2px 5px
+           냉방 온도 26℃로 맞추기 (text-body-strong)
+───────────────────────────── divider
+(○22)      [도시가스]
+           온수 55℃ → 40℃로 낮추기
+…
+───────────────────────────── divider
+다 지키면 월 약 7,480원을 아껴요 (caption · 값은 primary-on-soft 700)
+```
+
+- 20px 요금 아이콘을 글자 배지로 바꿨다. 그 크기에서 불꽃과 물방울이 안 구별됐고 COM-07 을 모양에 기대 겨우 통과했다.
+- 4px 색 세로선은 뺐다 — 색이 선과 라벨에 두 번 들어가 시끄러웠다. 왼쪽 앵커는 **체크 원을 왼쪽으로 옮겨** 넘겼다.
+  덤으로 완료된 것이 왼쪽에 정렬돼 「2/5」가 목록만 봐도 읽히고, 「행 전체가 버튼인데 체크만 눌러야 할 것 같다」도 풀렸다.
+- **정렬 기준선은 배지의 틴트 블록 모서리다.** 배지 글자와 미션명 글자를 맞추면 블록만 튀어나와 더 어긋나 보인다 —
+  눈은 칩 안 글자가 아니라 칩 모서리를 읽는다.
+- 체크 채움은 브랜드 초록 `control-on`(코발트·인디고 4안과 비교해 확정. 다시 제안하지 않는다). 완료 행은 미션명 muted, 배지 50%.
+- **행별 금액은 뺐다.** 합계는 하단 한 줄이 든다. 원화 우선(규칙 1)은 그 줄이 받는다.
+- 「약」을 붙이고 「아껴요」로 문장을 닫는다 — 이 값은 `savedAmount`(덜 낸 요금)라 바로 위 「예상 에코마일리지 적립」과 성격이 다르다.
+  둘 다 금액이라 안 닫으면 둘 다 「받는 돈」으로 읽힌다(규칙 2·3). **반올림하지 않는다** — WF-04 미션별 절감액 합과 어긋나면 안 된다.
+
+### 9-4. 하단 탭바
+
+흰색 완전 라운드 pill(64) + 가운데가 위로 18px 솟은 원(50, `--gp-grad-fab`, `shadow-fab`). 아이콘 20, 원 안 아이콘 25.
+라벨 `text-nav`(14/600), 활성 800. 레퍼런스 실측 비율 그대로다 — `GpTabBar` 가 이미 이렇게 되어 있다.
+
+---
+
+## 10. v2 → v3 이행 — 기존 화면에서 확인할 것
+
+토큰 이름은 그대로라 **빌드가 깨지는 곳은 없다**(2026-09-09 `npm run build` · `vitest` 261건 통과). 다만 값이 바뀌어
+**보이는 것이 달라지는 곳**과, v3 문법으로 옮겨야 더 맞는 곳이 있다. 리디자인하는 화면부터 순서대로 잡는다.
+
+### 값이 바뀐 토큰
+
+| 토큰 | v2 | v3 | 영향 |
+|---|---|---|---|
+| `primary` | `#078753` | `#057441` | 버튼·활성 26곳, 초록 글자 37곳 — 살짝 어두워지고 AA 통과 |
+| `primary-soft` | `#00A968` | `#06894F` | 아이콘 4곳 — 브랜드 기준색으로 |
+| `primary-on-soft` | `#037D4C` | `#046B3E` | 31곳 |
+| `canvas` · `surface-sub` · `border` · `divider` · `track` | 회색 | 초록 기미 회색 | 전 화면. 카드 면 대비 1.083 |
+| `muted` | `#6F716F` | `#616F67` | 245곳. 약간 어두워진다 |
+| `icon-off` · `disabled-text` | `#A2A6A3` | `#AFB8B2` | 밝아진다 |
+| `control-on` | 회색 | 브랜드 초록 | 체크박스·토글 켜짐 |
+| `elec` / `gas` / `water` (글자) | 채움색 | **글자용 어두운 색** | `text-elec` 4 · `text-gas` 6 · `text-water` 5 — AA 통과. 막대·선은 `*-fill` 로 |
+| `elec-fill` (= chart series-1) | 초록 | 앰버 | 진단 차트 전기 막대 |
+| `increase` | 앰버 | 빨강 | `GpDelta` 늘어남 표기 |
+| `text-*` 15종 | | ×0.773 안팎 | 전 화면 글자 축소. `text-nav` 만 11→14 |
+| `--gp-gutter` · `card-pad` · `card-gap` | 12 · 16 · 20 | 16 · 20 · 12 | 전 화면 여백 |
+| `--gp-cta-h` · `row-h` · `tabbar-h` · `fab` | 48 · 60 · 60 · 56 | 46 · 62 · 64 · 50 | |
+| `shadow-float` | 검정 1겹 | 잉크 2겹 | 탭바·토스트 9곳 |
+
+### 화면 코드에서 옮길 것 (리디자인 순서대로)
+
+| 지금 | 바꿀 것 | 어디 |
+|---|---|---|
+| 카드를 `rounded-lg` 로 직접 그린 곳 | `GpCard` 또는 `rounded-card shadow-card` | `rounded-lg` 76곳 중 카드인 것 |
+| Tailwind 기본 `shadow-sm` · `shadow-lg` · `shadow-md` · `shadow-xs` | `shadow-card` · `shadow-float` | 6곳 (`PocketRecommendedProductCard` · `BillYearSelect` · `AnalysisHomeView` 2 · `BillRecognitionResultView`) |
+| `shadow-card` 를 토큰 없이 쓰던 곳 | 이제 토큰이 생겨 **그림자가 붙는다** | `PocketAccountCreateView` 드롭다운 |
+| 요금 아이콘 타일 `text-elec` (어두운 글자색) | 막대·아이콘이면 `text-elec-fill` | `UtilityIcon` · `BillUtilityIcon` · 차트 |
+| 화면 안 hex | 차트 토큰 `chart-*` | `AnalysisHomeView` 5곳. 은행 로고(`BankLogo` · `KbBankWordmark`)는 브랜드 자산이라 예외 |
+| `GpPageHeader` 제목 | 홈은 9-1 헤더로 교체, 나머지 탭은 유지 | WF-06 |
+
+### 지운 것
+
+없다. `--gp-hero-h` 등 v2 에서만 쓰던 치수도 그대로 있다.
+
+---
+
+## 11. 남은 일
+
+- [ ] **홈(WF-06) 옮기기** — 9절 부품 순서대로. 감축률 카드 → 오늘의 실천 → 헤더·캐릭터
+- [ ] **혜택(BN-01) · 포켓(PK-01) 리디자인** — 홈과 같은 카드 문법. 포켓 잔액 카드만 `--gp-grad-hero` 를 쓴다
+- [ ] Pretendard 로 잉크 높이 재검증 (3절)
+- [ ] `AnalysisHomeView` 차트 hex 5곳 토큰화
+- [ ] **Figma Variables 동기화** — `tokens.json` 준비됨. MCP 할당량 리셋(10/1) 후
 - [ ] 다크 모드 — 토큰 구조는 대응 가능하나 팔레트 미정. MVP 범위 밖
-- [ ] 죽은 클래스 정리 — `greenpocket.css` 204규칙 중 앱 화면이 실제로 쓰는 것은 89개.
-      나머지는 폐기 화면·문서 아트보드용이라 개발 착수 후 실사용 기준으로 한 번 더 걷어낼 것
-
----
-
-## 부록 · 빌드 순서
-
-```
-ds/tokens.css  ─┬→ ds/_mkjson.py → tokens.json        (피그마·Style Dictionary)
-                └→ ds/_mkbase.py → _base.css          (시안 아트보드가 품는 사본)
-ds/greenpocket.css ─┘                    ↓
-                                    _head.txt · *.dc.html 동기화
-                                         ↓
-생성기(_gen_*.py) → _snap.py(스케일 강제) → _measall.cjs(높이)
-                  → _gencanvas.py → seed-canvas.mjs(아티팩트)
-                  → _png.cjs / _genhtml.py(내보내기)
-```
-
-**`ds/tokens.css`와 `ds/greenpocket.css`가 정본이다.** 시안 아트보드는 이 둘을
-`<style>`로 그대로 품으므로, 화면 시안과 앱이 같은 CSS를 쓴다 — HTML 내보내기에서
-본 변수명이 개발 코드에 그대로 있다.
-
-`tokens.json`과 `_base.css`는 **생성물**이다. 직접 고치면 다음 빌드에 덮인다.
-`_base.css`에는 시안 전용 클래스(`.phone`, 설명 시트 `.w*`)가 덧붙는데,
-이것들은 `greenpocket.css`에 들어가지 않는다.
