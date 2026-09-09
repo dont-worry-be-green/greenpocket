@@ -61,7 +61,7 @@ function toggleInterest(value) {
     <div>
       <span class="text-body-strong text-muted mb-1 block">관심 분야</span>
       <span class="text-caption text-muted mb-3 block"
-        >추천 순서를 정하는 데 사용할 분야를 최대 2개 선택해 주세요.</span
+        >맞춤 추천에서 볼 분야를 최대 2개 선택해 주세요.</span
       >
       <div class="flex flex-wrap gap-2" role="group" aria-label="관심 분야">
         <button

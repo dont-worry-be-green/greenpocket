@@ -3,7 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import client from '@/api/client'
 import { DATA_SOURCE, setDataSource } from '@/api/dataSource'
+import { getMypage } from '@/api/mypage'
 import { getPolicies, getPolicy, getPolicyRecommendations } from '@/api/policy'
+import {
+  POLICY_PREFERENCES,
+  updateFixturePolicyPreferences,
+} from '@/fixtures/policy'
 
 const storage = new Map()
 Object.defineProperty(globalThis, 'localStorage', {
@@ -21,7 +26,10 @@ beforeEach(() => {
   vi.restoreAllMocks()
 })
 
-afterEach(() => setDataSource(DATA_SOURCE.API))
+afterEach(() => {
+  setDataSource(DATA_SOURCE.API)
+  updateFixturePolicyPreferences(POLICY_PREFERENCES)
+})
 
 describe('청년정책 API', () => {
   it('맞춤 추천·전체 목록·상세 API 계약을 그대로 호출한다', async () => {
@@ -43,7 +51,7 @@ describe('청년정책 API', () => {
     setDataSource(DATA_SOURCE.FIXTURE)
 
     const list = await getPolicies({ category: 'HOUSING', page: 0, size: 20 })
-    expect(list.content).toHaveLength(1)
+    expect(list.content).toHaveLength(5)
     expect(list.content[0].category).toBe('HOUSING')
 
     const detail = await getPolicy(list.content[0].policyId)
@@ -53,5 +61,38 @@ describe('청년정책 API', () => {
       code: 'YOUTH_POLICY_NOT_FOUND',
       status: 404,
     })
+  })
+
+  it('픽스처 모드 맞춤 추천도 저장한 관심 분야로 필터링한다', async () => {
+    setDataSource(DATA_SOURCE.FIXTURE)
+    updateFixturePolicyPreferences({
+      ...POLICY_PREFERENCES,
+      currentStatus: 'UNEMPLOYED',
+      annualIncomeBand: 'NO_INCOME',
+      educationStatus: 'UNIVERSITY_GRADUATE',
+      interestCategories: ['HOUSING'],
+    })
+
+    const list = await getPolicyRecommendations()
+
+    expect(list.content).toHaveLength(5)
+    expect(list.content.every((policy) => policy.category === 'HOUSING')).toBe(true)
+
+    const details = await Promise.all(list.content.map((policy) => getPolicy(policy.policyId)))
+    expect(details).toHaveLength(5)
+    details.forEach((detail) => {
+      expect(detail.description).not.toBe('')
+      expect(detail.supportContent).not.toBe('')
+      expect(detail.application.method).not.toBe('')
+      expect(detail.application.url).toMatch(/^https:/)
+      expect(detail.conditions.age).not.toBe('제한 없음')
+      expect(detail.conditions.income).not.toBe('제한 없음')
+      expect(detail.conditions.special).not.toBe('제한 없음')
+    })
+
+    const mypage = await getMypage()
+    expect(mypage.youthPolicy.recommendedCount).toBe(5)
+    expect(mypage.youthPolicy.preview).toHaveLength(5)
+    expect(mypage.youthPolicy.preview.every((policy) => policy.category === 'HOUSING')).toBe(true)
   })
 })

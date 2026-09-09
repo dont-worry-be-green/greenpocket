@@ -61,7 +61,7 @@ class PolicyQueryServiceTest {
 	}
 
 	@Test
-	void excludesPoliciesThatNeedManualConditionReview() {
+	void includesPotentialMatchesWithAnExplicitManualReviewStatus() {
 		when(profileQueryService.findCompleted(USER_ID)).thenReturn(Optional.of(profile("11", "11620")));
 		when(repository.findAllActive()).thenReturn(List.of(
 			policy("LOCAL", "관악 취업 지원", PolicyInterestCategory.JOB, "SIGUNGU:11620", 19, 39, true)
@@ -69,7 +69,10 @@ class PolicyQueryServiceTest {
 
 		var response = service.getRecommendations(USER_ID);
 
-		assertThat(response.content()).isEmpty();
+		assertThat(response.content()).singleElement().satisfies(card -> {
+			assertThat(card.matchStatus()).isEqualTo(PolicyMatchStatus.CHECK_REQUIRED);
+			assertThat(card.matchReasons()).contains("세부 자격 조건은 공고에서 확인해 주세요");
+		});
 		assertThat(response.region().linked()).isTrue();
 	}
 
@@ -106,6 +109,53 @@ class PolicyQueryServiceTest {
 		assertThat(response.content()).hasSize(5);
 		assertThat(response.totalElements()).isEqualTo(5);
 		assertThat(response.hasNext()).isFalse();
+	}
+
+	@Test
+	void filtersRecommendationsBySelectedInterestCategories() {
+		when(profileQueryService.findCompleted(USER_ID)).thenReturn(Optional.of(profile("11", "11620")));
+		when(repository.findAllActive()).thenReturn(List.of(
+			policy("JOB", "취업 지원", PolicyInterestCategory.JOB, "NATIONAL:00000", 19, 39, false),
+			policy("HOUSING", "주거 지원", PolicyInterestCategory.HOUSING, "NATIONAL:00000", 19, 39, false)
+		));
+
+		var response = service.getRecommendations(USER_ID);
+
+		assertThat(response.content()).extracting(card -> card.policyId()).containsExactly("JOB");
+		assertThat(response.content().getFirst().matchReasons()).contains("관심 분야와 일치해요");
+	}
+
+	@Test
+	void returnsFiveHousingMatchesForTheRequestedProfile() {
+		PolicyProfile requestedProfile = new PolicyProfile(
+			LocalDate.of(2001, 6, 15),
+			CurrentStatus.UNEMPLOYED,
+			AnnualIncomeBand.NO_INCOME,
+			EducationStatus.UNIVERSITY_GRADUATE,
+			List.of(PolicyInterestCategory.HOUSING),
+			"11", "11620", "서울특별시 관악구"
+		);
+		when(profileQueryService.findCompleted(USER_ID)).thenReturn(Optional.of(requestedProfile));
+		when(repository.findAllActive()).thenReturn(List.of(
+			policy("HOME-1", "청년주택드림청약통장", PolicyInterestCategory.HOUSING,
+				"NATIONAL:00000", 19, 34, false),
+			policy("HOME-2", "청년 매입임대주택 사업", PolicyInterestCategory.HOUSING,
+				"SIDO:11", 19, 39, false),
+			policy("HOME-3", "청년 부동산 중개보수 및 이사비 지원사업", PolicyInterestCategory.HOUSING,
+				"SIDO:11", 19, 39, false),
+			policy("HOME-4", "청년안심주택 공급", PolicyInterestCategory.HOUSING,
+				"SIDO:11", 19, 39, false),
+			policy("HOME-5", "청년안심주택 임차보증금 지원", PolicyInterestCategory.HOUSING,
+				"SIDO:11", 19, 39, false),
+			policy("JOB", "취업 지원", PolicyInterestCategory.JOB,
+				"NATIONAL:00000", 19, 39, false)
+		));
+
+		var response = service.getRecommendations(USER_ID);
+
+		assertThat(response.content()).hasSize(5);
+		assertThat(response.content()).allSatisfy(card ->
+			assertThat(card.category()).isEqualTo(PolicyInterestCategory.HOUSING));
 	}
 
 	@Test
@@ -149,7 +199,7 @@ class PolicyQueryServiceTest {
 	}
 
 	@Test
-	void excludesMarriageRestrictedPoliciesBecauseMarriageIsNotCollected() {
+	void keepsMarriageRestrictedPoliciesAsExplicitManualChecks() {
 		when(profileQueryService.findCompleted(USER_ID)).thenReturn(Optional.of(profile(
 			CurrentStatus.EMPLOYED, AnnualIncomeBand.UNDER_24M,
 			"11", "11620"
@@ -163,7 +213,24 @@ class PolicyQueryServiceTest {
 
 		var response = service.getRecommendations(USER_ID);
 
-		assertThat(response.content()).isEmpty();
+		assertThat(response.content()).hasSize(2);
+		assertThat(response.content()).allSatisfy(card ->
+			assertThat(card.matchStatus()).isEqualTo(PolicyMatchStatus.CHECK_REQUIRED));
+	}
+
+	@Test
+	void rendersKnownEmploymentAndMarriageConditionsWithExactLabels() {
+		YouthPolicySnapshot policy = policyWithConditions(
+			"UNMARRIED-JOBSEEKER", "미혼 미취업자 주거 지원", "NATIONAL:00000",
+			"0055002", "0043001", null, null, null, "0013003", "0014010"
+		);
+		when(repository.findActiveByExternalId("UNMARRIED-JOBSEEKER")).thenReturn(Optional.of(policy));
+		when(profileQueryService.findCompleted(USER_ID)).thenReturn(Optional.of(profile("11", "11620")));
+
+		var response = service.getDetail(USER_ID, "UNMARRIED-JOBSEEKER");
+
+		assertThat(response.conditions().employment()).isEqualTo("미취업자");
+		assertThat(response.conditions().marriage()).isEqualTo("미혼");
 	}
 
 	@Test
@@ -251,6 +318,44 @@ class PolicyQueryServiceTest {
 		assertThat(detail.conditions().special()).isEqualTo("세부 공고 확인");
 		assertThat(detail.match().status()).isEqualTo(PolicyMatchStatus.CHECK_REQUIRED);
 		assertThat(recommendations.content()).isEmpty();
+	}
+
+	@Test
+	void treatsMissingAgeBoundsAsUnknownWhenSourceSaysAgeIsLimited() {
+		YouthPolicySnapshot policy = new YouthPolicySnapshot(
+			1L, "AGE-MISSING", "연령 조건 누락 정책", null, "설명", "JOB", "취업",
+			PolicyInterestCategory.JOB, "지원 내용", "주관기관", "운영기관",
+			"0044002", "0042002", "0057002", null, null, null, null, null,
+			"홈페이지 신청", "https://example.go.kr", null, null, "Y", null, null,
+			"0055003", "0043001", null, null, null, null, null,
+			"0011009", "0013010", "0049010", "0014010",
+			PolicyApplicationStatus.OPEN, "NATIONAL:00000", SYNCED_AT
+		);
+		when(repository.findActiveByExternalId("AGE-MISSING")).thenReturn(Optional.of(policy));
+		when(profileQueryService.findCompleted(USER_ID)).thenReturn(Optional.of(profile(null, null)));
+
+		var detail = service.getDetail(USER_ID, "AGE-MISSING");
+
+		assertThat(detail.conditions().age()).isEqualTo("세부 연령 조건 확인");
+	}
+
+	@Test
+	void showsParticipantTargetTextInsteadOfGenericNoLimitLabel() {
+		YouthPolicySnapshot policy = new YouthPolicySnapshot(
+			1L, "TARGET", "대상 조건 정책", null, "설명", "JOB", "취업",
+			PolicyInterestCategory.JOB, "지원 내용", "주관기관", "운영기관",
+			"0044002", "0042002", "0057002", null, null, null, null, null,
+			"홈페이지 신청", "https://example.go.kr", null, null, "N", 19, 39,
+			"0055003", "0043001", null, null, null, null, "지역 청년 재직자",
+			"0011009", "0013010", "0049010", "0014010",
+			PolicyApplicationStatus.OPEN, "NATIONAL:00000", SYNCED_AT
+		);
+		when(repository.findActiveByExternalId("TARGET")).thenReturn(Optional.of(policy));
+		when(profileQueryService.findCompleted(USER_ID)).thenReturn(Optional.of(profile(null, null)));
+
+		var detail = service.getDetail(USER_ID, "TARGET");
+
+		assertThat(detail.conditions().special()).isEqualTo("지역 청년 재직자");
 	}
 
 	@Test

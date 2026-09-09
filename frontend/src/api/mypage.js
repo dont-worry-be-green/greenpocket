@@ -21,7 +21,11 @@
  */
 
 import { buildBillArchive, buildReportArchive, MYPAGE } from '@/fixtures/mypage'
-import { POLICY_PREFERENCES } from '@/fixtures/policy'
+import {
+  buildPolicyList,
+  getFixturePolicyPreferences,
+  updateFixturePolicyPreferences,
+} from '@/fixtures/policy'
 
 import client from './client'
 import { isFixtureMode } from './dataSource'
@@ -31,22 +35,32 @@ const fake = async (value, ms = 220) => {
   return typeof value === 'function' ? value() : value
 }
 
-/*
- * 목데이터 모드에서 수정한 정책 추천 조건. 새로고침하면 사라진다.
- * 저장한 값이 되돌아오지 않으면 MY-02 가 제대로 저장했는지 화면에서 확인할 수 없다.
- */
-let editedPolicyPreferences = null
-
 /** GET /mypage — 마이페이지 메인 (E-1-01 · E-1-02 · MY-01) */
 export function getMypage() {
-  if (isFixtureMode()) return fake(MYPAGE)
+  if (isFixtureMode()) {
+    return fake(() => {
+      const preferences = getFixturePolicyPreferences()
+      const recommendations = buildPolicyList({
+        size: 5,
+        categories: preferences.interestCategories,
+      })
+      return {
+        ...MYPAGE,
+        youthPolicy: {
+          ...MYPAGE.youthPolicy,
+          recommendedCount: recommendations.totalElements,
+          preview: recommendations.content,
+        },
+      }
+    })
+  }
   return client.get('/mypage')
 }
 
 /** GET /profile/policy-preferences — 정책 추천 조건 프리필 (MY-02) */
 export function getPolicyPreferences() {
   if (isFixtureMode()) {
-    return fake(() => ({ ...POLICY_PREFERENCES, ...editedPolicyPreferences }))
+    return fake(() => getFixturePolicyPreferences())
   }
   return client.get('/profile/policy-preferences')
 }
@@ -55,7 +69,7 @@ export function getPolicyPreferences() {
 export function updatePolicyPreferences(payload) {
   if (isFixtureMode()) {
     return fake(() => {
-      editedPolicyPreferences = { ...payload, completed: true }
+      updateFixturePolicyPreferences(payload)
       return { policyProfileCompleted: true, recommendationsUpdated: true }
     }, 400)
   }
