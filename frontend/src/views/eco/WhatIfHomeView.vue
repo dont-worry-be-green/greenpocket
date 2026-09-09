@@ -40,6 +40,7 @@ import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import EcoBaselinePanel from '@/components/eco/EcoBaselinePanel.vue'
+import EcoBaselineHeader from '@/components/eco/EcoBaselineHeader.vue'
 import EcoHomeHeader from '@/components/eco/EcoHomeHeader.vue'
 import EcoLinkingPanel from '@/components/eco/EcoLinkingPanel.vue'
 import EcoPaceCard from '@/components/eco/EcoPaceCard.vue'
@@ -281,7 +282,13 @@ function retry() {
   <!-- WF-06 은 홈 전용 헤더(EcoHomeHeader)를 쓴다. 나머지 상태는 공통 페이지 헤더다 -->
   <AppTabLayout
     :tab="activeTab"
-    :title="isInProgress ? '' : diagnosisEntry ? '진단' : 'Green What-if'"
+    :title="
+      isInProgress || (!diagnosisEntry && screen === 'WF_03_NO_GOAL')
+        ? ''
+        : diagnosisEntry
+          ? '진단'
+          : 'Green What-if'
+    "
     :subtitle="isInProgress || diagnosisEntry ? '' : subtitle"
   >
     <GpCard v-if="isBootstrapping">
@@ -342,13 +349,19 @@ function retry() {
     </div>
 
     <!-- WF-03. 기준 사용량은 회차 조회에서 온다 -->
-    <EcoBaselinePanel
-      v-else-if="store.currentRound"
-      :round="store.currentRound"
-      :show-moving-notice="store.home?.links?.movingNotice ?? true"
-      :action-label="diagnosisEntry ? '고지서 등록하기' : '평가 기간 목표 정하기'"
-      @set-goal="goToGoalSetting"
-    />
+    <div v-else-if="store.currentRound">
+      <EcoBaselineHeader v-if="!diagnosisEntry" :name="auth.user?.name ?? ''" />
+      <EcoBaselinePanel
+        class="relative z-[1]"
+        :round="store.currentRound"
+        :show-moving-notice="store.home?.links?.movingNotice ?? true"
+        :action-label="diagnosisEntry ? '고지서 등록하기' : '목표 설정하기'"
+        :compact-amount="!diagnosisEntry"
+        :floating-linked-status="!diagnosisEntry"
+        :linked-at="store.status?.linkedAt ?? store.linkJob?.linkedAt ?? ''"
+        @set-goal="goToGoalSetting"
+      />
+    </div>
 
     <GpCard v-else>
       <p class="text-body text-muted m-0">불러오는 중이에요…</p>

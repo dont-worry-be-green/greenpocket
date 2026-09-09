@@ -73,7 +73,7 @@ const stages = computed(() => {
           <span class="absolute top-2.5 right-2.5 z-[1] flex size-5 items-center justify-center">
             <span
               v-if="stage.status === 'SUCCEEDED'"
-              class="stage-check bg-primary text-primary-fg flex size-5 items-center justify-center rounded-full"
+              class="stage-check bg-primary text-on-primary flex size-5 items-center justify-center rounded-full"
             >
               <IconCheck :size="14" />
             </span>

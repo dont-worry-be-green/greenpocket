@@ -14,7 +14,7 @@ import GpCard from '@/components/ui/GpCard.vue'
 import IconCheck from '@/components/ui/icons/IconCheck.vue'
 import UtilityIcon from './UtilityIcon.vue'
 import {
-  formatDateTime,
+  formatDate,
   formatPercent,
   formatUnit,
   formatUsage,
@@ -28,6 +28,10 @@ const props = defineProps({
   // (근거는 GET /eco/status 의 ecoAddress.matchesProfile === false — 누리집 주소가 프로필과 다름)
   showMovingNotice: { type: Boolean, default: true },
   actionLabel: { type: String, default: '평가 기간 목표 정하기' },
+  compactAmount: { type: Boolean, default: false },
+  showLinkedStatus: { type: Boolean, default: true },
+  floatingLinkedStatus: { type: Boolean, default: false },
+  linkedAt: { type: String, default: '' },
 })
 defineEmits(['set-goal'])
 
@@ -46,11 +50,20 @@ const SERIES_COLOR = {
 
 <template>
   <div class="space-y-4">
-    <div class="text-primary-on-soft flex items-center gap-2 px-3 pt-1">
-      <span class="bg-primary text-primary-fg flex size-5 items-center justify-center rounded-full">
-        <IconCheck :size="14" />
+    <div
+      v-if="showLinkedStatus"
+      class="flex items-center gap-2 px-3 pt-1"
+      :class="floatingLinkedStatus ? 'absolute -top-9 left-0 z-[2]' : ''"
+    >
+      <span
+        class="bg-primary text-on-primary flex size-6 shrink-0 items-center justify-center rounded-full"
+      >
+        <IconCheck :size="15" />
       </span>
-      <p class="text-body-strong m-0">에코마일리지 연동완료</p>
+      <p class="text-body-strong text-primary-on-soft m-0">에코마일리지 연동완료</p>
+      <span v-if="linkedAt" class="text-caption text-muted">
+        {{ formatDate(linkedAt) }}
+      </span>
     </div>
 
     <GpCard title="기준 사용량" badge="6개월">
@@ -58,15 +71,17 @@ const SERIES_COLOR = {
 
       <div class="bg-surface-sub rounded-md mb-5 px-4 py-3">
         <p class="text-caption text-muted mt-0 mb-1">
-          에코마일리지는 직전 2년 같은 기간 평균과 비교해요 ·
-          {{ formatDateTime(round.baselineQueriedAt) }} 조회
+          에코마일리지는 직전 2년 같은 기간 평균과 비교해요
         </p>
         <p class="text-caption text-muted m-0">
           작년에 이 집에 살지 않았다면 전입자 사용분이, 신축이면 비슷한 가구가 기준이에요
         </p>
       </div>
 
-      <p class="text-display tabular-nums mt-0 mb-4">
+      <p
+        class="tabular-nums mt-0 mb-4"
+        :class="compactAmount ? 'text-amount-hero' : 'text-display'"
+      >
         {{ formatWon(round.baseline.totalAmount) }}
       </p>
 
@@ -108,7 +123,7 @@ const SERIES_COLOR = {
           class="flex min-h-(--gp-row-h) items-center gap-3"
         >
           <UtilityIcon :utility-type="item.utilityType" />
-          <p class="text-list-title m-0 min-w-0 flex-1">
+          <p class="text-body m-0 min-w-0 flex-1">
             {{ formatUtilityType(item.utilityType) }}
           </p>
           <div class="text-right">

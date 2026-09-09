@@ -35,10 +35,10 @@ defineEmits(['link', 'openSite'])
   <div class="space-y-6">
     <section class="px-1 pt-10 pb-2">
       <h2
-        class="m-0 flex items-center justify-start gap-3 text-[18px] leading-[1.4] font-semibold tracking-[-0.05em]"
+        class="-ml-4 flex items-center justify-start gap-0 text-[18px] leading-[1.4] font-semibold tracking-[-0.05em]"
       >
         <img :src="diagnosisGuide" alt="" class="size-20 shrink-0 rounded-full object-contain" />
-        <span>
+        <span class="-ml-2">
           <span class="block whitespace-nowrap">진단을 위한 에코마일리지</span>
           <span class="block whitespace-nowrap">연동부터 진행할게요</span>
         </span>
@@ -99,7 +99,11 @@ defineEmits(['link', 'openSite'])
 
     <!-- 미가입·등록 정보 없음. 화면이 판정하지 않고 길만 열어 둔다 (위 주석 참고) -->
     <section v-if="externalUrl">
-      <h3 class="text-body-sm text-ink-soft mt-0 mb-2 font-medium">에코마일리지가 처음인가요?</h3>
+      <h3 class="text-list-title text-ink mt-0 mb-2 font-semibold">에코마일리지가 처음인가요?</h3>
+      <p class="text-body-sm text-muted mt-0 mb-3">
+        에코마일리지는 서울시가 운영하는 제도예요. 누리집에서 가입하고 돌아와 위 버튼을 다시 누르면
+        사용량을 불러올게요.
+      </p>
       <button
         v-if="externalUrl"
         type="button"
