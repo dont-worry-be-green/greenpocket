@@ -221,15 +221,15 @@ function changePhoneNumber() {
 
     <!-- 좁은 화면에서도 생년월일과 성별을 한 행으로 유지한다. -->
     <div
-      class="grid grid-cols-2 items-start gap-3"
+      class="flex items-start gap-3"
       data-testid="identity-detail-row"
     >
-      <label class="min-w-0 overflow-hidden">
+      <label class="w-0 flex-1 overflow-hidden">
         <span class="text-body-strong text-muted mb-2 block">생년월일</span>
-        <div class="relative">
+        <div class="relative overflow-hidden">
           <IconCalendar
             :size="20"
-            class="text-muted pointer-events-none absolute top-1/2 left-3 -translate-y-1/2"
+            class="text-muted pointer-events-none absolute top-1/2 left-3 z-10 -translate-y-1/2"
           />
           <input
             v-model="birthDate"
@@ -237,7 +237,8 @@ function changePhoneNumber() {
             autocomplete="bday"
             :max="maxBirthDate"
             :disabled="sent || verified"
-            class="bg-surface border-border text-body disabled:bg-disabled-bg disabled:text-disabled-text min-h-14 w-full min-w-0 rounded-lg border pr-2 pl-10 tabular-nums outline-hidden"
+            class="bg-surface border-border text-body disabled:bg-disabled-bg disabled:text-disabled-text min-h-14 w-full min-w-0 max-w-full rounded-lg border pr-2 pl-10 tabular-nums outline-hidden"
+            style="-webkit-appearance: none; appearance: none;"
           />
         </div>
         <span v-if="birthDateError" class="text-body-sm text-negative mt-1.5 block">
@@ -245,7 +246,7 @@ function changePhoneNumber() {
         </span>
       </label>
 
-      <div class="min-w-0 overflow-hidden">
+      <div class="w-0 flex-1 overflow-hidden">
         <span class="text-body-strong text-muted mb-2 block" id="gender-label">성별</span>
         <div class="grid grid-cols-2 gap-1.5" role="radiogroup" aria-labelledby="gender-label">
           <button
