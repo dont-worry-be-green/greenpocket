@@ -38,10 +38,10 @@ const character = computed(() => CHARACTER[props.pace] ?? CHARACTER.near)
 const headline = computed(() => {
   const total = props.todayMissions?.totalCount ?? 0
   const completed = props.todayMissions?.completedCount ?? 0
-  if (total === 0) return ['오늘 할 실천이', '아직 없어요']
+  if (total === 0) return ['오늘 할 미션이', '아직 없어요']
   const remaining = total - completed
-  if (remaining <= 0) return ['오늘 실천을', '다 지켰어요']
-  return ['오늘 실천', `${remaining}개가 남았어요`]
+  if (remaining <= 0) return ['오늘 미션을', '다 지켰어요']
+  return ['오늘 미션', `${remaining}개가 남았어요`]
 })
 </script>
 

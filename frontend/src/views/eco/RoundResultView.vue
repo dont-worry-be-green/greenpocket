@@ -30,7 +30,7 @@ import AppSubLayout from '@/components/layout/AppSubLayout.vue'
 import ReportDialogLayout from '@/components/layout/ReportDialogLayout.vue'
 import GpButton from '@/components/ui/GpButton.vue'
 import { useEcoStore } from '@/stores/eco'
-import { formatDate, formatPercent, formatRoundPeriod } from '@/utils/format'
+import { formatPercent, formatRoundPeriod, formatRoundPeriodChip } from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -51,15 +51,14 @@ function load() {
 }
 watch(roundId, load, { immediate: true })
 
-/** '2026-04 ~ 09 · 2026-12-05 확정 · 에코마일리지 누리집 기준' */
-const subtitle = computed(() => {
-  const data = result.value
-  if (!data) return ''
-  const parts = [formatRoundPeriod(data.periodStart, data.periodEnd)]
-  if (data.confirmedAt) parts.push(`${formatDate(data.confirmedAt)} 확정`)
-  if (data.confirmedSource) parts.push(data.confirmedSource)
-  return parts.join(' · ')
-})
+/**
+ * 화면 제목 「평가 결과」 오른쪽 끝 기간 칩 '2025.10~2026.03'. 홈 감축률 카드 칩과 같은 문법.
+ * ⚠️ 확정일(`confirmedAt`)·확정 기준(`confirmedSource` 「에코마일리지 누리집 기준」) 부제는
+ * **수현 결정으로 뺐다**(2026-09-10 · 결정 C-40). 핵심 규칙 7·10 의 출처 표시와 어긋나므로 명세에 적어 뒀다.
+ */
+const periodChip = computed(() =>
+  result.value ? formatRoundPeriodChip(result.value.periodStart, result.value.periodEnd) : '',
+)
 const dialogSubtitle = computed(() => {
   const data = result.value
   return data ? `평가 기간: ${formatRoundPeriod(data.periodStart, data.periodEnd)}` : ''
@@ -76,10 +75,18 @@ const goSettlement = () => router.push(`/whatif/rounds/${roundId.value}/settleme
   <component
     :is="layout"
     :title="embedded ? 'ECO 리포트' : '평가 결과'"
-    :subtitle="embedded ? dialogSubtitle : subtitle"
+    :subtitle="embedded ? dialogSubtitle : ''"
     back="/whatif"
     @close="emit('close')"
   >
+    <!-- 제목 오른쪽 끝 기간 칩 (결정 C-40). 다이얼로그(보관함)에서는 부제가 기간을 말한다 -->
+    <template v-if="!embedded && periodChip" #titleAction>
+      <span
+        class="bg-surface-sub text-caption-sm text-ink-soft mt-1 shrink-0 rounded-full px-2.5 py-[5px] font-bold tabular-nums"
+      >
+        {{ periodChip }}
+      </span>
+    </template>
     <!-- 로딩·실패를 남기지 않는다 (COM-08) -->
     <p v-if="store.isLoading && !result" class="text-caption text-muted py-10 text-center">
       평가 결과를 불러오는 중이에요

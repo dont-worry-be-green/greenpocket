@@ -17,7 +17,8 @@
  * ── subtitle 을 주면 제목이 커진다 ────────────────────────────────────────
  * 기본은 뒤로가기 옆 작은 제목 한 줄이다. `subtitle` 을 넘기면 헤더에는 화살표만 남고
  * 본문 위에 탭 화면과 같은 **큰 제목 + 설명 한 줄**이 온다(WF-07 · WF-10 시안).
- * 부제가 없는 화면은 아무것도 달라지지 않는다.
+ * 부제가 없는 화면은 아무것도 달라지지 않는다. `#titleAction` 슬롯을 주면 부제 없이도 큰 제목이
+ * 되고, 그 오른쪽 끝에 슬롯 내용(기간 칩 등)이 붙는다(WF-10 · 2026-09-10).
  */
 import { useRouter } from 'vue-router'
 import GpBackHeader from '@/components/ui/GpBackHeader.vue'
@@ -49,7 +50,7 @@ function onBack() {
 <template>
   <div class="bg-canvas min-h-dvh">
     <GpBackHeader
-      :title="subtitle ? '' : title"
+      :title="subtitle || $slots.titleAction ? '' : title"
       :center-title="centerTitle"
       :dismiss="dismiss"
       @back="onBack"
@@ -59,7 +60,12 @@ function onBack() {
       </template>
     </GpBackHeader>
 
-    <GpPageHeader v-if="subtitle" :title="title" :subtitle="subtitle" class="pt-1" />
+    <GpPageHeader v-if="subtitle || $slots.titleAction" :title="title" :subtitle="subtitle" class="pt-1">
+      <!-- 큰 제목 오른쪽 끝 보조 요소(기간 칩 등). WF-10 이 쓴다 -->
+      <template v-if="$slots.titleAction" #action>
+        <slot name="titleAction" />
+      </template>
+    </GpPageHeader>
 
     <main class="px-(--gp-gutter)" :class="hasFooter ? 'pb-(--gp-safe-bottom)' : 'pb-8'">
       <slot />

@@ -135,29 +135,33 @@ describe('WF-10 평가 결과', () => {
   afterEach(() => setDataSource(DATA_SOURCE.API))
 
   /*
-   * 최종 확정은 진단 탭 고지서가 아니라 누리집 기준이다(핵심 규칙 10).
-   * 그 사실이 화면 어디에도 없으면 다른 화면 숫자와 다를 때 어느 쪽이 맞는지 알 수 없다.
+   * 제목 「평가 결과」 오른쪽 끝에 기간 칩 '2025.10~2026.03'. 확정일·「누리집 기준」 부제는
+   * 결정 C-40 으로 뺐다(2026-09-10 수현) — 핵심 규칙 7·10 의 출처 표시와 어긋나는 결정이라
+   * 명세에 적어 뒀고, 여기서는 「없다」를 단언해 조용히 되살아나지 않게 한다.
    */
-  it('헤더에 평가 기간·확정일·확정 기준이 함께 있다', async () => {
+  it('헤더에 제목과 기간 칩만 있고 확정일·누리집 부제는 없다', async () => {
     const { wrapper, errors } = await openPath('/whatif/rounds/6/result')
     expect(errors).toEqual([])
 
-    const subtitle = wrapper.get('h1').element.parentElement.textContent
-    expect(subtitle).toMatch(/\d{4}-\d{2} ~ /)
-    expect(subtitle).toContain('확정')
-    expect(subtitle).toContain('누리집')
+    const header = wrapper.get('h1').element.parentElement.parentElement.textContent
+    expect(header).toContain('평가 결과')
+    expect(header).toMatch(/\d{4}\.\d{2}~\d{4}\.\d{2}/)
+    expect(header).not.toContain('누리집')
+    expect(header).not.toContain('확정')
     wrapper.unmount()
   })
 
   /*
-   * 돈의 3단계(핵심 규칙 2). 확정 마일리지에는 `확인` 라벨이 붙고, 아직 현금이 아니라는
-   * 것을 문장으로 함께 말한다. 시안에는 라벨이 없어 그대로 옮기면 조용히 사라진다.
+   * 돈의 3단계(핵심 규칙 2). 결과 화면의 마일리지 행은 「적립된 마일리지 N M ›」 한 줄뿐이다 —
+   * 「확인」 라벨과 「아직 현금이 아니에요」 캡션은 결정 C-39 로 뺐고(2026-09-10 수현),
+   * ②라는 설명은 이 행이 데려가는 적립 화면(WF-11)의 노티스가 맡는다.
    */
-  it('적립 마일리지에 확인 라벨과 「아직 현금이 아니에요」가 함께 있다', async () => {
+  it('적립 마일리지 행이 금액과 함께 있고 확인 라벨·현금 캡션은 없다', async () => {
     const { wrapper } = await openPath('/whatif/rounds/6/result')
     const text = wrapper.text()
-    expect(text).toContain('확인')
-    expect(text).toContain('아직 현금이 아니에요')
+    expect(text).toContain('적립된 마일리지')
+    expect(text).toMatch(/[\d,]+M/)
+    expect(text).not.toContain('전환 신청하기')
     wrapper.unmount()
   })
 
@@ -181,17 +185,16 @@ describe('WF-11 마일리지 적립', () => {
   afterEach(() => setDataSource(DATA_SOURCE.API))
 
   /*
-   * B-5-03 이 "30,000M 적립됐어요 + 확인 라벨" 로 못 박는다. 초록 히어로 카드 위에서는
-   * GpTag 를 못 써 배지를 손으로 그리는데, 그러다 조용히 빠지기 쉬운 자리다.
+   * 「확인」 배지는 결정 C-39 로 뺐다(2026-09-10 수현). 돈의 3단계 ②라는 사실은 푸터의
+   * 「아직 현금이 아니에요」 노티스가 말한다 — 이게 빠지면 적립 = 입금으로 읽힌다.
    */
-  it('적립 금액에 확인 라벨이 함께 있다', async () => {
+  it('적립 금액과 「아직 현금이 아니에요」 노티스가 함께 있다', async () => {
     const { wrapper, errors } = await openPath('/whatif/rounds/6/settlement')
     expect(errors).toEqual([])
 
     const text = wrapper.text()
-    expect(text).toContain('적립됐어요')
-    expect(text).toContain('확인')
     expect(text).toMatch(/[\d,]+M/)
+    expect(text).toContain('아직 현금이 아니에요')
     wrapper.unmount()
   })
 
@@ -207,23 +210,28 @@ describe('WF-11 마일리지 적립', () => {
     wrapper.unmount()
   })
 
-  it('계산 근거 세 줄과 비교 기준 문장이 있다', async () => {
+  // 「덜 낸 요금」 = 차액 칩 + 기준/이번 막대 둘. 「어떻게 계산됐나요」라 부르지 않는다 (결정 C-38)
+  it('덜 낸 요금 칩·기준/이번 요금 막대·비교 기준 문장이 있다', async () => {
     const { wrapper } = await openPath('/whatif/rounds/6/settlement')
     const text = wrapper.text()
-    expect(text).toContain('기준 사용량 요금')
-    expect(text).toContain('평가 기간 요금')
-    expect(text).toContain('줄인 금액')
+    expect(text).toContain('덜 낸 요금')
+    expect(text).not.toContain('어떻게 계산됐나요')
+    expect(text).toContain('50,500원')
+    expect(text).toContain('기준 요금')
+    expect(text).toContain('420,600원')
+    expect(text).toContain('이번 평가 요금')
+    expect(text).toContain('370,100원')
     // `calculation.note` — 무엇과 비교한 값인지 서버가 문장으로 준다 (핵심 규칙 7)
     expect(text).toContain('직전 2년')
     wrapper.unmount()
   })
 
-  // 「나중에 할래요」를 골라도 포켓 탭에서 전환할 수 있다 (B-5-03 완료 조건)
-  it('현금으로 바꾸기와 나중에 할래요가 함께 있다', async () => {
+  // 「나중에 할래요」 버튼은 결정 C-39 로 뺐다. 나중에 = 헤더 X 닫기이고, 닫아도 포켓 탭에서 전환할 수 있다 (B-5-03 완료 조건)
+  it('CTA 는 현금으로 바꾸기 하나뿐이고 나중에 할래요는 없다', async () => {
     const { wrapper } = await openPath('/whatif/rounds/6/settlement')
     const labels = wrapper.findAll('button').map((node) => node.text())
     expect(labels).toContain('현금으로 바꾸기')
-    expect(labels).toContain('나중에 할래요')
+    expect(labels).not.toContain('나중에 할래요')
     wrapper.unmount()
   })
 

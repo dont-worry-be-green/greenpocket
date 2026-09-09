@@ -23,13 +23,23 @@
 import { computed } from 'vue'
 
 import GpCard from '@/components/ui/GpCard.vue'
-import GpDelta from '@/components/ui/GpDelta.vue'
 import GpTag from '@/components/ui/GpTag.vue'
-import { formatPercent, formatTier, formatMileage, formatWon } from '@/utils/format'
+import { changeRateParts, formatPercent, formatTier, formatMileage, formatWon } from '@/utils/format'
 
 const props = defineProps({
   result: { type: Object, required: true },
   reportMode: { type: Boolean, default: false },
+})
+
+/**
+ * 최종 감축률. `GpDelta` 의 화살표 없이 숫자 + 말만 — 자릿수·방향은 `changeRateParts` 한 곳.
+ * 늘었으면(음수) 빨강 「늘었어요」, 0 이면 회색 「지난달과 같아요」, 값이 없으면 「-」.
+ */
+const rate = computed(() => {
+  const parts = changeRateParts(props.result.finalRate)
+  if (parts.direction === 'down') return { value: `${parts.value}%`, word: parts.word, text: 'text-decrease' }
+  if (parts.direction === 'up') return { value: `${parts.value}%`, word: parts.word, text: 'text-increase' }
+  return { value: parts.value, word: parts.word, text: 'text-muted' }
 })
 
 /** 서버가 `tierLabel` 을 주면 그쪽이 우선이다. `formatTier` 는 없을 때의 대체재다 */
@@ -48,12 +58,18 @@ const tierLabel = computed(() => props.result.tierLabel || formatTier(props.resu
 
 <template>
   <GpCard>
-    <p class="text-caption text-muted mt-0 mb-1">직전 2년 같은 기간 평균보다</p>
+    <!-- 「직전 2년 같은 기간 평균보다」 캡션과 화살표는 뺐다(2026-09-10 수현 · 결정 C-40) -->
     <div v-if="reportMode" class="flex flex-wrap items-center justify-between gap-3">
-      <GpDelta :value="result.finalRate" size="xl" />
+      <p class="m-0 flex items-baseline gap-1.5 tabular-nums">
+        <b class="text-amount-hero tracking-display" :class="rate.text">{{ rate.value }}</b>
+        <span v-if="rate.word" class="text-caption text-ink-soft font-semibold">{{ rate.word }}</span>
+      </p>
       <GpTag :tone="result.achieved ? 'positive' : 'sub'">{{ goalBadge }}</GpTag>
     </div>
-    <GpDelta v-else :value="result.finalRate" size="xl" />
+    <p v-else class="m-0 flex items-baseline gap-1.5 tabular-nums">
+      <b class="text-amount-hero tracking-display" :class="rate.text">{{ rate.value }}</b>
+      <span v-if="rate.word" class="text-caption text-ink-soft font-semibold">{{ rate.word }}</span>
+    </p>
 
     <div v-if="!reportMode" class="mt-3 flex flex-wrap items-center gap-1.5">
       <GpTag :tone="result.achieved ? 'positive' : 'sub'">{{ goalBadge }}</GpTag>
