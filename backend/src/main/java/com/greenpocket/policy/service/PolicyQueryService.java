@@ -527,7 +527,7 @@ public class PolicyQueryService {
 
 	private static String ageCondition(YouthPolicySnapshot policy) {
 		if (policy.minAge() == null && policy.maxAge() == null) {
-			return "제한 없음";
+			return "N".equals(policy.ageLimitYn()) ? "제한 없음" : "세부 연령 조건 확인";
 		}
 		if (policy.minAge() == null) {
 			return "만 " + policy.maxAge() + "세 이하";
@@ -592,6 +592,9 @@ public class PolicyQueryService {
 	private static String specialCondition(YouthPolicySnapshot policy) {
 		if (hasText(policy.additionalConditionText())) {
 			return policy.additionalConditionText();
+		}
+		if (hasText(policy.participantTargetText())) {
+			return policy.participantTargetText();
 		}
 		if (requiresFinancialReview(policy)) {
 			return "보증·대출 심사 조건 확인";
