@@ -116,9 +116,9 @@ export const ECO_HOME_RESULT_READY = {
 /*
  * GET /eco/rounds/{roundId}/missions/today — 오늘의 실천 (B-3-05).
  *
+ *
  * 목표를 정할 때 고른 미션 중 **오늘 계절에 맞는 것만** 내려온다(`season`).
  * 그래서 `ECO_GOAL.missions` 보다 목록이 짧을 수 있다.
- *
  * ⚠️ 필드가 다섯 개뿐이다 — `computedRate`·`evidenceText`·`calculationBasis` 가 없다.
  * `GpMissionRow` 는 그 셋을 전제하므로 **여기에 재사용하지 않는다.**
  */

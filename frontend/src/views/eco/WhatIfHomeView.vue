@@ -314,6 +314,7 @@ function retry() {
           :data="store.todayMissions"
           :saving="store.missionSaveLoading"
           :expected-saving-amount="store.goal?.expectedSavingAmount ?? null"
+          :selected-count="store.goal?.missions?.length ?? null"
           @change="onMissionChange"
         />
 

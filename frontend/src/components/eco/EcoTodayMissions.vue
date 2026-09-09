@@ -27,13 +27,15 @@ import { computed } from 'vue'
 import GpCard from '@/components/ui/GpCard.vue'
 import IconCheck from '@/components/ui/icons/IconCheck.vue'
 import IconChevronRight from '@/components/ui/icons/IconChevronRight.vue'
-import { formatUtilityType, formatWon } from '@/utils/format'
+import { formatSeason, formatUtilityType, formatWon } from '@/utils/format'
 
 const props = defineProps({
   data: { type: Object, default: null },
   saving: { type: Boolean, default: false },
   /** GET /eco/rounds/{roundId}/goal 의 `expectedSavingAmount`(원). 없으면 합계 줄을 그리지 않는다 */
   expectedSavingAmount: { type: Number, default: null },
+  /** 목표에서 고른 미션 수(`goal.missions.length`). 계절 필터로 줄어든 것을 「고른 M개 중 N개」로 밝힌다 */
+  selectedCount: { type: Number, default: null },
 })
 const emit = defineEmits(['change'])
 
@@ -41,9 +43,24 @@ const emit = defineEmits(['change'])
 const EMPTY_MESSAGE = {
   NO_GOAL: '평가 기간 목표를 정하면 오늘 할 실천이 생겨요.',
   NO_MISSION: '목표를 정할 때 고른 실천 중 오늘 계절에 맞는 것이 없어요.',
+  SEASON_FILTERED_EMPTY: '고른 실천이 모두 다른 계절 전용이에요. 실천을 다시 골라 주세요.',
 }
 
 const missions = computed(() => props.data?.missions ?? [])
+
+/*
+ * 계절 안내 (B-3-05). 서버는 오늘 계절(3~5 봄 · 6~8 여름 · 9~11 가을 · 12~2 겨울)에 맞는 미션만
+ * 내려주므로 9월엔 여름 냉방 미션이 빠진다. 왜 줄었는지를 한 줄로 밝힌다.
+ * 「고른 M개 중 N개」는 목표 조회가 와서 M ≥ N 일 때만 붙인다.
+ */
+const seasonNote = computed(() => {
+  const season = formatSeason(props.data?.season)
+  if (!season || season === '—' || !missions.value.length) return ''
+  const total = props.selectedCount
+  const shown = props.data?.totalCount ?? missions.value.length
+  const counts = Number.isInteger(total) && total >= shown ? ` · 고른 ${total}개 중 ${shown}개` : ''
+  return `${season}에 맞는 실천만 보여요${counts}`
+})
 
 const emptyMessage = computed(() => {
   if (!props.data?.emptyReason) return ''
@@ -77,6 +94,8 @@ function toggle(mission) {
         <IconChevronRight :size="11" aria-hidden="true" />
       </span>
     </template>
+
+    <p v-if="seasonNote" class="text-caption text-muted mt-0 mb-1">{{ seasonNote }}</p>
 
     <ul v-if="missions.length" class="divide-divider -mt-1 m-0 list-none divide-y p-0">
       <li v-for="mission in missions" :key="mission.missionId">

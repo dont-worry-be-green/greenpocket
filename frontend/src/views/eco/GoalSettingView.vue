@@ -28,6 +28,7 @@ import AppSubLayout from '@/components/layout/AppSubLayout.vue'
 import GpButton from '@/components/ui/GpButton.vue'
 import { useEcoStore } from '@/stores/eco'
 import { formatRoundPeriod, formatUtilityType } from '@/utils/format'
+import { currentMonth, seasonsBetween } from '@/utils/month'
 
 const router = useRouter()
 const store = useEcoStore()
@@ -49,6 +50,40 @@ const activeSegment = computed(
 const period = computed(() =>
   goalForm.value ? formatRoundPeriod(goalForm.value.periodStart, goalForm.value.periodEnd) : '',
 )
+
+/*
+ * ── 계절이 안 맞는 미션은 보여주지 않는다 (결정 C-34) ─────────────────────
+ * 오늘의 실천은 오늘 계절 태그로 미션을 거른다(B-3-05). 9월에 여름 냉방 미션을 고르면 이번 회차
+ * 안에서 한 번도 홈에 안 뜬다. 그래서 **오늘부터 회차 끝까지 남은 달의 계절**과 하나라도 맞는
+ * 미션(사계절 포함)만 보여준다 — 「오늘 계절」만 보면 10월에 연 10~3월 회차에서 겨울 난방 미션을
+ * 못 고른다.
+ * 이미 고른 미션은 계절이 안 맞아도 남긴다 — 그래야 해제할 수 있다(C-19 「이미 선택한 미션 유지」).
+ * 회차가 끝난 뒤(남은 달 없음)에는 거르지 않는다 — 빈 목록보다 낫다.
+ */
+const remainingSeasons = computed(() => {
+  const form = goalForm.value
+  if (!form?.periodEnd) return []
+  const today = currentMonth()
+  const from = form.periodStart && today < form.periodStart ? form.periodStart : today
+  return seasonsBetween(from, form.periodEnd)
+})
+
+function inSeason(mission) {
+  const tags = Array.isArray(mission.seasonTags) ? mission.seasonTags : []
+  if (remainingSeasons.value.length === 0 || tags.length === 0) return true
+  return tags.some((tag) => remainingSeasons.value.includes(tag))
+}
+
+const visibleSegment = computed(() => {
+  const segment = activeSegment.value
+  if (!segment) return null
+  return {
+    ...segment,
+    missions: segment.missions.filter(
+      (mission) => inSeason(mission) || selectedMissionIds.value.includes(mission.missionId),
+    ),
+  }
+})
 
 const preview = computed(() => store.goalPreview)
 const targetByUtility = computed(
@@ -73,10 +108,14 @@ const canSave = computed(() => payload.value.targets.length > 0 && !store.goalSa
 let previewTimer = null
 let firstPreview = true
 
+/*
+ * 구간을 하나도 안 고른 상태(`targets: []`)에서는 부르지 않는다 — 서버가 `ECO_TIER_INVALID` 400 을 준다.
+ * 미션만 먼저 눌러도 요청이 나가던 버그. 구간을 고르면 그때 첫 미리보기가 나간다.
+ */
 function requestPreview(delay) {
   window.clearTimeout(previewTimer)
   const roundId = store.roundId
-  if (!roundId) return
+  if (!roundId || payload.value.targets.length === 0) return
   previewTimer = window.setTimeout(() => store.fetchGoalPreview(roundId, payload.value), delay)
 }
 onUnmounted(() => window.clearTimeout(previewTimer))
@@ -169,7 +208,7 @@ async function save() {
 
         <EcoMissionPicker
           v-model:selected-ids="selectedMissionIds"
-          :segment="activeSegment"
+          :segment="visibleSegment"
           :preview-items="preview?.missions?.items ?? []"
           :summary="preview?.missions ?? null"
         />
