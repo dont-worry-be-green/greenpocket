@@ -345,11 +345,7 @@ function retry() {
           @change="onMissionChange"
         />
 
-        <p v-if="store.home.links?.movingNotice" class="text-caption text-muted m-0 px-1">
-          이사했다면
-          <RouterLink to="/mypage" class="text-primary-on-soft underline">마이</RouterLink>에서
-          주소를 바꿔주세요. 바꾸지 않으면 지금 살지 않는 집의 사용량과 비교돼요.
-        </p>
+        <!-- 「이사했다면 마이에서 주소를…」 안내는 뺐다(2026-09-09 수현). WF-03 기준 사용량 패널에는 남아 있다 -->
       </div>
     </div>
 
