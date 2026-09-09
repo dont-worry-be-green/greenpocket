@@ -110,6 +110,13 @@ export const ECO_HOME_IN_PROGRESS = {
 export const ECO_HOME_RESULT_READY = {
   ...ECO_HOME_IN_PROGRESS,
   screen: 'WF_09_RESULT_READY',
+  roundId: 8,
+  header: {
+    periodStart: '2026-10',
+    periodEnd: '2027-03',
+    remainingMonths: 6,
+    remainingLabelMonths: [10, 11, 12, 1, 2, 3],
+  },
   resultModal: ECO_RESULT_MODAL,
 }
 

@@ -7,7 +7,7 @@
  * 같은 회차가 진행 중이면서 확정된 것이 된다.** 그래서 확정은 직전 회차 6 이고,
  * `nextRound` 가 진행 중인 7 을 가리킨다 — 홈이 보여 주는 회차와 정확히 이어진다.
  *
- * ⚠️ **WF-10·WF-11 의 `roundId` 는 `store.roundId`(현재 회차 7)가 아니다.**
+ * ⚠️ **WF-10·WF-11 의 `roundId` 는 `store.roundId`(현재 회차 8)가 아니다.**
  * 뷰는 `route.params.roundId` 를 쓴다.
  *
  * ── 숫자는 기능명세서 고정 상수다 ──────────────────────────────────────────
@@ -27,30 +27,30 @@ const FACTOR_BY_UTILITY = Object.fromEntries(
   ECO_CARBON_FACTORS.map((factor) => [factor.utilityType, factor.factorG]),
 )
 
-const ROUND_ID = 6
-const PERIOD_START = '2025-10'
-const PERIOD_END = '2026-03'
+const ROUND_ID = 7
+const PERIOD_START = '2026-04'
+const PERIOD_END = '2026-09'
 
 /** 회차 목표. 합산 12.499% 가 10~15% 구간에 들어가 30,000M 이 확정된다 */
-const ROUND_TARGET_RATE = 10.0
+const ROUND_TARGET_RATE = 11.322
 
 /*
  * 요금별 결과. `targetRate` 는 그 회차에 요금별로 걸었던 구간의 하한이다.
- * ⚠️ **달성 판정을 합산 목표로 하면 틀린다** — 도시가스는 12.002% 를 줄였지만
+ * ⚠️ **달성 판정을 합산 목표로 하면 틀린다** — 도시가스는 12.037% 를 줄였지만
  * 15% 구간을 걸었으므로 미달이다. 요금별로 각자의 `targetRate` 와 비교한다.
  */
 const UTILITY_USAGE = [
   {
     utilityType: 'ELECTRICITY',
     baselineUsage: 1340.0,
-    actualUsage: 1165.8,
+    actualUsage: 1166.0,
     usageUnit: 'kWh',
     targetRate: 10.0,
   },
   {
     utilityType: 'GAS',
     baselineUsage: 108.0,
-    actualUsage: 95.038,
+    actualUsage: 95.0,
     usageUnit: 'm3',
     targetRate: 15.0,
   },
@@ -92,18 +92,18 @@ const UTILITY_RESULTS = UTILITY_USAGE.map((row) => {
  * 분모가 다르기 때문이고, 서버도 같은 이유로 따로 계산한다.
  */
 const MONTHLY_RATES = [
-  { yearMonth: '2025-10', rate: 8.0 },
-  { yearMonth: '2025-11', rate: 10.5 },
-  { yearMonth: '2025-12', rate: 12.0 },
-  { yearMonth: '2026-01', rate: 13.2 },
-  { yearMonth: '2026-02', rate: 14.1 },
-  { yearMonth: '2026-03', rate: 17.0 },
+  { yearMonth: '2026-04', rate: 3.4 },
+  { yearMonth: '2026-05', rate: 4.8 },
+  { yearMonth: '2026-06', rate: 6.9 },
+  { yearMonth: '2026-07', rate: 8.6 },
+  { yearMonth: '2026-08', rate: 10.7 },
+  { yearMonth: '2026-09', rate: 12.499 },
 ].map((row) => ({ ...row, achieved: row.rate >= ROUND_TARGET_RATE }))
 
 const BASELINE_AMOUNT = 420600
 const ACTUAL_AMOUNT = 370100
 const CONFIRMED_MILEAGE = 30000
-const CONFIRMED_AT = '2026-06-05T00:00:00+09:00'
+const CONFIRMED_AT = '2026-10-05T00:00:00+09:00'
 
 /**
  * GET /eco/rounds/{roundId}/result — 회차 평가 결과 (B-5-02 · WF-10).
@@ -116,8 +116,8 @@ export const ECO_RESULT = {
   periodStart: PERIOD_START,
   periodEnd: PERIOD_END,
   confirmedAt: CONFIRMED_AT,
-  // 시차 규칙(핵심 규칙 10) — 최종 확정은 고지서가 아니라 누리집 기준이다
-  confirmedSource: '에코마일리지 누리집 기준',
+  // 현재는 시연 영상용 표시 데이터다. 실제 평가 연동이 붙으면 누리집 확정값으로 교체한다.
+  confirmedSource: '시연 데이터 기준',
   finalRate: FINAL_RATE,
   targetRate: ROUND_TARGET_RATE,
   achieved: FINAL_RATE >= ROUND_TARGET_RATE,
@@ -133,8 +133,8 @@ export const ECO_RESULT = {
   utilityResults: UTILITY_RESULTS,
   monthlyRates: MONTHLY_RATES,
   mileageConverted: false,
-  // 진행 중인 회차(ECO_HOME_IN_PROGRESS.roundId) 를 가리킨다
-  nextRound: { roundId: 7, periodStart: '2026-04', periodEnd: '2026-09', goalSet: true },
+  // 평가 종료 뒤 다음 회차를 가리킨다.
+  nextRound: { roundId: 8, periodStart: '2026-10', periodEnd: '2027-03', goalSet: false },
 }
 
 /**
@@ -155,7 +155,7 @@ export const ECO_SETTLEMENT = {
     baselineAmount: BASELINE_AMOUNT,
     actualAmount: ACTUAL_AMOUNT,
     savedAmount: BASELINE_AMOUNT - ACTUAL_AMOUNT,
-    note: '전기·도시가스·수도를 직전 2년 같은 기간(10~3월) 평균과 비교했어요',
+    note: '전기·도시가스·수도를 직전 2년 같은 기간(4~9월) 평균과 비교했어요',
   },
   isCash: false,
   convertible: true,
