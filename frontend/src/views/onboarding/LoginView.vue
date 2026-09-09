@@ -6,9 +6,9 @@ import GpButton from '@/components/ui/GpButton.vue'
 import IconEnvelope from '@/components/ui/icons/IconEnvelope.vue'
 import IconEye from '@/components/ui/icons/IconEye.vue'
 import IconEyeSlash from '@/components/ui/icons/IconEyeSlash.vue'
-import IconLeaf from '@/components/ui/icons/IconLeaf.vue'
 import IconLock from '@/components/ui/icons/IconLock.vue'
 import signupHero from '@/assets/character/signup-hero.png'
+import gpLogo from '@/assets/그린포켓 로고 .png'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
@@ -30,23 +30,19 @@ async function submit() {
 
 <template>
   <main class="bg-canvas relative mx-auto min-h-dvh max-w-(--gp-viewport-w) overflow-hidden">
-    <section class="relative h-72 overflow-hidden px-6 pt-9" aria-label="그린포켓 소개">
+    <section class="relative h-72 overflow-hidden px-3 pt-5" aria-label="그린포켓 소개">
       <div class="bg-primary-bg absolute -top-24 -left-24 size-72 rounded-full opacity-75"></div>
       <div class="bg-primary-bg absolute top-30 -right-20 h-32 w-120 rotate-6 rounded-[50%] opacity-75"></div>
 
-      <div class="relative z-10 flex items-center gap-3">
-        <span
-          class="bg-primary shadow-card text-on-primary flex size-12 items-center justify-center rounded-full"
-          aria-hidden="true"
-        >
-          <IconLeaf :size="28" />
+      <div class="relative z-10 inline-flex items-center gap-0.5">
+        <img :src="gpLogo" alt="그린포켓 로고" class="size-16 object-contain" aria-hidden="true" />
+        <span class="text-2xl font-extrabold">
+          <span style="color:#76b473">그린</span><span style="color:#1c6643">포켓</span>
         </span>
-        <strong class="text-title tracking-display text-ink">그린포켓</strong>
       </div>
 
       <p class="text-section text-muted absolute top-36 left-7 z-10 m-0 leading-relaxed">
-        오늘도, 작은 실천이<br />
-        더 좋은 지구를 만듭니다
+        놓치던 절약과 혜택을,<br />한번에
       </p>
 
       <img
