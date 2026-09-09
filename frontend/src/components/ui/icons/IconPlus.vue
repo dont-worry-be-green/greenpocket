@@ -1,5 +1,5 @@
 <script setup>
-/* Phosphor PhPlus (fill) — scripts/add-icon.mjs 로 추출 */
+/* Phosphor PhPlus (bold) — scripts/add-icon.mjs 로 추출 */
 defineProps({ size: { type: [Number, String], default: 24 } })
 </script>
 
@@ -13,7 +13,7 @@ defineProps({ size: { type: [Number, String], default: 24 } })
     focusable="false"
   >
     <path
-      d="M208,32H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM184,136H136v48a8,8,0,0,1-16,0V136H72a8,8,0,0,1,0-16h48V72a8,8,0,0,1,16,0v48h48a8,8,0,0,1,0,16Z"
+      d="M228,128a12,12,0,0,1-12,12H140v76a12,12,0,0,1-24,0V140H40a12,12,0,0,1,0-24h76V40a12,12,0,0,1,24,0v76h76A12,12,0,0,1,228,128Z"
     />
   </svg>
 </template>
