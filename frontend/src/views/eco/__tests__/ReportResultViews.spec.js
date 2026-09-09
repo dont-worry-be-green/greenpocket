@@ -172,6 +172,38 @@ describe('WF-10 평가 결과', () => {
     wrapper.unmount()
   })
 
+  /*
+   * 결산 모달·보관함이 같은 팝업(embedded)으로 통일됐다(2026-09-10, 데모용). 팝업에도
+   * 「적립된 마일리지 N M ›」 행이 있어야 결과 → 적립(WF-11) 흐름이 이어진다. 누르면 팝업을
+   * 닫고 적립 화면으로 간다.
+   */
+  it('보관함 팝업(embedded)에도 적립 마일리지 행이 있고 누르면 닫고 적립 화면으로 간다', async () => {
+    const { default: RoundResultView } = await import('@/views/eco/RoundResultView.vue')
+    const { ECO_RESULT } = await import('@/fixtures/ecoResult')
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const router = createRouter({ history: createWebHistory(), routes })
+    await router.push('/mypage')
+    const push = vi.spyOn(router, 'push').mockResolvedValue()
+    // 다이얼로그는 body 로 Teleport 되므로 wrapper 가 아니라 document 에서 찾는다
+    const wrapper = mount(RoundResultView, {
+      props: { embedded: true, reportRoundId: 7, reportData: ECO_RESULT },
+      global: { plugins: [pinia, router] },
+      attachTo: document.body,
+    })
+    await flushPromises()
+    const row = [...document.querySelectorAll('[role="dialog"] button')].find((node) =>
+      node.textContent.includes('적립된 마일리지'),
+    )
+    expect(row).toBeTruthy()
+    expect(row.textContent).toMatch(/[\d,]+M/)
+    row.click()
+    await flushPromises()
+    expect(wrapper.emitted('close')).toHaveLength(1)
+    expect(push).toHaveBeenCalledWith('/whatif/rounds/7/settlement')
+    wrapper.unmount()
+  })
+
   // 확정되지 않은 회차를 열면 픽스처도 서버와 같은 에러를 낸다 — 화면이 덮어 주지 않는다
   it('진행 중 회차를 열면 확정 전 안내가 뜬다', async () => {
     const { wrapper } = await openPath('/whatif/rounds/8/result')

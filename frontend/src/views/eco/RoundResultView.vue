@@ -70,7 +70,15 @@ const chartCaption = computed(() =>
   result.value ? `목표 ${formatPercent(result.value.targetRate)}를 넘긴 달은 진한 초록이에요` : '',
 )
 
-const goSettlement = () => router.push(`/whatif/rounds/${roundId.value}/settlement`)
+/**
+ * 적립 화면(WF-11)으로. 보관함 다이얼로그(embedded)에서도 같은 통로다 — 결산 모달이 보관함
+ * 팝업으로 통일되면서(2026-09-10, 데모용) 결과 → 적립 흐름이 끊기지 않게 팝업에서도 연다.
+ * 팝업은 먼저 닫는다 — 뒤로 왔을 때 다이얼로그가 그대로 서 있으면 안 된다.
+ */
+const goSettlement = () => {
+  if (props.embedded) emit('close')
+  router.push(`/whatif/rounds/${roundId.value}/settlement`)
+}
 </script>
 
 <template>
@@ -104,13 +112,8 @@ const goSettlement = () => router.push(`/whatif/rounds/${roundId.value}/settleme
     <div v-else class="space-y-4 pt-1">
       <EcoResultSummary :result="result" :report-mode="embedded" />
 
-      <!-- 적립 화면(WF-11)으로 가는 통로. 여기서 전환을 실행하지 않는다 (핵심 규칙 4) -->
-      <EcoResultMileageCard
-        v-if="!embedded"
-        :mileage="result.confirmedMileage"
-        :interactive="!embedded"
-        @open="goSettlement"
-      />
+      <!-- 적립 화면(WF-11)으로 가는 통로 — 페이지·보관함 팝업 둘 다. 여기서 전환을 실행하지 않는다 (핵심 규칙 4) -->
+      <EcoResultMileageCard :mileage="result.confirmedMileage" @open="goSettlement" />
 
       <EcoUtilityResultTable :rows="result.utilityResults" :report-mode="embedded" />
 
