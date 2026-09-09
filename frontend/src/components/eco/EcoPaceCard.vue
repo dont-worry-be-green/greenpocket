@@ -23,7 +23,7 @@
  * ⚠️ 기능명세 B-4-03 은 「구간 계단 3칸」이다. 확정 시안이 4칸 바로 바꿨으니 명세(xlsx) 갱신이 필요하다.
  *
  * ── 홈 문구는 요구 감축률을 말하고 지급액을 약속하지 않는다 ─────────────────
- * 상태 문장은 `requiredRate`(남은 달 필요 감축률)로 말한다. 「예상 에코마일리지 적립」은
+ * 상태 문장은 `requiredRate`(남은 달 필요 감축률)로 말한다. 예상 적립(「목표 달성 시 예상 적립」 등 페이스별 캡션)은
  * 지급 축(`expectedMileage`)이라 「예상」 라벨을 이름에 품는다(핵심 규칙 2 · COM-06).
  */
 import { computed } from 'vue'
@@ -43,7 +43,8 @@ const props = defineProps({
   period: { type: String, default: '' },
   remainingMonths: { type: Number, default: null },
 })
-defineEmits(['goal', 'report', 'missions'])
+// 하단 링크는 둘뿐이다 — 미션 다시 고르기는 목표 관리(WF-04) 안에서 한다(2026-09-09 수현, WF-08 폐지)
+defineEmits(['goal', 'report'])
 
 /*
  * 페이스별 색. 클래스 문자열을 통째로 적어야 Tailwind 가 스캔한다 — 조립하지 않는다.
@@ -140,6 +141,21 @@ const expectedMileage = computed(() => {
   const current = props.progress.tiers?.find((row) => row.state === 'CURRENT')
   return current?.mileage ?? 0
 })
+/*
+ * 캡션은 숫자의 조건을 말한다(2026-09-09 수현). 「예상 에코마일리지 적립」만 적으면 누적 0% 옆의
+ * 10,000M 이 약속처럼 읽힌다 — near 는 목표를 채웠을 때, on 은 이대로 갈 때, ahead·behind 는 지금 구간이다.
+ */
+const mileageCaption = computed(() => {
+  switch (pace.value) {
+    case 'on':
+      return '이대로면 예상 적립'
+    case 'ahead':
+    case 'behind':
+      return '지금 구간 예상 적립'
+    default:
+      return '목표 달성 시 예상 적립'
+  }
+})
 const mileageParts = computed(() => {
   const text = formatMileage(expectedMileage.value)
   return text.endsWith('M') ? [text.slice(0, -1), 'M'] : [text, '']
@@ -222,7 +238,7 @@ const mileageParts = computed(() => {
     <div class="mt-3.5 flex items-center gap-2.5 pt-3 pb-0.5">
       <img :src="ecoMark" alt="에코마일리지" class="h-[17px] w-auto shrink-0" />
       <div class="flex min-w-0 flex-col gap-px">
-        <span class="text-caption text-muted font-semibold">예상 에코마일리지 적립</span>
+        <span class="text-caption text-muted font-semibold">{{ mileageCaption }}</span>
         <span class="text-amount tracking-display text-ink tabular-nums">
           {{ mileageParts[0]
           }}<span class="text-list-title text-ink-soft">{{ mileageParts[1] }}</span>
@@ -240,7 +256,7 @@ const mileageParts = computed(() => {
         class="text-caption text-muted flex-1 cursor-pointer border-0 bg-transparent py-[13px] font-bold"
         @click="$emit('goal')"
       >
-        내 목표
+        목표 관리
       </button>
       <button
         type="button"
@@ -248,13 +264,6 @@ const mileageParts = computed(() => {
         @click="$emit('report')"
       >
         월 리포트
-      </button>
-      <button
-        type="button"
-        class="text-caption text-muted border-divider flex-1 cursor-pointer border-0 border-l bg-transparent py-[13px] font-bold"
-        @click="$emit('missions')"
-      >
-        실천 바꾸기
       </button>
     </nav>
   </section>

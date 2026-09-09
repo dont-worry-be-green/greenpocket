@@ -16,7 +16,7 @@
  * ⚠️ **난이도 배지를 달지 않는다.** 오늘 할지 말지는 목표를 정할 때 이미 고른 결과다.
  * ⚠️ 행별 금액을 두지 않는다 — 응답에 없다. 합계는 하단 한 줄이 들고, 그 값은
  *    목표 조회의 `expectedSavingAmount`(목표를 다 지켰을 때 월 절감액, 원)다. 「약」을 붙이고
- *    「아껴요」로 닫는다 — 바로 위 카드의 「예상 에코마일리지 적립」과 다른 돈이다(핵심 규칙 2·3).
+ *    「아껴요」로 닫는다 — 바로 위 카드의 예상 적립과 다른 돈이다(핵심 규칙 2·3).
  *
  * 체크는 토글 1건이 아니라 **하루치 전량**을 올린다(PUT mission-logs/{date}). `change` 로 완료
  * 목록 전체를 넘긴다. 진행 수는 헤더 헤드라인(「N개가 남았어요」)이 서버 `completedCount` 로 말한다.
@@ -26,7 +26,6 @@ import { computed } from 'vue'
 
 import GpCard from '@/components/ui/GpCard.vue'
 import IconCheck from '@/components/ui/icons/IconCheck.vue'
-import IconChevronRight from '@/components/ui/icons/IconChevronRight.vue'
 import { formatSeason, formatUtilityType, formatWon } from '@/utils/format'
 
 const props = defineProps({
@@ -83,18 +82,8 @@ function toggle(mission) {
 </script>
 
 <template>
-  <GpCard title="오늘의 실천">
-    <!-- 「달력 보기」— 실천 달력 화면은 보류 중이다(2026-09-09). 갈 곳이 생기면 버튼으로 바꾼다 -->
-    <template #action>
-      <span
-        class="text-caption text-muted inline-flex items-center gap-0.5 font-bold"
-        aria-disabled="true"
-      >
-        달력 보기
-        <IconChevronRight :size="11" aria-hidden="true" />
-      </span>
-    </template>
-
+  <!-- 「달력 보기」라벨은 뺐다(2026-09-09 수현) — 실천 달력 화면이 없어 갈 곳이 없다 -->
+  <GpCard title="오늘의 미션">
     <p v-if="seasonNote" class="text-caption text-muted mt-0 mb-1">{{ seasonNote }}</p>
 
     <ul v-if="missions.length" class="divide-divider -mt-1 m-0 list-none divide-y p-0">

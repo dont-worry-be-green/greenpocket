@@ -57,18 +57,6 @@ export default [
     meta: { tab: 'whatif', title: '전달 리포트' },
   },
   {
-    path: '/whatif/missions',
-    name: 'wf-mission-adjust',
-    /*
-     * WF-08. `?utility=ELECTRICITY&month=2026-07` 로 들어온다.
-     * ⚠️ **쿼리 키는 `utility`, 응답 필드는 `utilityType` 이다.** 이름이 다르다.
-     *
-     * roundId 를 경로에 두지 않는다 — 미션 교체는 **현재 회차**에만 가능하다.
-     */
-    component: () => import('@/views/eco/MissionAdjustView.vue'),
-    meta: { tab: 'whatif', title: '실천 다시 고르기' },
-  },
-  {
     path: '/whatif/rounds/:roundId/result',
     name: 'wf-round-result',
     /*

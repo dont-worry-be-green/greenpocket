@@ -14,7 +14,7 @@
  * B-4-07 이 ① 결과 → ② 원인 → ③ 처방 순서로 못 박는다. 그래프는 그 뒤에 온다 —
  * 원인을 보기 전에 막대부터 나오면 "왜 그랬는지" 없이 "얼마나" 만 남는다.
  *
- * 「실천 다시 고르기」는 처방 카드 안이 아니라 **화면 하단 고정 CTA** 다(시안 WF-07).
+ * 「미션 다시 고르기」는 처방 카드 안이 아니라 **화면 하단 고정 CTA** 다(시안 WF-07). 목표 관리(WF-04)로 간다.
  * 스크롤을 끝까지 내려야 보이면 정작 조정이 필요한 사람이 못 찾는다.
  */
 import { computed, ref, watch } from 'vue'
@@ -29,7 +29,17 @@ import ReportDialogLayout from '@/components/layout/ReportDialogLayout.vue'
 import GpCard from '@/components/ui/GpCard.vue'
 import GpButton from '@/components/ui/GpButton.vue'
 import { useEcoStore } from '@/stores/eco'
-import { formatUnit, formatWon, formatUsage, usagePrecision, formatMonthOnly, formatMonthDay, formatPercent, formatRoundPeriod, formatUtilityType } from '@/utils/format'
+import {
+  formatUnit,
+  formatWon,
+  formatUsage,
+  usagePrecision,
+  formatMonthOnly,
+  formatMonthDay,
+  formatPercent,
+  formatRoundPeriod,
+  formatUtilityType,
+} from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -46,7 +56,9 @@ const hasResult = computed(() => Boolean(report.value?.result))
 
 /** '7월분 페이스' — 어느 달 이야기인지 제목이 먼저 말한다(시안 WF-07) */
 const title = computed(() =>
-  report.value?.reportMonth ? `${formatMonthOnly(report.value.reportMonth)}분 페이스` : '전달 리포트',
+  report.value?.reportMonth
+    ? `${formatMonthOnly(report.value.reportMonth)}분 페이스`
+    : '전달 리포트',
 )
 const dialogTitle = computed(() => {
   const month = report.value?.reportMonth || props.month
@@ -76,7 +88,7 @@ const subtitle = computed(() => {
 /** 하단 고정 CTA. 서버가 고른 조정 대상을 그대로 문구에 넣는다 */
 const adjustLabel = computed(() => {
   const utilityType = report.value?.prescription?.adjustTargetUtility
-  return utilityType ? `${formatUtilityType(utilityType)} 실천 다시 고르기` : '실천 다시 고르기'
+  return utilityType ? `${formatUtilityType(utilityType)} 미션 다시 고르기` : '미션 다시 고르기'
 })
 
 const chartCaption = computed(() =>
@@ -112,12 +124,12 @@ async function load() {
 }
 watch(() => props.month || route.query.month, load, { immediate: true })
 
-/** 실천 조정으로 넘긴다. **쿼리 키는 `utility` 다**(응답 필드 `utilityType` 과 이름이 다르다) */
+/*
+ * 미션을 다시 고르는 곳은 목표 관리(WF-04)다 — 별도 실천 조정 화면(WF-08)은 없앴다(2026-09-09 수현).
+ * `?utility=` 로 처방이 지목한 요금의 미션 탭을 바로 연다. **쿼리 키는 `utility` 다**(응답 필드 `utilityType` 과 다르다).
+ */
 function goAdjust(utilityType) {
-  router.push({
-    path: '/whatif/missions',
-    query: { utility: utilityType, month: report.value?.reportMonth },
-  })
+  router.push({ path: '/whatif/goal', query: utilityType ? { utility: utilityType } : {} })
 }
 </script>
 
@@ -131,7 +143,10 @@ function goAdjust(utilityType) {
     @close="emit('close')"
   >
     <!-- 로딩·실패·빈 결과를 남기지 않는다 (COM-08) -->
-    <p v-if="billsLoading || (store.isLoading && !report)" class="text-caption text-muted py-10 text-center">
+    <p
+      v-if="billsLoading || (store.isLoading && !report)"
+      class="text-caption text-muted py-10 text-center"
+    >
       리포트를 불러오는 중이에요
     </p>
 
@@ -143,7 +158,9 @@ function goAdjust(utilityType) {
     </div>
 
     <div v-else-if="!hasResult && billsError" class="py-10 text-center">
-      <p class="text-body text-ink-soft mb-4">{{ billsError.message || '고지서를 불러오지 못했어요' }}</p>
+      <p class="text-body text-ink-soft mb-4">
+        {{ billsError.message || '고지서를 불러오지 못했어요' }}
+      </p>
       <GpButton variant="pill" size="pill" @click="load">다시 시도</GpButton>
     </div>
 
@@ -151,22 +168,41 @@ function goAdjust(utilityType) {
       <GpCard>
         <h2 class="text-section text-ink">{{ formatMonthOnly(report.reportMonth) }}분 감축률</h2>
         <p class="text-amount text-muted my-4">—</p>
-        <p class="text-caption text-muted">비교 데이터가 없어 감축률은 아직 표시할 수 없어요. 등록된 고지서 정보부터 보여드려요.</p>
+        <p class="text-caption text-muted">
+          비교 데이터가 없어 감축률은 아직 표시할 수 없어요. 등록된 고지서 정보부터 보여드려요.
+        </p>
         <div class="border-divider mt-4 flex justify-between border-t pt-4 text-body">
           <span>평가 기간 누적 감축률</span><span>—</span>
         </div>
       </GpCard>
       <GpCard>
         <h2 class="text-section text-ink">이번 달 요금과 사용량</h2>
-        <div v-for="bill in monthlyBills" :key="bill.recordId" class="border-divider border-b py-4 last:border-b-0">
+        <div
+          v-for="bill in monthlyBills"
+          :key="bill.recordId"
+          class="border-divider border-b py-4 last:border-b-0"
+        >
           <div class="flex items-center justify-between gap-3">
             <span class="text-body-strong">{{ formatUtilityType(bill.utilityType) }}</span>
-            <span class="text-body-strong">{{ bill.amount == null ? '—' : formatWon(bill.amount) }}</span>
+            <span class="text-body-strong">{{
+              bill.amount == null ? '—' : formatWon(bill.amount)
+            }}</span>
           </div>
           <p class="text-body text-muted mt-2">
-            사용량 {{ bill.usage == null ? '—' : formatUsage(bill.usage, usagePrecision(bill.usageUnit), formatUnit(bill.usageUnit)) }}
+            사용량
+            {{
+              bill.usage == null
+                ? '—'
+                : formatUsage(
+                    bill.usage,
+                    usagePrecision(bill.usageUnit),
+                    formatUnit(bill.usageUnit),
+                  )
+            }}
           </p>
-          <p v-if="bill.registeredAt" class="text-caption text-muted">{{ formatMonthDay(bill.registeredAt) }} 등록</p>
+          <p v-if="bill.registeredAt" class="text-caption text-muted">
+            {{ formatMonthDay(bill.registeredAt) }} 등록
+          </p>
           <p class="text-caption text-muted">감축률 — · 목표 달성 여부 —</p>
         </div>
       </GpCard>

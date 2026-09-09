@@ -246,9 +246,6 @@ function goToReport() {
 }
 
 /** WF-08 실천 다시 고르기. 감축률 카드 하단의 세 링크 중 하나 */
-function goToMissions() {
-  router.push('/whatif/missions')
-}
 
 /**
  * 하루치를 통째로 올린다(B-3-06). 응답의 completedCount 로 홈 요약도 함께 맞춘다 —
@@ -334,7 +331,6 @@ function retry() {
           :remaining-months="store.home.header?.remainingMonths ?? null"
           @goal="goToGoalSetting"
           @report="goToReport"
-          @missions="goToMissions"
         />
 
         <EcoTodayMissions
@@ -345,11 +341,7 @@ function retry() {
           @change="onMissionChange"
         />
 
-        <p v-if="store.home.links?.movingNotice" class="text-caption text-muted m-0 px-1">
-          이사했다면
-          <RouterLink to="/mypage" class="text-primary-on-soft underline">마이</RouterLink>에서
-          주소를 바꿔주세요. 바꾸지 않으면 지금 살지 않는 집의 사용량과 비교돼요.
-        </p>
+        <!-- 「이사했다면 마이에서 주소를…」 안내는 뺐다(2026-09-09 수현). WF-03 기준 사용량 패널에는 남아 있다 -->
       </div>
     </div>
 
