@@ -1,0 +1,19 @@
+<script setup>
+/* Phosphor PhPlus (fill) — scripts/add-icon.mjs 로 추출 */
+defineProps({ size: { type: [Number, String], default: 24 } })
+</script>
+
+<template>
+  <svg
+    :width="size"
+    :height="size"
+    viewBox="0 0 256 256"
+    fill="currentColor"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <path
+      d="M208,32H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM184,136H136v48a8,8,0,0,1-16,0V136H72a8,8,0,0,1,0-16h48V72a8,8,0,0,1,16,0v48h48a8,8,0,0,1,0,16Z"
+    />
+  </svg>
+</template>

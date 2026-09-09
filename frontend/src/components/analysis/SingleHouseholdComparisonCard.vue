@@ -153,10 +153,10 @@ const difference = computed(() => {
         :key="tab.utilityType"
         type="button"
         role="tab"
-        class="h-8.5 cursor-pointer rounded-[9px] border-0 text-label"
+        class="h-8.5 cursor-pointer rounded-sm border-0 text-label"
         :class="
           selectedUtilityType === tab.utilityType
-            ? 'bg-surface text-ink font-extrabold shadow-[0_1px_3px_rgb(16_40_28/0.10)]'
+            ? 'bg-surface text-ink font-extrabold'
             : 'text-muted bg-transparent font-semibold'
         "
         :aria-selected="selectedUtilityType === tab.utilityType"
@@ -311,8 +311,8 @@ const difference = computed(() => {
             :x="pointX(lastIndex)"
             :y="label.y"
             text-anchor="end"
-            class="text-[9.5px] tabular-nums"
-            :class="label.mine ? 'fill-ink font-bold' : 'fill-muted font-semibold'"
+            class="text-badge tabular-nums"
+            :class="label.mine ? 'fill-ink' : 'fill-muted'"
             data-testid="last-label"
           >
             {{ label.text }}

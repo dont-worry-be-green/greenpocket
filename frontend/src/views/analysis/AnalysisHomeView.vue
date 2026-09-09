@@ -14,10 +14,12 @@ import AppTabLayout from '@/components/layout/AppTabLayout.vue'
 import SingleHouseholdComparisonCard from '@/components/analysis/SingleHouseholdComparisonCard.vue'
 import GpButton from '@/components/ui/GpButton.vue'
 import IconChart from '@/components/ui/icons/IconChart.vue'
+import IconChartLineUp from '@/components/ui/icons/IconChartLineUp.vue'
 import IconChevronDown from '@/components/ui/icons/IconChevronDown.vue'
+import IconPlus from '@/components/ui/icons/IconPlus.vue'
 import IconReceipt from '@/components/ui/icons/IconReceipt.vue'
 import { useAnalysisStore } from '@/stores/analysis'
-import { formatMonth, formatMonthOnly, formatUtilityType, formatWon } from '@/utils/format'
+import { formatMonth, formatMonthOnly, formatNumber, formatUtilityType, formatWon } from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -188,9 +190,7 @@ function goToRegistration() {
           aria-label="고지서 등록"
           @click="goToRegistration"
         >
-          <svg class="size-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7z" />
-          </svg>
+          <IconPlus :size="14" />
         </button>
       </div>
     </template>
@@ -247,11 +247,7 @@ function goToRegistration() {
           </li>
           <li class="flex items-center gap-3">
             <span class="bg-surface-sub text-primary-soft flex size-10 shrink-0 items-center justify-center rounded-md">
-              <svg class="size-5" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
-                <path
-                  d="M232,208a8,8,0,0,1-8,8H32a8,8,0,0,1-8-8V48a8,8,0,0,1,16,0v94.37L90.73,98a8,8,0,0,1,10.07-.38l58.81,44.11L218.73,90a8,8,0,1,1,10.54,12l-64,56a8,8,0,0,1-10.07.38L96.39,114.29,40,163.63V200H224A8,8,0,0,1,232,208Z"
-                />
-              </svg>
+              <IconChartLineUp :size="20" />
             </span>
             <div>
               <strong class="text-body-strong text-ink block">1인 가구 평균과 비교</strong>
@@ -354,9 +350,9 @@ function goToRegistration() {
                   :x="group.lastYear.labelX"
                   :y="group.lastYear.y - 6"
                   text-anchor="middle"
-                  class="fill-muted text-[10.5px] font-semibold tabular-nums"
+                  class="fill-muted text-badge tabular-nums"
                 >
-                  {{ group.lastYear.amount.toLocaleString('ko-KR') }}
+                  {{ formatNumber(group.lastYear.amount) }}
                 </text>
               </template>
               <template v-if="group.thisYear">
@@ -365,9 +361,9 @@ function goToRegistration() {
                   :x="group.thisYear.labelX"
                   :y="group.thisYear.y - 6"
                   text-anchor="middle"
-                  class="fill-ink text-[10.5px] font-bold tabular-nums"
+                  class="fill-ink text-badge tabular-nums"
                 >
-                  {{ group.thisYear.amount.toLocaleString('ko-KR') }}
+                  {{ formatNumber(group.thisYear.amount) }}
                 </text>
               </template>
             </template>
