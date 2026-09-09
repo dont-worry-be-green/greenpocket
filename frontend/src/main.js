@@ -23,3 +23,11 @@ setUnauthorizedHandler(async () => {
 app.use(router)
 
 app.mount('#app')
+
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((error) => {
+      console.warn('서비스 워커 등록에 실패했습니다.', error)
+    })
+  })
+}
