@@ -1,6 +1,6 @@
 import { useAuthStore } from '@/stores/auth'
 
-const AUTH_PATHS = ['/onboarding/start', '/onboarding/login', '/onboarding/signup']
+const AUTH_PATHS = ['/onboarding/login', '/onboarding/signup']
 
 export async function onboardingGuard(to) {
   const auth = useAuthStore()
@@ -8,6 +8,6 @@ export async function onboardingGuard(to) {
 
   const isAuthRoute = AUTH_PATHS.includes(to.path)
 
-  if (!auth.authenticated) return isAuthRoute ? true : '/onboarding/start'
+  if (!auth.authenticated) return isAuthRoute ? true : '/onboarding/login'
   return isAuthRoute ? '/analysis/eco-link' : true
 }

@@ -16,7 +16,7 @@ app.use(pinia)
 setUnauthorizedHandler(async () => {
   useAuthStore(pinia).clearSession()
   if (!router.currentRoute.value.path.startsWith('/onboarding')) {
-    await router.replace('/onboarding/start')
+    await router.replace('/onboarding/login')
   }
 })
 

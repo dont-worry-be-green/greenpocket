@@ -19,7 +19,6 @@ import { DATA_SOURCE, setDataSource } from '@/api/dataSource'
 import routes from '@/router/routes/onboarding'
 import LoginView from '@/views/onboarding/LoginView.vue'
 import SignupView from '@/views/onboarding/SignupView.vue'
-import StartView from '@/views/onboarding/StartView.vue'
 
 async function mountView(component, path) {
   window.history.replaceState({}, '', path)
@@ -65,15 +64,6 @@ beforeEach(() => {
   )
 })
 
-describe('StartView', () => {
-  it('회원가입과 기존 계정 로그인의 두 진입을 보여준다', async () => {
-    const { wrapper } = await mountView(StartView, '/onboarding/start')
-    expect(wrapper.text()).toContain('회원가입')
-    expect(wrapper.text()).toContain('이미 계정이 있어요')
-    expect(wrapper.text()).not.toContain('이 기기에만 저장')
-  })
-})
-
 describe('LoginView', () => {
   it('이메일과 비밀번호를 모두 입력해야 로그인할 수 있다', async () => {
     const { wrapper } = await mountView(LoginView, '/onboarding/login')
@@ -83,6 +73,16 @@ describe('LoginView', () => {
     await wrapper.find('input[autocomplete="email"]').setValue('user@example.com')
     await wrapper.find('input[autocomplete="current-password"]').setValue('password1234')
     expect(cta().attributes('disabled')).toBeUndefined()
+  })
+
+  it('비밀번호 표시 버튼으로 입력값을 확인할 수 있다', async () => {
+    const { wrapper } = await mountView(LoginView, '/onboarding/login')
+    const passwordInput = wrapper.find('input[autocomplete="current-password"]')
+
+    expect(passwordInput.attributes('type')).toBe('password')
+    await wrapper.get('button[aria-label="비밀번호 보기"]').trigger('click')
+    expect(passwordInput.attributes('type')).toBe('text')
+    expect(wrapper.get('button[aria-label="비밀번호 숨기기"]').exists()).toBe(true)
   })
 
   it('실제 로그인 응답을 받은 뒤 진단 탭의 에코 연동 화면으로 이동한다', async () => {

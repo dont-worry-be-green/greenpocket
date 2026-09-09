@@ -26,15 +26,15 @@ describe('서버 세션 기반 진입 가드', () => {
   })
 
   it.each(['/whatif', '/mypage', '/onboarding/profile'])(
-    '로그인 전 %s 접근은 시작 화면으로 보낸다',
+    '로그인 전 %s 접근은 로그인 화면으로 보낸다',
     async (path) => {
       const auth = useAuthStore()
       auth.sessionChecked = true
-      await expect(at(path)).resolves.toBe('/onboarding/start')
+      await expect(at(path)).resolves.toBe('/onboarding/login')
     },
   )
 
-  it.each(['/onboarding/start', '/onboarding/login', '/onboarding/signup'])(
+  it.each(['/onboarding/login', '/onboarding/signup'])(
     '로그인 전 %s 접근은 허용한다',
     async (path) => {
       const auth = useAuthStore()
