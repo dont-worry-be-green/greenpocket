@@ -36,7 +36,7 @@
  * 전달 리포트 · 목표 카드는 감축률 카드 하단 링크(월 리포트 → WF-07 · 내 목표 → WF-04)로 간다.
  * 참여신청 배너(B-4-05)는 홈에서 뺐다(2026-09-09 수현 결정, 기능명세 B-4-04~06 갱신). 입구는 보류 상태다.
  */
-import { computed, onMounted, onUnmounted, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import EcoBaselinePanel from '@/components/eco/EcoBaselinePanel.vue'
@@ -51,6 +51,7 @@ import { derivePace } from '@/components/eco/ecoPace'
 import AppTabLayout from '@/components/layout/AppTabLayout.vue'
 import GpButton from '@/components/ui/GpButton.vue'
 import GpCard from '@/components/ui/GpCard.vue'
+import { ECO_RESULT_MODAL } from '@/fixtures/ecoResult'
 import { useAuthStore } from '@/stores/auth'
 import { useEcoStore } from '@/stores/eco'
 import { formatRoundPeriod, formatRoundPeriodChip } from '@/utils/format'
@@ -100,6 +101,27 @@ const linkingUtilities = computed(() => store.linkJob?.utilityStatus ?? [])
  * `?preview=` 로 바로 들어오면 화면이 이미 정해져 있어서 반드시 그 경로를 탄다.
  */
 const isBootstrapping = computed(() => !store.home && !store.error)
+
+/*
+ * ── 발표용 임시: 결산 모달 강제 열기 (2026-09-10 수현) ─────────────────────
+ * 결산은 지난 회차가 CONFIRMED 돼야 서버가 `resultModal` 을 내려 주는데, 발표 시점엔 그 상태를 만들
+ * 수 없다. 감축률 카드 「예상 적립」 캡션 옆 작은 버튼(`demo-result`)이 이 플래그를 켜면 픽스처
+ * 값(12.5% · 30,000M)으로 같은 모달을 띄운다. 기간 칩은 지금 보고 있는 회차(홈 `header`)를 따른다.
+ * 서버가 진짜 `resultModal` 을 내려 주면 그쪽이 이긴다. 결산 흐름이 붙으면 이 블록과 버튼을 지운다.
+ */
+const demoResultOpen = ref(false)
+const demoResultModal = computed(() => {
+  const header = store.home?.header
+  return {
+    ...ECO_RESULT_MODAL,
+    periodStart: header?.periodStart ?? ECO_RESULT_MODAL.periodStart,
+    periodEnd: header?.periodEnd ?? ECO_RESULT_MODAL.periodEnd,
+  }
+})
+const resultModalData = computed(() =>
+  store.showResultModal ? store.home?.resultModal : demoResultModal.value,
+)
+const resultModalOpen = computed(() => store.showResultModal || demoResultOpen.value)
 const hasFatalError = computed(() => !store.home && Boolean(store.error))
 
 /** 감축률 카드 우상단 기간 칩 '2026.04~09'. 「누적」이 무엇의 누적인지 밝힌다(핵심 규칙 7) */
@@ -262,6 +284,10 @@ function onMissionChange(completedMissionIds) {
  * ⚠️ 회차는 **모달의 것**이다 — `store.roundId` 는 진행 중인 회차라 엉뚱한 회차를 읽음 처리한다.
  */
 function onDismissResultModal() {
+  if (!store.showResultModal) {
+    demoResultOpen.value = false
+    return
+  }
   store.dismissResultModal(store.home?.resultModal?.roundId)
 }
 
@@ -270,7 +296,7 @@ function onDismissResultModal() {
  * 방금 본 것을 또 보라는 말이 된다.
  */
 function goToResult() {
-  const id = store.home?.resultModal?.roundId
+  const id = resultModalData.value?.roundId
   onDismissResultModal()
   if (id) router.push(`/whatif/rounds/${id}/result`)
 }
@@ -331,6 +357,7 @@ function retry() {
           :remaining-months="store.home.header?.remainingMonths ?? null"
           @goal="goToGoalSetting"
           @report="goToReport"
+          @demo-result="demoResultOpen = true"
         />
 
         <EcoTodayMissions
@@ -369,8 +396,8 @@ function retry() {
       본문 안에 넣으면 로딩·실패 분기에서 사라진다.
     -->
     <EcoResultModal
-      :modal="store.home?.resultModal"
-      :open="store.showResultModal"
+      :modal="resultModalData"
+      :open="resultModalOpen"
       @close="onDismissResultModal"
       @view="goToResult"
     />
