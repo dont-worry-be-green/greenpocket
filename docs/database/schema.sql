@@ -74,7 +74,8 @@ CREATE TABLE `app_user` (
 	`phone_number`	VARCHAR(11)	NULL	COMMENT '휴대전화번호 | 숫자만 저장, 일반 회원 필수·데모 호환 NULL',
 	`current_status`	ENUM('EMPLOYED', 'SELF_EMPLOYED', 'UNEMPLOYED', 'FREELANCER', 'STUDENT', 'PREPARING_STARTUP', 'OTHER')	NULL	COMMENT '현재 상태 | 정책 추천용',
 	`annual_income_band`	ENUM('NO_INCOME', 'UNDER_24M', 'FROM_24M_TO_36M', 'FROM_36M_TO_50M', 'OVER_50M', 'UNKNOWN')	NULL	COMMENT '연소득 구간 | 상세 소득은 수집하지 않음',
-	`household_status`	ENUM('ONE_PERSON', 'WITH_PARENTS', 'MARRIED', 'SINGLE_PARENT', 'OTHER')	NULL	COMMENT '가구 상태 | 정책 추천용',
+	`education_status`	ENUM('BELOW_HIGH_SCHOOL', 'HIGH_SCHOOL_STUDENT', 'HIGH_SCHOOL_EXPECTED_GRADUATION', 'HIGH_SCHOOL_GRADUATE', 'UNIVERSITY_STUDENT', 'UNIVERSITY_EXPECTED_GRADUATION', 'UNIVERSITY_GRADUATE', 'GRADUATE_SCHOOL', 'OTHER')	NULL	COMMENT '학력 상태 | 정책 추천용',
+	`household_status`	ENUM('ONE_PERSON', 'WITH_PARENTS', 'MARRIED', 'SINGLE_PARENT', 'OTHER')	NULL	COMMENT '레거시 가구 상태 | 신규 추천 입력·판정에 사용하지 않음',
 	`policy_profile_completed`	TINYINT(1)	NOT NULL	DEFAULT 0	COMMENT '정책 추천 프로필 완료 여부',
 	`onboarding_completed`	TINYINT(1)	NOT NULL	DEFAULT 1	COMMENT '별도 온보딩 제거 | 항상 완료',
 	`eco_link_status`	ENUM('UNLINKED', 'LINKING', 'LINKED', 'FAILED')	NOT NULL	DEFAULT 'UNLINKED'	COMMENT '에코마일리지 연동 상태 | 미연동, 연동 중, 연동 완료, 실패',
@@ -98,11 +99,11 @@ CREATE TABLE `app_user` (
 CREATE TABLE `user_policy_interest` (
 	`id`	BIGINT	NOT NULL	AUTO_INCREMENT	COMMENT '사용자 관심 분야 ID',
 	`user_id`	BIGINT	NOT NULL	COMMENT '사용자 ID',
-	`category`	ENUM('JOB', 'HOUSING', 'EDUCATION', 'WELFARE_CULTURE', 'PARTICIPATION_RIGHTS')	NOT NULL	COMMENT '정책 관심 분야 | 사용자당 최대 3개는 애플리케이션 검증',
+	`category`	ENUM('JOB', 'HOUSING', 'EDUCATION', 'WELFARE_CULTURE', 'PARTICIPATION_RIGHTS')	NOT NULL	COMMENT '정책 관심 분야 | 사용자당 최대 2개는 애플리케이션 검증',
 	`created_at`	TIMESTAMP	NOT NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '생성 일시',
 	PRIMARY KEY (`id`),
 	UNIQUE KEY `uq_user_policy_interest` (`user_id`,`category`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='레거시 사용자 관심 분야 | 신규 저장·추천 필터에 사용하지 않음';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='사용자 청년정책 관심 분야 | 사용자당 최대 2개';
 
 CREATE TABLE `youth_policy` (
 	`id`	BIGINT	NOT NULL	AUTO_INCREMENT	COMMENT '청년정책 내부 ID',
@@ -116,7 +117,11 @@ CREATE TABLE `youth_policy` (
 	`support_content`	MEDIUMTEXT	NULL	COMMENT '지원 내용 plcySprtCn',
 	`supervising_org_name`	VARCHAR(200)	NULL	COMMENT '주관 기관 sprvsnInstCdNm',
 	`operating_org_name`	VARCHAR(200)	NULL	COMMENT '운영 기관 operInstCdNm',
+	`approval_status_code`	VARCHAR(20)	NULL	COMMENT '정책 승인 상태 plcyAprvSttsCd',
+	`provision_method_code`	VARCHAR(20)	NULL	COMMENT '정책 제공 방법 plcyPvsnMthdCd',
 	`application_period_code`	VARCHAR(20)	NULL	COMMENT '신청기간 구분 aplyPrdSeCd',
+	`application_start_date`	DATE	NULL	COMMENT '해석한 신청 시작일 aplyYmd',
+	`application_end_date`	DATE	NULL	COMMENT '해석한 신청 종료일 aplyYmd',
 	`business_start_date`	DATE	NULL	COMMENT '사업 시작일 bizPrdBgngYmd',
 	`business_end_date`	DATE	NULL	COMMENT '사업 종료일 bizPrdEndYmd',
 	`application_date_text`	VARCHAR(500)	NULL	COMMENT '별도 신청일 안내 aplyYmd',
@@ -138,8 +143,8 @@ CREATE TABLE `youth_policy` (
 	`employment_codes`	VARCHAR(500)	NULL	COMMENT '취업 상태 코드 jobCd 원문',
 	`school_codes`	VARCHAR(500)	NULL	COMMENT '학력 코드 schoolCd 원문',
 	`special_codes`	VARCHAR(500)	NULL	COMMENT '특화 대상 코드 sbizCd 원문',
-	`application_status`	ENUM('OPEN', 'UPCOMING', 'CLOSED', 'UNKNOWN')	NOT NULL	DEFAULT 'UNKNOWN'	COMMENT '신청 상태 | 기간과 기준일로 정규화',
-	`is_active`	TINYINT(1)	NOT NULL	DEFAULT 1	COMMENT '최신 동기화에서 존재하는 정책 여부',
+	`application_status`	ENUM('OPEN', 'UPCOMING', 'CLOSED', 'UNKNOWN')	NOT NULL	DEFAULT 'UNKNOWN'	COMMENT '신청 상태 | 신청기간 aplyYmd와 기준일로 정규화',
+	`is_active`	TINYINT(1)	NOT NULL	DEFAULT 1	COMMENT '승인·현재 신청 가능·개인 대상·신청 경로 검증을 통과한 정책 여부',
 	`source_registered_at`	DATETIME	NULL	COMMENT '온통청년 최초 등록일 frstRegDt',
 	`source_modified_at`	DATETIME	NULL	COMMENT '온통청년 최종 수정일 lastMdfcnDt',
 	`synced_at`	DATETIME	NOT NULL	COMMENT '마지막 정상 동기화 시각',

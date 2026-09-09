@@ -44,20 +44,23 @@ export const POLICY_PREFERENCES = {
   birthDate: '1998-03-15',
   currentStatus: 'EMPLOYED',
   annualIncomeBand: 'FROM_24M_TO_36M',
-  householdStatus: 'ONE_PERSON',
+  educationStatus: 'UNIVERSITY_GRADUATE',
+  interestCategories: ['JOB', 'HOUSING'],
   ecoAddress: { label: '서울특별시 관악구', sidoCode: '11', sigunguCode: '11620' },
   birthDateEditable: false,
   regionEditable: false,
   completed: true,
 }
 
-export function buildPolicyList(params = {}, preview = false) {
-  const keyword = String(params.keyword ?? '').trim().toLowerCase()
+export function buildPolicyList(params = {}) {
+  const keyword = String(params.keyword ?? '')
+    .trim()
+    .toLowerCase()
   const filtered = cards.filter(
     (item) =>
       (!keyword || `${item.title} ${item.supportSummary}`.toLowerCase().includes(keyword)) &&
       (!params.category || item.category === params.category) &&
-      (!params.applicationStatus || item.applicationStatus === params.applicationStatus),
+      (!params.matchStatus || item.matchStatus === params.matchStatus),
   )
   const page = Number(params.page ?? 0)
   const size = Number(params.size ?? 20)
@@ -68,9 +71,12 @@ export function buildPolicyList(params = {}, preview = false) {
     totalElements: filtered.length,
     totalPages: filtered.length ? Math.ceil(filtered.length / size) : 0,
     hasNext: (page + 1) * size < filtered.length,
-    region: { linked: true, label: '서울특별시 관악구', appliedLevels: ['NATIONAL', 'SIDO', 'SIGUNGU'] },
+    region: {
+      linked: true,
+      label: '서울특별시 관악구',
+      appliedLevels: ['NATIONAL', 'SIDO', 'SIGUNGU'],
+    },
     lastSyncedAt: '2026-09-09T02:29:35+09:00',
-    preview,
   }
 }
 

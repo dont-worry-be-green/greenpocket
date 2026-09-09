@@ -13,6 +13,8 @@ public record YouthPolicySourcePolicy(
 	String supportContent,
 	String supervisingOrgName,
 	String operatingOrgName,
+	String approvalStatusCode,
+	String provisionMethodCode,
 	String applicationPeriodCode,
 	LocalDate businessStartDate,
 	LocalDate businessEndDate,

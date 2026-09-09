@@ -25,8 +25,20 @@ export const HOUSEHOLD_STATUS_OPTIONS = [
   { value: 'OTHER', label: '기타' },
 ]
 
+export const EDUCATION_STATUS_OPTIONS = [
+  { value: 'BELOW_HIGH_SCHOOL', label: '고졸 미만' },
+  { value: 'HIGH_SCHOOL_STUDENT', label: '고교 재학' },
+  { value: 'HIGH_SCHOOL_EXPECTED_GRADUATION', label: '고졸 예정' },
+  { value: 'HIGH_SCHOOL_GRADUATE', label: '고교 졸업' },
+  { value: 'UNIVERSITY_STUDENT', label: '대학 재학' },
+  { value: 'UNIVERSITY_EXPECTED_GRADUATION', label: '대졸 예정' },
+  { value: 'UNIVERSITY_GRADUATE', label: '대학 졸업' },
+  { value: 'GRADUATE_SCHOOL', label: '석·박사' },
+  { value: 'OTHER', label: '기타' },
+]
+
 export const POLICY_CATEGORY_OPTIONS = [
-  { value: '', label: '전체 분야' },
+  { value: '', label: '모든 정책 분야' },
   { value: 'JOB', label: '일자리' },
   { value: 'HOUSING', label: '주거' },
   { value: 'EDUCATION', label: '교육' },
@@ -47,19 +59,38 @@ const labelOf = (options, value) => options.find((item) => item.value === value)
 export const formatCurrentStatus = (value) => labelOf(CURRENT_STATUS_OPTIONS, value)
 export const formatAnnualIncomeBand = (value) => labelOf(ANNUAL_INCOME_OPTIONS, value)
 export const formatHouseholdStatus = (value) => labelOf(HOUSEHOLD_STATUS_OPTIONS, value)
+export const formatEducationStatus = (value) => labelOf(EDUCATION_STATUS_OPTIONS, value)
 export const formatPolicyCategory = (value) => labelOf(POLICY_CATEGORY_OPTIONS, value)
 export const formatApplicationStatus = (value) => labelOf(APPLICATION_STATUS_OPTIONS, value)
 
 export function policyMatchMeta(status) {
-  return {
-    ELIGIBLE: { label: '신청 가능성이 높아요', tone: 'positive' },
-    CHECK_REQUIRED: { label: '세부 조건 확인 필요', tone: 'confirmed' },
-    NOT_ELIGIBLE: { label: '조건이 맞지 않아요', tone: 'sub' },
-  }[status] ?? { label: '조건을 확인해 주세요', tone: 'sub' }
+  return (
+    {
+      ELIGIBLE: { label: '신청 가능성이 높아요', tone: 'positive' },
+      CHECK_REQUIRED: { label: '세부 조건 확인 필요', tone: 'confirmed' },
+      NOT_ELIGIBLE: { label: '조건이 맞지 않아요', tone: 'sub' },
+    }[status] ?? { label: '조건을 확인해 주세요', tone: 'sub' }
+  )
 }
 
 export function formatPolicyDate(value) {
   if (!value) return '일정 확인'
   const [year, month, day] = value.split('-')
   return `${year}.${month}.${day}`
+}
+
+export function formatPolicyDeadline(applicationStatus, endDate) {
+  if (applicationStatus === 'OPEN' && !endDate) return '상시 신청'
+  if (!endDate) return '신청 기간 확인'
+  return `${formatPolicyDate(endDate)}까지`
+}
+
+export function formatPolicyPeriod(application) {
+  if (application?.periodType === 'ALWAYS') return '상시 신청'
+  if (application?.startDate && application?.endDate) {
+    return `${formatPolicyDate(application.startDate)} ~ ${formatPolicyDate(application.endDate)}`
+  }
+  if (application?.startDate) return `${formatPolicyDate(application.startDate)}부터`
+  if (application?.endDate) return `${formatPolicyDate(application.endDate)}까지`
+  return '신청 기간 확인'
 }

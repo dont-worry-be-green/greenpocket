@@ -31,7 +31,8 @@ public class ProfileService {
 		ProfileSnapshot profile = findUser(userId);
 		return new ProfileResponse(
 			profile.name(), profile.birthDate(), profile.gender(), profile.phoneNumber(),
-			profile.currentStatus(), profile.annualIncomeBand(), profile.householdStatus(),
+			profile.currentStatus(), profile.annualIncomeBand(), profile.educationStatus(),
+			profile.interestCategories(),
 			toProfileEcoAddress(profile),
 			profile.policyProfileCompleted()
 		);
@@ -41,7 +42,8 @@ public class ProfileService {
 	public PolicyPreferencesResponse findPolicyPreferences(Long userId) {
 		ProfileSnapshot profile = findUser(userId);
 		return new PolicyPreferencesResponse(
-			profile.birthDate(), profile.currentStatus(), profile.annualIncomeBand(), profile.householdStatus(),
+			profile.birthDate(), profile.currentStatus(), profile.annualIncomeBand(), profile.educationStatus(),
+			profile.interestCategories(),
 			toPreferencesEcoAddress(profile),
 			false,
 			false,
@@ -53,16 +55,20 @@ public class ProfileService {
 	public PolicyPreferencesUpdateResponse updatePolicyPreferences(Long userId, PolicyPreferencesRequest request) {
 		validatePreferences(request);
 		if (profileRepository.updatePolicyPreferences(
-			userId, request.currentStatus(), request.annualIncomeBand(), request.householdStatus()
+			userId, request.currentStatus(), request.annualIncomeBand(), request.educationStatus()
 		) != 1) {
 			throw unauthenticated();
 		}
+		profileRepository.replacePolicyInterests(userId, request.interestCategories());
 		return new PolicyPreferencesUpdateResponse(true, true);
 	}
 
 	private static void validatePreferences(PolicyPreferencesRequest request) {
 		if (request == null || request.currentStatus() == null || request.annualIncomeBand() == null
-			|| request.householdStatus() == null) {
+			|| request.educationStatus() == null || request.interestCategories() == null
+			|| request.interestCategories().isEmpty() || request.interestCategories().size() > 2
+			|| request.interestCategories().stream().anyMatch(java.util.Objects::isNull)
+			|| request.interestCategories().stream().distinct().count() != request.interestCategories().size()) {
 			throw new BusinessException(ProfileErrorCode.PROFILE_INCOMPLETE);
 		}
 	}

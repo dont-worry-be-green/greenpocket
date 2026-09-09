@@ -28,7 +28,7 @@ defineEmits(['configure', 'all', 'select', 'linkEco'])
     <div v-if="!youthPolicy.profileCompleted" class="bg-primary-bg rounded-xl p-5">
       <p class="text-body-strong text-ink mt-0 mb-1">맞춤 추천 조건을 알려주세요</p>
       <p class="text-body-sm text-primary-on-soft mt-0 mb-4">
-        현재 상태, 연소득 구간, 가구 상태만 선택하면 돼요.
+        현재 상태, 연소득, 학력과 관심 분야를 선택하면 돼요.
       </p>
       <GpButton variant="wide" size="wide" @click="$emit('configure')">추천 조건 설정하기</GpButton>
     </div>
@@ -66,11 +66,7 @@ defineEmits(['configure', 'all', 'select', 'linkEco'])
       </div>
 
       <GpButton class="mt-3" variant="wide" size="wide" @click="$emit('all')">
-        {{
-          youthPolicy.recommendedCount
-            ? `${youthPolicy.recommendedCount}개 추천 전체 보기`
-            : '전체 정책 보기'
-        }}
+        전체 청년정책 보기
       </GpButton>
     </template>
   </section>

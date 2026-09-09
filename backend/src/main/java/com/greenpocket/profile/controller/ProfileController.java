@@ -48,7 +48,7 @@ public class ProfileController {
 		return ApiResponse.success(profileService.findPolicyPreferences(userId));
 	}
 
-	@Operation(summary = "정책 추천 조건 저장", description = "현재 상태·연소득 구간·가구 상태를 저장하고 추천을 갱신합니다.")
+	@Operation(summary = "정책 추천 조건 저장", description = "현재 상태·연소득 구간·학력·관심 분야를 저장하고 추천을 갱신합니다. 저장값은 다음 수정 전까지 유지됩니다.")
 	@PutMapping("/policy-preferences")
 	public ApiResponse<PolicyPreferencesUpdateResponse> updatePolicyPreferences(
 		@Parameter(hidden = true) @CurrentUserId Long userId,

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -15,7 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.greenpocket.profile.dto.PolicyPreferencesRequest;
 import com.greenpocket.profile.entity.AnnualIncomeBand;
 import com.greenpocket.profile.entity.CurrentStatus;
-import com.greenpocket.profile.entity.HouseholdStatus;
+import com.greenpocket.profile.entity.EducationStatus;
+import com.greenpocket.profile.entity.PolicyInterestCategory;
 import com.greenpocket.user.dto.DemoResetRequest;
 import com.greenpocket.user.service.DemoResetService;
 
@@ -38,7 +40,8 @@ class ProfileDemoResetIntegrationTest {
 		Long userId = createUser(demoKey);
 
 		var saved = profileService.updatePolicyPreferences(userId, new PolicyPreferencesRequest(
-			CurrentStatus.EMPLOYED, AnnualIncomeBand.FROM_24M_TO_36M, HouseholdStatus.ONE_PERSON
+			CurrentStatus.EMPLOYED, AnnualIncomeBand.FROM_24M_TO_36M,
+			EducationStatus.UNIVERSITY_GRADUATE, List.of(PolicyInterestCategory.JOB)
 		));
 		createBill(userId);
 
