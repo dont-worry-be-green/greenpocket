@@ -101,6 +101,30 @@ export function formatDifficulty(difficulty) {
 }
 
 /**
+ * 계절 enum(api-spec 3절 Season · mission_catalog.season_tags)을 한국어로.
+ *   'SUMMER' → '여름'
+ */
+const SEASON_LABEL = { SPRING: '봄', SUMMER: '여름', AUTUMN: '가을', WINTER: '겨울' }
+const ALL_SEASONS = Object.keys(SEASON_LABEL)
+
+export function formatSeason(season) {
+  return SEASON_LABEL[season] ?? EMPTY
+}
+
+/**
+ * 미션의 계절 태그 배열을 한 덩어리로. **사계절이면 빈 문자열**이다 — 늘 보이는 미션에
+ * 「봄·여름·가을·겨울」을 달면 계절 한정 미션이 안 보인다.
+ *   ['SUMMER'] → '여름'  ·  ['AUTUMN','WINTER'] → '가을·겨울'  ·  네 계절 전부 → ''
+ */
+export function formatSeasonTags(seasonTags) {
+  const tags = Array.isArray(seasonTags) ? seasonTags : []
+  if (tags.length === 0 || ALL_SEASONS.every((season) => tags.includes(season))) return ''
+  return ALL_SEASONS.filter((season) => tags.includes(season))
+    .map((season) => SEASON_LABEL[season])
+    .join('·')
+}
+
+/**
  * 방향이 없는 비율. 비중(shareRate)·목표 절감률처럼 그 자체가 값인 퍼센트에 쓴다.
  * 증감(늘었다/줄었다)에는 쓰지 않는다 — 그건 formatChangeRate 다.
  *   64.000 → '64%'  ·  11.322 → '11.3%'
@@ -329,8 +353,7 @@ const AREA_BAND_LABEL = {
 }
 
 /** 선택 칩·라디오가 그대로 쓰는 `[{ value, label }]`. 순서가 곧 화면 순서다 */
-const toOptions = (labels) =>
-  Object.entries(labels).map(([value, label]) => ({ value, label }))
+const toOptions = (labels) => Object.entries(labels).map(([value, label]) => ({ value, label }))
 
 export const HOUSING_TYPE_OPTIONS = toOptions(HOUSING_TYPE_LABEL)
 export const AREA_BAND_OPTIONS = toOptions(AREA_BAND_LABEL)

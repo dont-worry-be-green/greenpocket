@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { currentMonth, isMonth, shiftMonth } from '../month'
+import { currentMonth, isMonth, seasonOf, seasonsBetween, shiftMonth } from '../month'
 
 describe('isMonth', () => {
   it('YYYY-MM 만 통과시킨다', () => {
@@ -53,5 +53,28 @@ describe('currentMonth', () => {
     }).formatToParts(new Date())
     const year = kst.find((part) => part.type === 'year').value
     expect(month.startsWith(year)).toBe(true)
+  })
+})
+
+describe('seasonOf · seasonsBetween — 회차 남은 기간의 계절 (결정 C-34)', () => {
+  it('달의 계절은 백엔드와 같은 표다', () => {
+    expect(seasonOf('2026-03')).toBe('SPRING')
+    expect(seasonOf('2026-08')).toBe('SUMMER')
+    expect(seasonOf('2026-09')).toBe('AUTUMN')
+    expect(seasonOf('2026-12')).toBe('WINTER')
+    expect(seasonOf('2026-02')).toBe('WINTER')
+    expect(seasonOf('bad')).toBeNull()
+  })
+
+  it('9월 하나 남은 회차(4~9월)는 가을뿐이다', () => {
+    expect(seasonsBetween('2026-09', '2026-09')).toEqual(['AUTUMN'])
+  })
+
+  it('10~3월 회차를 10월에 열면 가을·겨울·봄이 걸친다', () => {
+    expect(seasonsBetween('2025-10', '2026-03')).toEqual(['AUTUMN', 'WINTER', 'SPRING'])
+  })
+
+  it('회차가 이미 끝났으면 빈 배열이다', () => {
+    expect(seasonsBetween('2026-10', '2026-09')).toEqual([])
   })
 })
