@@ -9,7 +9,8 @@
  * ── 화면 순서 (2026-09-09 수현, 결정 C-37) ──────────────────────────────
  *   ① 목표 카드(EcoGoalPlanner) — 요금 3종 행 + 0·5·10·15 단계 바 + 합계 + 예상 마일리지
  *   ② 요금 세그먼트 — 아래 미션 카드의 카테고리 전환만 맡는다
- *   ③ 미션 카드(EcoMissionPicker) — 고른 요금의 실천 목록. 미등록이면 위에 EcoGoalSegment 안내
+ *   ③ 미션 카드(EcoMissionPicker) — 고른 요금의 실천 목록 + 그 요금의 고른 미션 합계·목표 대비(C-42).
+ *      미등록이면 위에 EcoGoalSegment 안내
  * 탭으로 요금을 오가며 구간을 고르던 이전 구조는 「탭 → 구간 → 합산 → 다시 탭 → 미션」으로 끊겼다.
  *
  * ── 목표 초안은 스토어에 두지 않는다 ─────────────────────────────────────
@@ -95,6 +96,13 @@ const visibleSegment = computed(() => {
 })
 
 const preview = computed(() => store.goalPreview)
+
+/** 지금 보는 요금에 고른 구간의 하한(%) — 미션 카드의 요금별 목표 대비에 쓴다 (B-3-04) */
+const activeTargetRate = computed(() => {
+  const tier = activeSegment.value ? tierByUtility.value[activeSegment.value.utilityType] : null
+  if (!tier) return null
+  return goalForm.value?.tiers?.find((item) => item.tier === tier)?.targetRate ?? null
+})
 /** 미등록 요금은 목표를 만들 수 없어 targets 에서 뺀다 (서버는 409 로 막는다) */
 const payload = computed(() => ({
   targets: segments.value
@@ -242,6 +250,7 @@ async function save() {
             v-model:selected-ids="selectedMissionIds"
             :segment="visibleSegment"
             :preview-items="preview?.missions?.items ?? []"
+            :target-rate="activeTargetRate"
           />
         </template>
       </div>
