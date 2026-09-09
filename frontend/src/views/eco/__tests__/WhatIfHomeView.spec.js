@@ -24,8 +24,12 @@ async function mountHome(search) {
   await router.isReady()
 
   const errors = []
-  const spy = vi.spyOn(console, 'error').mockImplementation((...args) => errors.push(String(args[0])))
-  const warn = vi.spyOn(console, 'warn').mockImplementation((...args) => errors.push(String(args[0])))
+  const spy = vi
+    .spyOn(console, 'error')
+    .mockImplementation((...args) => errors.push(String(args[0])))
+  const warn = vi
+    .spyOn(console, 'warn')
+    .mockImplementation((...args) => errors.push(String(args[0])))
 
   const wrapper = mount(WhatIfHomeView, { global: { plugins: [createPinia(), router] } })
   await flushPromises()
@@ -51,33 +55,33 @@ describe('WhatIfHomeView', () => {
   })
 
   /*
-   * WF-06 시안 구조 고정 (B-4-03 · B-4-04 · B-4-06).
+   * WF-06 확정 시안 구조 고정 (design-system.md 9-2 · B-4-03).
    *
-   * 앞서 진행 카드를 세로 목록으로 그려 두었다가 명세의 「구간 계단 3칸」과 어긋난 적이 있다.
-   * 모양이 아니라 **명세가 못 박은 요소**만 짚는다 — 클래스 이름은 검사하지 않는다.
+   * 구간 바는 지급 구간과 같은 4칸이고 현재 칸·목표 칸이 표시된다. 모양이 아니라
+   * **명세와 시안이 못 박은 요소**만 짚는다 — 클래스 이름은 검사하지 않는다.
    */
-  it('구간 계단이 3칸이고 지금·목표가 한 칸씩 붙는다', async () => {
+  it('구간 바가 지급 구간 4칸이고 지금·목표가 표시된다', async () => {
     const { wrapper, errors } = await mountHome('?preview=WF_06_IN_PROGRESS')
     expect(errors).toEqual([])
 
     const cells = wrapper.findAll('[aria-label="마일리지 구간"] li')
-    expect(cells).toHaveLength(3)
-    expect(cells.map((cell) => cell.text().includes('M'))).toEqual([true, true, true])
+    expect(cells).toHaveLength(4)
+    expect(cells.map((cell) => cell.text().includes('M'))).toEqual([true, true, true, true])
 
     const text = wrapper.text()
     expect(text).toContain('지금')
     expect(text).toContain('목표')
+    // 누적 감축률은 있는 값을 있는 이름으로 부른다 — 「평균」이 아니다
+    expect(text).toContain('누적 감축률')
     // 시차 규칙(핵심 규칙 10) 캡션이 빠지면 화면 숫자와 누리집 값이 다른 이유가 사라진다
     expect(text).toContain('검침 확정분은 2~3개월 뒤에 반영돼요')
     wrapper.unmount()
   })
 
-  it('전달 리포트의 목표 대비는 문장이 아니라 배지다', async () => {
+  it('헤더가 오늘 남은 실천 수를 서버 값으로 말한다', async () => {
     const { wrapper } = await mountHome('?preview=WF_06_IN_PROGRESS')
-    const text = wrapper.text()
-    expect(text).toMatch(/목표 [\d.]+% 미달|목표 달성/)
-    // 배지로 바꾸기 전의 긴 문장이 되살아나면 여기서 걸린다
-    expect(text).not.toContain('이 달만 보면')
+    // 픽스처 completedCount 3 · totalCount 5
+    expect(wrapper.text()).toContain('2개가 남았어요')
     wrapper.unmount()
   })
 

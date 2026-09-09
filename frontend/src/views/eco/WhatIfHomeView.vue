@@ -24,25 +24,32 @@
  * ⚠️ `resultModal.roundId` 는 **지난 회차**다. 홈이 보여 주는 진행 중 회차(`store.roundId`)가
  * 아니라 방금 확정된 직전 회차라, 결과 화면으로 보낼 때 반드시 모달의 번호를 쓴다.
  *
- * ── WF-06 이 홈을 두 번 부르는 이유 ─────────────────────────────────────
- * `home.goal` 은 `goalSet · combinedTargetRate · tier · expectedMileage` 넷뿐이라
- * 시안의 요금별 3열이 나오지 않는다. 그건 `GET /eco/rounds/{roundId}/goal` 의 `utilities[]` 다.
+ * ── WF-06 이 홈 말고 셋을 더 부르는 이유 ─────────────────────────────────
+ *   오늘의 실천  GET /eco/rounds/{roundId}/missions/today
+ *   목표        GET /eco/rounds/{roundId}/goal — 하단 「월 약 N원」의 expectedSavingAmount
+ *   월 리포트   GET /eco/monthly-report — 감축률 카드가 쓰는 `prescription.requiredRate`(남은 달
+ *              매달 필요한 감축률)와 `achievable`(고른 실천으로 회복 가능한지). 홈 응답에는 이 둘이
+ *              없어서 한 번 더 부른다. 홈 응답에 들어오면(BE 요청) 이 호출은 뺀다.
+ *
+ * ── 홈은 헤더 + 감축률 카드 + 오늘의 실천, 둘뿐이다 ──────────────────────
+ * 전달 리포트 · 목표 카드는 감축률 카드 하단 링크(월 리포트 → WF-07 · 내 목표 → WF-04)로 간다.
+ * 참여신청 배너(B-4-05)는 홈에서 뺐다(2026-09-09 수현 결정, 기능명세 B-4-04~06 갱신). 입구는 보류 상태다.
  */
 import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import EcoApplicationBanner from '@/components/eco/EcoApplicationBanner.vue'
 import EcoBaselinePanel from '@/components/eco/EcoBaselinePanel.vue'
-import EcoGoalCard from '@/components/eco/EcoGoalCard.vue'
-import EcoLatestReportCard from '@/components/eco/EcoLatestReportCard.vue'
+import EcoHomeHeader from '@/components/eco/EcoHomeHeader.vue'
 import EcoLinkingPanel from '@/components/eco/EcoLinkingPanel.vue'
-import EcoProgressPanel from '@/components/eco/EcoProgressPanel.vue'
+import EcoPaceCard from '@/components/eco/EcoPaceCard.vue'
 import EcoResultModal from '@/components/eco/EcoResultModal.vue'
 import EcoTodayMissions from '@/components/eco/EcoTodayMissions.vue'
 import EcoUnlinkedPanel from '@/components/eco/EcoUnlinkedPanel.vue'
+import { derivePace } from '@/components/eco/ecoPace'
 import AppTabLayout from '@/components/layout/AppTabLayout.vue'
 import GpButton from '@/components/ui/GpButton.vue'
 import GpCard from '@/components/ui/GpCard.vue'
+import { useAuthStore } from '@/stores/auth'
 import { useEcoStore } from '@/stores/eco'
 import { formatRoundPeriod } from '@/utils/format'
 
@@ -62,6 +69,7 @@ const POLL_INTERVAL_MS = 900
 const route = useRoute()
 const router = useRouter()
 const store = useEcoStore()
+const auth = useAuthStore()
 
 const previewScreen = computed(() =>
   SCREENS.includes(route.query.preview) ? route.query.preview : null,
@@ -72,8 +80,6 @@ const isInProgress = computed(() => IN_PROGRESS_SCREENS.includes(screen.value))
 
 // 연동 중에는 폴링 응답의 utilityStatus 를 그대로 그린다. 진행 단계를 화면이 만들지 않는다
 const linkingUtilities = computed(() => store.linkJob?.utilityStatus ?? [])
-
-const goalUtilities = computed(() => store.goal?.utilities ?? null)
 
 /*
  * 첫 응답이 오기 전. 그릴 수 있는 것이 아직 없다.
@@ -86,11 +92,20 @@ const goalUtilities = computed(() => store.goal?.utilities ?? null)
 const isBootstrapping = computed(() => !store.home && !store.error)
 const hasFatalError = computed(() => !store.home && Boolean(store.error))
 
-/** 진행 카드 헤더 배지(시안 WF-06). 부제와 같은 기간이지만 카드 안에서 한 번 더 못 박는다 */
+/** 감축률 카드 우상단 기간 칩 '2026.04~09'. 「누적」이 무엇의 누적인지 밝힌다(핵심 규칙 7) */
 const periodLabel = computed(() => {
   const header = store.home?.header
-  return header ? formatRoundPeriod(header.periodStart, header.periodEnd) : ''
+  if (!header) return ''
+  return `${header.periodStart.replace('-', '.')}~${header.periodEnd.slice(5)}`
 })
+
+/** 헤드라인 「오늘 실천 N개가 남았어요」. 오늘의 실천 응답이 오면 그쪽이 더 새 값이다 */
+const todaySummary = computed(() => store.todayMissions ?? store.home?.todayMissions ?? null)
+
+/** 캐릭터 표정 = 감축률 카드의 페이스. 두 컴포넌트가 같은 판정을 쓴다 */
+const pace = computed(() =>
+  derivePace(store.home?.progress, store.monthlyReport?.prescription ?? null),
+)
 
 const subtitle = computed(() => {
   if (screen.value === 'WF_02_LINKING') return '작년 사용량을 불러오는 중이에요'
@@ -190,7 +205,10 @@ watch(
     if (value === 'WF_03_NO_GOAL' && !store.currentRound) store.fetchCurrentRound()
     if (!IN_PROGRESS_SCREENS.includes(value) || !roundId) return
     if (!store.todayMissions) store.fetchTodayMissions(roundId)
+    // 오늘의 실천 하단 「월 약 N원」의 근거(expectedSavingAmount)
     if (!store.goal) store.fetchGoal(roundId)
+    // 페이스·상태 문장의 근거. 최신 등록 월 기준(쿼리 없음)
+    if (!store.monthlyReport) store.fetchMonthlyReport()
   },
   { immediate: true },
 )
@@ -206,6 +224,11 @@ function goToReport() {
   router.push('/whatif/report')
 }
 
+/** WF-08 실천 다시 고르기. 감축률 카드 하단의 세 링크 중 하나 */
+function goToMissions() {
+  router.push('/whatif/missions')
+}
+
 /**
  * 하루치를 통째로 올린다(B-3-06). 응답의 completedCount 로 홈 요약도 함께 맞춘다 —
  * 화면이 따로 세면 저장이 실패했을 때 숫자만 앞서간다.
@@ -214,15 +237,6 @@ function onMissionChange(completedMissionIds) {
   const date = store.todayMissions?.date
   if (!store.roundId || !date) return
   store.saveTodayMissionLog(store.roundId, date, completedMissionIds)
-}
-
-/**
- * 실제 신청은 누리집에서 한다(B-4-05). 여기서는 신청했다고 표시만 한다.
- * 새 탭을 여는 것과 표시는 별개라 둘 다 한다.
- */
-function onApply(externalUrl) {
-  if (externalUrl) window.open(externalUrl, '_blank', 'noopener')
-  if (store.roundId) store.applyForRound(store.roundId)
 }
 
 /**
@@ -249,7 +263,12 @@ function retry() {
 </script>
 
 <template>
-  <AppTabLayout tab="whatif" title="Green What-if" :subtitle="subtitle">
+  <!-- WF-06 은 홈 전용 헤더(EcoHomeHeader)를 쓴다. 나머지 상태는 공통 페이지 헤더다 -->
+  <AppTabLayout
+    tab="whatif"
+    :title="isInProgress ? '' : 'Green What-if'"
+    :subtitle="isInProgress ? '' : subtitle"
+  >
     <GpCard v-if="isBootstrapping">
       <p class="text-body text-muted m-0">불러오는 중이에요…</p>
     </GpCard>
@@ -275,31 +294,35 @@ function retry() {
     <EcoLinkingPanel v-else-if="screen === 'WF_02_LINKING'" :utilities="linkingUtilities" />
 
     <!-- WF-06 · WF-09. 본문은 같고 WF-09 만 아래 결산 모달이 위에 얹힌다 -->
-    <div v-else-if="isInProgress" class="space-y-5">
-      <EcoProgressPanel :progress="store.home.progress" :period="periodLabel" />
+    <div v-else-if="isInProgress">
+      <EcoHomeHeader :name="auth.user?.name ?? ''" :today-missions="todaySummary" :pace="pace" />
 
-      <EcoLatestReportCard :report="store.home.latestReport" @detail="goToReport" />
+      <!-- 캐릭터가 뒤에 서므로 카드 묶음이 앞(z-1)이다 -->
+      <div class="relative z-[1] flex flex-col gap-(--gp-card-gap)">
+        <EcoPaceCard
+          :progress="store.home.progress"
+          :goal="store.home.goal"
+          :prescription="store.monthlyReport?.prescription ?? null"
+          :period="periodLabel"
+          :remaining-months="store.home.header?.remainingMonths ?? null"
+          @goal="goToGoalSetting"
+          @report="goToReport"
+          @missions="goToMissions"
+        />
 
-      <EcoApplicationBanner
-        v-if="store.home.application?.showBanner"
-        :application="store.home.application"
-        :loading="store.applicationLoading"
-        @apply="onApply"
-      />
+        <EcoTodayMissions
+          :data="store.todayMissions"
+          :saving="store.missionSaveLoading"
+          :expected-saving-amount="store.goal?.expectedSavingAmount ?? null"
+          @change="onMissionChange"
+        />
 
-      <EcoGoalCard :goal="store.home.goal" :utilities="goalUtilities" @edit="goToGoalSetting" />
-
-      <EcoTodayMissions
-        :data="store.todayMissions"
-        :saving="store.missionSaveLoading"
-        @change="onMissionChange"
-      />
-
-      <p v-if="store.home.links?.movingNotice" class="text-caption text-muted m-0 px-1">
-        이사했다면
-        <RouterLink to="/mypage" class="text-primary-on-soft underline">마이</RouterLink>에서 주소를
-        바꿔주세요. 바꾸지 않으면 지금 살지 않는 집의 사용량과 비교돼요.
-      </p>
+        <p v-if="store.home.links?.movingNotice" class="text-caption text-muted m-0 px-1">
+          이사했다면
+          <RouterLink to="/mypage" class="text-primary-on-soft underline">마이</RouterLink>에서
+          주소를 바꿔주세요. 바꾸지 않으면 지금 살지 않는 집의 사용량과 비교돼요.
+        </p>
+      </div>
     </div>
 
     <!-- WF-03. 기준 사용량은 회차 조회에서 온다 -->
