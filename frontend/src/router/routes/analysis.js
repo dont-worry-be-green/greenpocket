@@ -12,6 +12,18 @@
  */
 export default [
   {
+    path: '/analysis/eco-link',
+    name: 'an-eco-link',
+    /*
+     * 로그인 직후 진단 탭에서 진행하는 에코마일리지 연동 흐름.
+     * WF-01~03의 서버 상태 분기와 폴링 로직은 기존 화면을 그대로 재사용하고,
+     * 기준 사용량 확인 뒤에는 목표 설정 대신 고지서 등록으로 이어진다.
+     */
+    component: () => import('@/views/eco/WhatIfHomeView.vue'),
+    props: { diagnosisEntry: true },
+    meta: { tab: 'analysis', title: 'Green What-if' },
+  },
+  {
     path: '/analysis',
     name: 'an-home',
     component: () => import('@/views/analysis/AnalysisHomeView.vue'),

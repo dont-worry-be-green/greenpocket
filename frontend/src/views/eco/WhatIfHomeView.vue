@@ -1,9 +1,10 @@
 <script setup>
 /*
- * What-if 탭 홈 — WF-01(연동 전) · WF-02(연동 중) · WF-03(목표 미설정) · WF-06(목표 설정 후)
+ * 에코 연동 진입 · What-if 홈 — WF-01(연동 전) · WF-02(연동 중) · WF-03(기준 사용량) ·
+ * WF-06(목표 설정 후)
  *
- * 넷은 라우트가 아니라 **한 탭 홈의 네 상태**다(api-spec.md 10.1). 경로는 /whatif 하나이고
- * `GET /eco/home` 의 `screen` 이 무엇을 그릴지 정한다.
+ * 넷은 라우트가 아니라 `GET /eco/home`의 `screen`으로 정해지는 상태다. WF-01~03은 로그인 직후
+ * `/analysis/eco-link`에서 진단 탭으로, WF-06은 `/whatif`에서 What-if 탭으로 보여 준다.
  *
  * ── 화면이 하지 않는 것 ─────────────────────────────────────────────────
  * **`screen` 을 화면이 판정하지 않는다.** 연동 여부·목표 저장 여부를 보고 여기서 분기하기
@@ -39,6 +40,7 @@ import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import EcoBaselinePanel from '@/components/eco/EcoBaselinePanel.vue'
+import EcoBaselineHeader from '@/components/eco/EcoBaselineHeader.vue'
 import EcoHomeHeader from '@/components/eco/EcoHomeHeader.vue'
 import EcoLinkingPanel from '@/components/eco/EcoLinkingPanel.vue'
 import EcoPaceCard from '@/components/eco/EcoPaceCard.vue'
@@ -61,15 +63,23 @@ const SCREENS = [
   'WF_06_IN_PROGRESS',
   'WF_09_RESULT_READY',
 ]
+const LINK_ENTRY_SCREENS = ['WF_01_UNLINKED', 'WF_02_LINKING']
 const IN_PROGRESS_SCREENS = ['WF_06_IN_PROGRESS', 'WF_09_RESULT_READY']
 
 /** 연동 폴링 간격. 서버가 20초쯤 걸린다고 안내한다(B-1-03) */
-const POLL_INTERVAL_MS = 900
+const POLL_INTERVAL_MS = 1000
 
 const route = useRoute()
 const router = useRouter()
 const store = useEcoStore()
 const auth = useAuthStore()
+
+const props = defineProps({
+  // 로그인 직후 진단 탭에서 WF-01~03을 재사용하는 진입 흐름인지 구분한다.
+  diagnosisEntry: { type: Boolean, default: false },
+})
+
+const activeTab = computed(() => (props.diagnosisEntry ? 'analysis' : 'whatif'))
 
 const previewScreen = computed(() =>
   SCREENS.includes(route.query.preview) ? route.query.preview : null,
@@ -199,8 +209,14 @@ async function pollOnce() {
  * roundId 는 홈이 와야 생기므로 함께 지켜본다 — ?preview 로 바로 들어오면 순서가 뒤집힌다.
  */
 watch(
-  [screen, () => store.roundId],
-  ([value, roundId]) => {
+  [screen, () => store.roundId, () => route.path],
+  ([value, roundId, path]) => {
+    // 에코 연동 전·진행 중 화면은 진단 탭에서만 보여 준다.
+    // 두 경로가 같은 컴포넌트를 써서 탭 이동 때 인스턴스가 재사용되므로 실제 경로도 감시한다.
+    if (path === '/whatif' && LINK_ENTRY_SCREENS.includes(value)) {
+      router.replace('/analysis/eco-link')
+      return
+    }
     if (value === 'WF_02_LINKING') ensurePolling()
     if (value === 'WF_03_NO_GOAL' && !store.currentRound) store.fetchCurrentRound()
     if (!IN_PROGRESS_SCREENS.includes(value) || !roundId) return
@@ -217,7 +233,7 @@ watch(
 
 /** WF-04 목표 정하기. 회차 번호는 경로에 싣지 않는다 — 그 화면이 스토어에서 가져온다 */
 function goToGoalSetting() {
-  router.push('/whatif/goal')
+  router.push(props.diagnosisEntry ? '/analysis' : '/whatif/goal')
 }
 
 function goToReport() {
@@ -265,9 +281,15 @@ function retry() {
 <template>
   <!-- WF-06 은 홈 전용 헤더(EcoHomeHeader)를 쓴다. 나머지 상태는 공통 페이지 헤더다 -->
   <AppTabLayout
-    tab="whatif"
-    :title="isInProgress ? '' : 'Green What-if'"
-    :subtitle="isInProgress ? '' : subtitle"
+    :tab="activeTab"
+    :title="
+      isInProgress || (!diagnosisEntry && screen === 'WF_03_NO_GOAL')
+        ? ''
+        : diagnosisEntry
+          ? '진단'
+          : 'Green What-if'
+    "
+    :subtitle="isInProgress || diagnosisEntry ? '' : subtitle"
   >
     <GpCard v-if="isBootstrapping">
       <p class="text-body text-muted m-0">불러오는 중이에요…</p>
@@ -327,12 +349,19 @@ function retry() {
     </div>
 
     <!-- WF-03. 기준 사용량은 회차 조회에서 온다 -->
-    <EcoBaselinePanel
-      v-else-if="store.currentRound"
-      :round="store.currentRound"
-      :show-moving-notice="store.home?.links?.movingNotice ?? true"
-      @set-goal="goToGoalSetting"
-    />
+    <div v-else-if="store.currentRound">
+      <EcoBaselineHeader v-if="!diagnosisEntry" :name="auth.user?.name ?? ''" />
+      <EcoBaselinePanel
+        class="relative z-[1]"
+        :round="store.currentRound"
+        :show-moving-notice="store.home?.links?.movingNotice ?? true"
+        :action-label="diagnosisEntry ? '고지서 등록하기' : '목표 설정하기'"
+        :compact-amount="!diagnosisEntry"
+        :floating-linked-status="!diagnosisEntry"
+        :linked-at="store.status?.linkedAt ?? store.linkJob?.linkedAt ?? ''"
+        @set-goal="goToGoalSetting"
+      />
+    </div>
 
     <GpCard v-else>
       <p class="text-body text-muted m-0">불러오는 중이에요…</p>

@@ -17,7 +17,7 @@ async function submit() {
   if (!canSubmit.value) return
   const result = await store.login({ email: email.value, password: password.value })
   if (!result) return
-  router.replace('/whatif')
+  router.replace('/analysis/eco-link')
 }
 </script>
 

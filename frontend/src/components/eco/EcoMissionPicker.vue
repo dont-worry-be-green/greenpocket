@@ -27,9 +27,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:selectedIds'])
 
-const itemById = computed(
-  () => new Map(props.previewItems.map((item) => [item.missionId, item])),
-)
+const itemById = computed(() => new Map(props.previewItems.map((item) => [item.missionId, item])))
 
 const isSelected = (missionId) => props.selectedIds.includes(missionId)
 
@@ -41,10 +39,7 @@ function toggle(missionId, checked) {
 </script>
 
 <template>
-  <GpCard
-    :title="`${formatUtilityType(segment.utilityType)}, 이렇게 줄여요`"
-    caption="절감률은 추정치예요. 숫자를 누르지 않아도 근거가 행 안에 있어요"
-  >
+  <GpCard :title="`${formatUtilityType(segment.utilityType)}, 이렇게 줄여요`">
     <div class="border-divider divide-divider divide-y border-t">
       <GpMissionRow
         v-for="mission in segment.missions"
@@ -63,14 +58,9 @@ function toggle(missionId, checked) {
         <span class="text-list-title">고른 실천 합계</span>
         <GpDelta :value="summary.combinedMissionRate" word="줄일 수 있어요" />
       </div>
-      <p class="text-caption mt-2 mb-0" :class="summary.meetsTarget ? 'text-on-positive' : 'text-muted'">
-        <template v-if="summary.meetsTarget">
-          고른 실천만으로 목표 감축률을 채웠어요
-        </template>
-        <template v-else>
-          목표까지 {{ formatPoint(summary.shortfallPoint) }} 모자라요. 실천을 더 고르거나 구간을
-          낮춰도 돼요
-        </template>
+      <p v-if="!summary.meetsTarget" class="text-caption text-muted mt-2 mb-0">
+        목표까지 {{ formatPoint(summary.shortfallPoint) }} 모자라요. 실천을 더 고르거나 구간을
+        낮춰도 돼요
       </p>
     </div>
   </GpCard>

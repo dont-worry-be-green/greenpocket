@@ -14,13 +14,25 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRouter, createWebHistory } from 'vue-router'
 
 import { DATA_SOURCE, setDataSource } from '@/api/dataSource'
-import routes from '@/router/routes/eco'
+import ecoRoutes from '@/router/routes/eco'
 import WhatIfHomeView from '@/views/eco/WhatIfHomeView.vue'
 
-async function mountHome(search) {
-  window.history.replaceState({}, '', `/whatif${search}`)
-  const router = createRouter({ history: createWebHistory(), routes })
-  await router.push(`/whatif${search}`)
+async function mountHome(search, { diagnosisEntry = false } = {}) {
+  const path = diagnosisEntry ? '/analysis/eco-link' : '/whatif'
+  window.history.replaceState({}, '', `${path}${search}`)
+  const router = createRouter({
+    history: createWebHistory(),
+    routes: [
+      ...ecoRoutes,
+      {
+        path: '/analysis/eco-link',
+        component: WhatIfHomeView,
+        props: { diagnosisEntry: true },
+      },
+      { path: '/analysis', component: { template: '<div />' } },
+    ],
+  })
+  await router.push(`${path}${search}`)
   await router.isReady()
 
   const errors = []
@@ -31,7 +43,10 @@ async function mountHome(search) {
     .spyOn(console, 'warn')
     .mockImplementation((...args) => errors.push(String(args[0])))
 
-  const wrapper = mount(WhatIfHomeView, { global: { plugins: [createPinia(), router] } })
+  const wrapper = mount(WhatIfHomeView, {
+    props: { diagnosisEntry },
+    global: { plugins: [createPinia(), router] },
+  })
   await flushPromises()
   await new Promise((resolve) => setTimeout(resolve, 500))
   await flushPromises()
@@ -39,7 +54,7 @@ async function mountHome(search) {
   spy.mockRestore()
   warn.mockRestore()
   // eco 라우트만 등록해서 나는 하네스 경고다 (/mypage 링크)
-  return { wrapper, errors: errors.filter((e) => !e.includes('VUE_ROUTER_R0004')) }
+  return { wrapper, router, errors: errors.filter((e) => !e.includes('VUE_ROUTER_R0004')) }
 }
 
 describe('WhatIfHomeView', () => {
@@ -98,6 +113,59 @@ describe('WhatIfHomeView', () => {
   it('preview 없이도 터지지 않는다', async () => {
     const { wrapper, errors } = await mountHome('')
     expect(errors).toEqual([])
+    wrapper.unmount()
+  })
+
+  it.each(['WF_01_UNLINKED', 'WF_02_LINKING'])(
+    'What-if에서 %s 상태는 진단 연동 화면으로 보낸다',
+    async (preview) => {
+      const { wrapper, router } = await mountHome(`?preview=${preview}`)
+      expect(router.currentRoute.value.path).toBe('/analysis/eco-link')
+      wrapper.unmount()
+    },
+  )
+
+  it('진단 연동 화면에서 What-if 탭으로 이동해도 연동 전이면 진단으로 되돌린다', async () => {
+    const { wrapper, router } = await mountHome('?preview=WF_01_UNLINKED', {
+      diagnosisEntry: true,
+    })
+
+    await router.push('/whatif?preview=WF_01_UNLINKED')
+    await flushPromises()
+
+    expect(router.currentRoute.value.path).toBe('/analysis/eco-link')
+    wrapper.unmount()
+  })
+
+  it('진단의 연동 전 화면은 진단 제목과 세 가지 불러올 데이터를 보여준다', async () => {
+    const { wrapper, errors } = await mountHome('?preview=WF_01_UNLINKED', {
+      diagnosisEntry: true,
+    })
+    expect(errors).toEqual([])
+
+    const text = wrapper.text()
+    expect(text).toContain('진단')
+    expect(text).toContain('진단을 위한 에코마일리지')
+    expect(text).toContain('연동부터 진행할게요')
+    expect(text).toContain('요금 종류')
+    expect(text).toContain('2년 사용량')
+    expect(text).toContain('등록 주소')
+    expect(text).not.toContain('얼마나 줄일지 정해볼까요')
+    wrapper.unmount()
+  })
+
+  it('진단 연동 흐름의 기준 사용량 화면에서 고지서 등록으로 이동한다', async () => {
+    const { wrapper, router, errors } = await mountHome('?preview=WF_03_NO_GOAL', {
+      diagnosisEntry: true,
+    })
+    expect(errors).toEqual([])
+
+    const button = wrapper.findAll('button').find((item) => item.text().includes('고지서 등록하기'))
+    expect(button).toBeTruthy()
+    await button.trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.path).toBe('/analysis')
     wrapper.unmount()
   })
 })

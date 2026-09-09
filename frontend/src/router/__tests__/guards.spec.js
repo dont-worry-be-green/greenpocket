@@ -52,13 +52,13 @@ describe('서버 세션 기반 진입 가드', () => {
     await expect(at('/whatif')).resolves.toBe(true)
   })
 
-  it('온보딩까지 끝난 사용자가 인증 화면으로 가면 홈으로 보낸다', async () => {
+  it('온보딩까지 끝난 사용자가 인증 화면으로 가면 진단 연동 화면으로 보낸다', async () => {
     const auth = useAuthStore()
     auth.sessionChecked = true
     auth.authenticated = true
     auth.onboardingCompleted = true
 
-    await expect(at('/onboarding/login')).resolves.toBe('/whatif')
+    await expect(at('/onboarding/login')).resolves.toBe('/analysis/eco-link')
     await expect(at('/mypage')).resolves.toBe(true)
   })
 })

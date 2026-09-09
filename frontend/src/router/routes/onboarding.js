@@ -7,8 +7,8 @@
  * 세 화면 모두 탭바가 없다. ONB-01 은 첫 화면이라 뒤로가기도 없어서 셸을 쓰지 않고,
  * 나머지는 `AppSubLayout` 으로 앞 화면으로 돌아간다.
  *
- * 별도 온보딩은 제거됐다(결정 C-26). 가입·로그인 후에는 `/whatif` 한 경로에서
- * 서버가 내려주는 에코 연동 상태에 따라 WF-01·WF-02·WF-06을 그린다.
+ * 별도 온보딩은 제거됐다(결정 C-26). 가입·로그인 후에는 진단 탭의
+ * `/analysis/eco-link`에서 에코 연동과 기준 사용량 확인을 진행한다.
  */
 export default [
   {
@@ -41,6 +41,6 @@ export default [
   {
     // 예전 ONB-02 주소로 들어와도 폐기된 주거 프로필을 다시 노출하지 않는다.
     path: '/onboarding/profile',
-    redirect: '/whatif',
+    redirect: '/analysis/eco-link',
   },
 ]

@@ -56,6 +56,10 @@ describe('탭 정의', () => {
       expect(router.resolve(t.path).matched.length, `${t.path} 라우트 없음`).toBeGreaterThan(0)
     }
   })
+
+  it('진단 탭은 에코마일리지 연동 흐름으로 진입한다', () => {
+    expect(TABS.find((tab) => tab.key === 'analysis')?.path).toBe('/analysis/eco-link')
+  })
 })
 
 describe('AppTabLayout', () => {
@@ -81,6 +85,11 @@ describe('AppTabLayout', () => {
      * 여러 번 불러도 기다려지지 않는다. 도착할 때까지 다시 확인한다.
      */
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/pocket'))
+  })
+
+  it('진단 탭을 누르면 에코마일리지 연동 화면으로 이동한다', async () => {
+    await wrapper.findAll('[role="tab"]')[0].trigger('click')
+    await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/analysis/eco-link'))
   })
 
   it('현재 탭을 다시 눌러도 이동하지 않는다', async () => {
