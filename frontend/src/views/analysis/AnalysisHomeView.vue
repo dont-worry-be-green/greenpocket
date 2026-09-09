@@ -2,7 +2,7 @@
 /*
  * 진단 홈 (AN-01 빈 상태 · AN-07 결과) — 기능명세서 A-3
  * v3 디자인 토큰. 정보 구조는 「얼마 냈나 → 작년 8월과 비교 → 1인 가구 평균과 비교」 카드 셋.
- *   ① A-3-05 월 생활요금 합계 — 히어로 금액 + 항목 3열(요금 배지 · 금액). 작년 값이 있으면 델타 칩
+ *   ① A-3-05 월 생활요금 합계 — 히어로 금액 + 항목 3열(요금 배지 · 금액). 작년 대비 배지는 ② 카드의 총 차액 칩이 맡는다
  *   ② A-3-06 작년 동월 비교 — 작년(회색)·올해(브랜드 초록) 그룹 막대, 막대별 실제 금액 라벨, 항목별 원화 차이
  *   ③ A-3-07 1인 가구 평균 비교 — SingleHouseholdComparisonCard
  * 헤더: 청구 월 드롭다운(A-3-09) + 고지서 등록 「+」 알약. 둘 다 결과가 있을 때만.
@@ -266,39 +266,18 @@ function goToRegistration() {
     <template v-else-if="diagnosis?.summary">
       <!-- ① A-3-05 월 생활요금 합계 -->
       <section class="bg-surface rounded-card shadow-card p-5">
-        <div class="flex items-end justify-between gap-2.5">
+        <div class="flex items-start justify-between gap-2.5">
           <div class="min-w-0">
-            <p class="text-caption text-muted m-0 font-semibold">
-              {{ targetMonthOnlyLabel }} 생활요금 · 고지서 {{ summaryItems.length }}장
-            </p>
+            <p class="text-caption text-muted m-0 font-semibold">{{ targetMonthOnlyLabel }} 생활요금</p>
             <p class="text-amount-hero tracking-display text-ink mt-0.5 mb-0 tabular-nums">
               {{ formatWon(diagnosis.summary.currentTotal) }}
             </p>
           </div>
           <span
-            v-if="diagnosis.summary.hasPreviousYear && diffParts(diagnosis.summary.diffLastYearTotal)"
-            class="text-caption mb-1 inline-flex shrink-0 items-center gap-0.5 rounded-xs px-2 py-1 font-bold tabular-nums"
-            :class="
-              diffParts(diagnosis.summary.diffLastYearTotal).direction === 'up'
-                ? 'bg-increase-bg text-increase'
-                : 'bg-decrease-bg text-decrease'
-            "
-            data-testid="summary-delta"
+            class="bg-primary-bg text-primary-soft flex size-13 shrink-0 items-center justify-center rounded-xl"
+            aria-hidden="true"
           >
-            <svg
-              v-if="diffParts(diagnosis.summary.diffLastYearTotal).direction !== 'same'"
-              class="size-[1em]"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path
-                v-if="diffParts(diagnosis.summary.diffLastYearTotal).direction === 'down'"
-                d="M11 3h2v12.6l4.3-4.3 1.4 1.4L12 19.4l-6.7-6.7 1.4-1.4L11 15.6z"
-              />
-              <path v-else d="M13 21h-2V8.4l-4.3 4.3-1.4-1.4L12 4.6l6.7 6.7-1.4 1.4L13 8.4z" />
-            </svg>
-            작년 {{ targetMonthOnlyLabel }}보다 {{ diffParts(diagnosis.summary.diffLastYearTotal).label }}
+            <IconChart :size="26" />
           </span>
         </div>
 
@@ -330,7 +309,7 @@ function goToRegistration() {
           </div>
           <span
             v-if="lastYear.available && diffParts(lastYear.totalDiff)"
-            class="text-caption-sm mt-0.5 inline-flex shrink-0 items-center gap-0.5 rounded-xs px-1.5 py-0.5 font-bold tabular-nums"
+            class="text-label mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-sm px-2.5 py-1.5 font-bold tabular-nums"
             :class="
               diffParts(lastYear.totalDiff).direction === 'up'
                 ? 'bg-increase-bg text-increase'
