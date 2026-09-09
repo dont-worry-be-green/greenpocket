@@ -168,7 +168,7 @@ const differenceLabel = computed(() => {
         <span class="flex items-center gap-1.5"><i class="bg-control-off size-2 rounded-full" />1인 가구 평균</span>
       </div>
 
-      <div class="relative mt-2 pt-8" @mouseleave="activePointIndex = null">
+      <div class="relative -mt-10" @mouseleave="activePointIndex = null">
         <div
           v-if="activePoint"
           class="bg-ink text-caption text-surface pointer-events-none absolute top-0 z-10 min-w-36 -translate-x-1/2 rounded-md px-3 py-2 shadow-card"
