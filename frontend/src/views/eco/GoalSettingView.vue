@@ -108,12 +108,16 @@ async function load() {
   await store.fetchGoalForm(store.roundId)
 }
 onMounted(load)
+/*
+ * 구간을 하나도 안 고른 상태(`targets: []`)에서는 부르지 않는다 — 서버가 `ECO_TIER_INVALID` 400 을 준다.
+ * 미션만 먼저 눌러도 요청이 나가던 버그. 구간을 고르면 그때 첫 미리보기가 나간다.
+ */
 
 // ── 저장 ────────────────────────────────────────────────────────────────
 
 async function save() {
   const roundId = store.roundId
-  if (!roundId) return
+  if (!roundId || payload.value.targets.length === 0) return
   const saved = await store.saveGoal(roundId, payload.value)
   if (saved) router.push('/whatif')
 }
