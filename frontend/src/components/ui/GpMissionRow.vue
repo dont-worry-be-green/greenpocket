@@ -44,7 +44,7 @@ defineEmits(['update:modelValue'])
     />
 
     <span class="min-w-0 flex-1">
-      <span class="text-list-title tracking-body block leading-[1.35]">{{ mission.title }}</span>
+      <span class="text-list-title tracking-body block leading-[1.35] font-normal">{{ mission.title }}</span>
 
       <span class="mt-[7px] flex flex-wrap items-center gap-[5px]">
         <GpTag small>{{ formatDifficulty(mission.difficulty) }}</GpTag>
