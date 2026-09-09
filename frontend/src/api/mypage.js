@@ -21,7 +21,11 @@
  */
 
 import { buildBillArchive, buildReportArchive, MYPAGE } from '@/fixtures/mypage'
-import { getFixturePolicyPreferences, updateFixturePolicyPreferences } from '@/fixtures/policy'
+import {
+  buildPolicyList,
+  getFixturePolicyPreferences,
+  updateFixturePolicyPreferences,
+} from '@/fixtures/policy'
 
 import client from './client'
 import { isFixtureMode } from './dataSource'
@@ -33,7 +37,23 @@ const fake = async (value, ms = 220) => {
 
 /** GET /mypage — 마이페이지 메인 (E-1-01 · E-1-02 · MY-01) */
 export function getMypage() {
-  if (isFixtureMode()) return fake(MYPAGE)
+  if (isFixtureMode()) {
+    return fake(() => {
+      const preferences = getFixturePolicyPreferences()
+      const recommendations = buildPolicyList({
+        size: 5,
+        categories: preferences.interestCategories,
+      })
+      return {
+        ...MYPAGE,
+        youthPolicy: {
+          ...MYPAGE.youthPolicy,
+          recommendedCount: recommendations.totalElements,
+          preview: recommendations.content,
+        },
+      }
+    })
+  }
   return client.get('/mypage')
 }
 

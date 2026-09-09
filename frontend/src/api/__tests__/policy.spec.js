@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import client from '@/api/client'
 import { DATA_SOURCE, setDataSource } from '@/api/dataSource'
+import { getMypage } from '@/api/mypage'
 import { getPolicies, getPolicy, getPolicyRecommendations } from '@/api/policy'
 import {
   POLICY_PREFERENCES,
@@ -88,5 +89,10 @@ describe('청년정책 API', () => {
       expect(detail.conditions.income).not.toBe('제한 없음')
       expect(detail.conditions.special).not.toBe('제한 없음')
     })
+
+    const mypage = await getMypage()
+    expect(mypage.youthPolicy.recommendedCount).toBe(5)
+    expect(mypage.youthPolicy.preview).toHaveLength(5)
+    expect(mypage.youthPolicy.preview.every((policy) => policy.category === 'HOUSING')).toBe(true)
   })
 })

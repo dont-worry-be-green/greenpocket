@@ -169,10 +169,10 @@ const cards = [
 
 export const POLICY_PREFERENCES = {
   birthDate: '1998-03-15',
-  currentStatus: 'EMPLOYED',
-  annualIncomeBand: 'FROM_24M_TO_36M',
+  currentStatus: 'UNEMPLOYED',
+  annualIncomeBand: 'NO_INCOME',
   educationStatus: 'UNIVERSITY_GRADUATE',
-  interestCategories: ['JOB', 'HOUSING'],
+  interestCategories: ['HOUSING'],
   ecoAddress: { label: '서울특별시 관악구', sidoCode: '11', sigunguCode: '11620' },
   birthDateEditable: false,
   regionEditable: false,
