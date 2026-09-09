@@ -1,20 +1,19 @@
 <script setup>
 /*
- * 전체 실천 항목 (C-2-03 · BN-02)
+ * 「실천 항목」 카드 (C-2-03 · BN-02 · 결정 C-32)
+ *
+ * 제목 옆에 총 개수(17개), 행은 `GreenlifeItemRow`, 접힌 뒤 「17개 전체 보기 ⌄」 · 펼친 뒤 「접기 ⌃」.
  *
  * ── 접는 개수를 화면이 정하지 않는다 ────────────────────────────────────
- * `collapsedAfter` 는 서버가 주는 FE 힌트다(api-spec 12.3). 6을 여기 상수로 박으면 서버가
- * 힌트를 바꿔도 화면만 옛날 값으로 남는다. 힌트가 없거나 총 개수보다 크면 접지 않는다.
- *
- * 「전체 보기」는 이미 받아 둔 배열을 펴는 것뿐이라 API 를 다시 부르지 않는다 —
- * 12.3 은 항상 17개를 통째로 내려준다.
+ * `collapsedAfter` 는 서버가 주는 FE 힌트다(api-spec 12.3). 상수로 박으면 서버가 힌트를 바꿔도
+ * 화면만 옛날 값으로 남는다. 힌트가 없거나 총 개수보다 크면 접지 않는다.
+ * 「전체 보기」는 이미 받아 둔 배열을 펴는 것뿐이라 API 를 다시 부르지 않는다.
  */
 import { computed, ref } from 'vue'
 
 import GreenlifeItemRow from './GreenlifeItemRow.vue'
 import GpCard from '@/components/ui/GpCard.vue'
-import GpTag from '@/components/ui/GpTag.vue'
-import IconChevronDown from '@/components/ui/icons/IconChevronDown.vue'
+import IconCaretDown from '@/components/ui/icons/IconCaretDown.vue'
 
 const props = defineProps({
   items: { type: Array, default: () => [] },
@@ -38,25 +37,28 @@ const total = computed(() => props.totalCount || props.items.length)
 </script>
 
 <template>
-  <GpCard title="전체 실천 항목" caption="항목을 누르면 실천 방법과 적립 내역을 볼 수 있어요">
+  <GpCard title="실천 항목">
     <template #action>
-      <GpTag tone="primary">{{ total }}개</GpTag>
+      <span class="text-list-title text-ink tabular-nums">
+        {{ total }}<span class="text-caption text-muted ml-px font-medium">개</span>
+      </span>
     </template>
 
-    <ul class="divide-divider m-0 list-none divide-y p-0">
+    <ul class="divide-divider -mt-1 m-0 list-none divide-y p-0">
       <li v-for="item in visibleItems" :key="item.itemId">
         <GreenlifeItemRow :item="item" @select="$emit('select', $event)" />
       </li>
     </ul>
 
     <button
-      v-if="collapsible && !expanded"
+      v-if="collapsible"
       type="button"
-      class="text-body-sm text-ink-soft border-divider mt-1 flex w-full items-center justify-center gap-1 border-t pt-3"
-      @click="expanded = true"
+      class="text-caption text-muted border-divider mt-1 flex w-full cursor-pointer items-center justify-center gap-1 border-0 border-t bg-transparent pt-3 font-bold"
+      :aria-expanded="expanded"
+      @click="expanded = !expanded"
     >
-      아래로 내려 {{ total }}개 전체 보기
-      <IconChevronDown :size="14" class="text-muted" />
+      {{ expanded ? '접기' : `${total}개 전체 보기` }}
+      <IconCaretDown :size="12" :class="expanded && 'rotate-180'" />
     </button>
   </GpCard>
 </template>
