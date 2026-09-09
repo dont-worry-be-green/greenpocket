@@ -28,8 +28,11 @@ import { computed, onUnmounted, ref, watch } from 'vue'
 
 import GpButton from '@/components/ui/GpButton.vue'
 import GpModal from '@/components/ui/GpModal.vue'
+import IconCalendar from '@/components/ui/icons/IconCalendar.vue'
 import IconChevronRight from '@/components/ui/icons/IconChevronRight.vue'
 import IconSealCheck from '@/components/ui/icons/IconSealCheck.vue'
+import IconShieldCheck from '@/components/ui/icons/IconShieldCheck.vue'
+import IconUser from '@/components/ui/icons/IconUser.vue'
 
 /** 이름은 가입에도 쓰는 값이라 화면이 갖는다. 본인확인의 대상이기도 해서 여기 있다 */
 const name = defineModel('name', { type: String, default: '' })
@@ -189,16 +192,22 @@ function changePhoneNumber() {
   <section class="space-y-3">
     <label class="block">
       <span class="text-body-strong text-muted mb-2 block">이름</span>
-      <input
-        v-model="name"
-        type="text"
-        autocomplete="name"
-        maxlength="20"
-        placeholder="이름을 입력하세요"
-        class="bg-surface border-border text-body placeholder:text-disabled-text disabled:bg-disabled-bg disabled:text-disabled-text min-h-14 w-full rounded-lg border px-4 outline-hidden"
-        :disabled="sent || verified"
-        @blur="emit('name-blur')"
-      />
+      <div class="relative">
+        <IconUser
+          :size="22"
+          class="text-muted pointer-events-none absolute top-1/2 left-4 -translate-y-1/2"
+        />
+        <input
+          v-model="name"
+          type="text"
+          autocomplete="name"
+          maxlength="20"
+          placeholder="이름을 입력하세요"
+          class="bg-surface border-border text-body placeholder:text-disabled-text disabled:bg-disabled-bg disabled:text-disabled-text min-h-14 w-full rounded-lg border pr-4 pl-12 outline-hidden"
+          :disabled="sent || verified"
+          @blur="emit('name-blur')"
+        />
+      </div>
       <span v-if="nameError" class="text-body-sm text-negative mt-1.5 block">{{ nameError }}</span>
     </label>
 
@@ -209,14 +218,20 @@ function changePhoneNumber() {
     >
       <label class="min-w-0">
         <span class="text-body-strong text-muted mb-2 block">생년월일</span>
-        <input
-          v-model="birthDate"
-          type="date"
-          autocomplete="bday"
-          :max="maxBirthDate"
-          :disabled="sent || verified"
-          class="bg-surface border-border text-body disabled:bg-disabled-bg disabled:text-disabled-text min-h-14 w-full min-w-0 rounded-lg border px-3 tabular-nums outline-hidden"
-        />
+        <div class="relative">
+          <IconCalendar
+            :size="20"
+            class="text-muted pointer-events-none absolute top-1/2 left-3 -translate-y-1/2"
+          />
+          <input
+            v-model="birthDate"
+            type="date"
+            autocomplete="bday"
+            :max="maxBirthDate"
+            :disabled="sent || verified"
+            class="bg-surface border-border text-body disabled:bg-disabled-bg disabled:text-disabled-text min-h-14 w-full min-w-0 rounded-lg border pr-2 pl-10 tabular-nums outline-hidden"
+          />
+        </div>
         <span v-if="birthDateError" class="text-body-sm text-negative mt-1.5 block">
           {{ birthDateError }}
         </span>
@@ -266,26 +281,22 @@ function changePhoneNumber() {
       <p class="text-body-sm text-ink-soft mt-1.5 mb-0">{{ identityLabel }}</p>
     </div>
 
-    <button
-      v-else
-      type="button"
-      class="bg-surface border-border ease-standard flex min-h-18 w-full cursor-pointer items-center gap-3 rounded-lg border px-4 text-left transition-colors duration-140 active:bg-primary-bg"
-      aria-haspopup="dialog"
-      :aria-expanded="sheetOpen"
-      @click="openSheet"
-    >
-      <span class="bg-primary-bg text-primary-on-soft flex size-10 shrink-0 items-center justify-center rounded-full">
-        <IconSealCheck :size="21" />
-      </span>
-      <span class="min-w-0 flex-1">
-        <span class="text-body-strong text-ink block">휴대폰 본인인증</span>
-        <span class="text-body-sm text-muted block">
-          {{ identityComplete ? '안전하게 본인인증하기' : '이름·생년월일·성별을 먼저 입력해 주세요' }}
-        </span>
-      </span>
-      <span class="text-label text-negative bg-negative-bg shrink-0 rounded-full px-2.5 py-1">미인증</span>
-      <IconChevronRight :size="16" class="text-muted shrink-0" />
-    </button>
+    <div v-else>
+      <span class="text-body-strong text-muted mb-2 block">휴대폰 본인인증</span>
+      <button
+        type="button"
+        class="bg-surface border-border ease-standard flex min-h-14 w-full cursor-pointer items-center gap-3 rounded-lg border px-4 text-left transition-colors duration-140 active:bg-primary-bg"
+        aria-label="휴대폰 본인인증 시작"
+        aria-haspopup="dialog"
+        :aria-expanded="sheetOpen"
+        @click="openSheet"
+      >
+        <IconShieldCheck :size="26" class="text-muted shrink-0" />
+        <span class="text-body text-ink-soft min-w-0 flex-1">안전하게 본인인증하기</span>
+        <span class="text-label text-negative bg-negative-bg shrink-0 rounded-full px-2.5 py-1">미인증</span>
+        <IconChevronRight :size="18" class="text-muted shrink-0" />
+      </button>
+    </div>
 
     <GpModal :open="sheetOpen" title="휴대폰 본인인증" @close="sheetOpen = false">
       <p class="text-body text-muted mt-0 mb-5">가입을 위해 본인 명의 휴대폰을 인증해 주세요.</p>

@@ -2,10 +2,11 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import AppSubLayout from '@/components/layout/AppSubLayout.vue'
 import OnbAccountFields from '@/components/onboarding/OnbAccountFields.vue'
 import OnbVerifyFields from '@/components/onboarding/OnbVerifyFields.vue'
 import GpButton from '@/components/ui/GpButton.vue'
+import IconLeaf from '@/components/ui/icons/IconLeaf.vue'
+import signupHero from '@/assets/character/signup-hero.png'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
@@ -123,8 +124,42 @@ async function submit() {
 </script>
 
 <template>
-  <AppSubLayout title="회원가입" back="/onboarding/start">
-    <form class="space-y-4 pt-2" @submit.prevent="submit">
+  <main class="bg-canvas relative mx-auto min-h-dvh max-w-(--gp-viewport-w) overflow-hidden">
+    <section class="relative h-52 overflow-hidden px-6 pt-9" aria-label="그린포켓 소개">
+      <div class="bg-primary-bg absolute -top-24 -left-24 size-72 rounded-full opacity-75"></div>
+      <div class="bg-primary-bg absolute top-30 -right-20 h-32 w-120 rotate-6 rounded-[50%] opacity-75"></div>
+
+      <div class="relative z-10 flex items-center gap-3">
+        <span
+          class="bg-primary shadow-card text-on-primary flex size-12 items-center justify-center rounded-full"
+          aria-hidden="true"
+        >
+          <IconLeaf :size="28" />
+        </span>
+        <strong class="text-title tracking-display text-ink">그린포켓</strong>
+      </div>
+
+      <p class="text-section text-muted absolute top-29 left-7 z-10 m-0 leading-relaxed">
+        오늘도, 작은 실천이<br />
+        더 좋은 지구를 만듭니다
+      </p>
+
+      <div
+        class="bg-surface text-body-strong text-ink-soft absolute top-7 right-4 z-10 rounded-[50%] px-5 py-3 text-center -rotate-8 shadow-card"
+      >
+        함께<br />지구를 지켜요!
+      </div>
+      <img
+        :src="signupHero"
+        alt="두 손을 모으고 반가워하는 그린포켓 캐릭터"
+        class="absolute right-1 bottom-0 z-10 w-36 object-contain"
+      />
+    </section>
+
+    <form
+      class="bg-surface shadow-card relative z-20 mx-4 -mt-1 space-y-4 rounded-card p-5"
+      @submit.prevent="submit"
+    >
       <OnbVerifyFields
         v-model:name="name"
         v-model:birth-date="birthDate"
@@ -149,8 +184,6 @@ async function submit() {
         @name-blur="nameTouched = true"
       />
 
-      <hr class="border-border m-0 border-0 border-t" />
-
       <OnbAccountFields
         v-model:email="email"
         v-model:password="password"
@@ -174,5 +207,6 @@ async function submit() {
         <p v-if="ctaHint" class="text-body-sm text-muted mt-2 mb-0 text-center">{{ ctaHint }}</p>
       </div>
     </form>
-  </AppSubLayout>
+    <div class="h-6" aria-hidden="true"></div>
+  </main>
 </template>
