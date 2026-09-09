@@ -36,7 +36,7 @@ defineEmits(['configure', 'all', 'select', 'linkEco'])
     <template v-else>
       <div v-if="!youthPolicy.regionLinked" class="bg-confirmed-bg rounded-md px-4 py-3">
         <p class="text-body-sm text-on-confirmed mt-0 mb-2">
-          지금은 전국 정책만 추천해요. 에코마일리지를 연동하면 내 지역 정책도 볼 수 있어요.
+          지역 정책도 함께 추천하되, 주소 연동 전에는 대상 지역을 꼭 확인해 주세요.
         </p>
         <button
           type="button"
