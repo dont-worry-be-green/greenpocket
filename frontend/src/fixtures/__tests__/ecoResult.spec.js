@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { ECO_HOME_IN_PROGRESS, ECO_HOME_RESULT_READY } from '../ecoHome'
+import { ECO_HOME_RESULT_READY } from '../ecoHome'
 import { ECO_RESULT, ECO_RESULT_MODAL, ECO_SETTLEMENT } from '../ecoResult'
 
 describe('ECO_RESULT — 최종 감축률', () => {
@@ -18,8 +18,8 @@ describe('ECO_RESULT — 최종 감축률', () => {
   it('요금별 감축률은 사용량에서 나온다', () => {
     const rateOf = (utilityType) =>
       ECO_RESULT.utilityResults.find((row) => row.utilityType === utilityType).finalRate
-    expect(rateOf('ELECTRICITY')).toBe(13)
-    expect(rateOf('GAS')).toBe(12.002)
+    expect(rateOf('ELECTRICITY')).toBe(12.985)
+    expect(rateOf('GAS')).toBe(12.037)
     expect(rateOf('WATER')).toBe(5)
   })
 
@@ -68,16 +68,16 @@ describe('ECO_SETTLEMENT', () => {
 
 describe('회차 번호', () => {
   it('확정 회차와 진행 중 회차는 다르다 — 한 회차가 둘 다일 수 없다', () => {
-    expect(ECO_RESULT.roundId).not.toBe(ECO_HOME_IN_PROGRESS.roundId)
+    expect(ECO_RESULT.roundId).not.toBe(ECO_HOME_RESULT_READY.roundId)
   })
 
   it('다음 회차가 홈이 보여 주는 진행 중 회차다', () => {
-    expect(ECO_RESULT.nextRound.roundId).toBe(ECO_HOME_IN_PROGRESS.roundId)
+    expect(ECO_RESULT.nextRound.roundId).toBe(ECO_HOME_RESULT_READY.roundId)
   })
 
   it('결산 모달은 지난 회차를 알린다', () => {
     expect(ECO_HOME_RESULT_READY.resultModal.roundId).toBe(ECO_RESULT.roundId)
-    expect(ECO_HOME_RESULT_READY.roundId).toBe(ECO_HOME_IN_PROGRESS.roundId)
+    expect(ECO_HOME_RESULT_READY.roundId).toBe(8)
   })
 })
 

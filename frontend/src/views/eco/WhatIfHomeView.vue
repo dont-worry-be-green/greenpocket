@@ -50,6 +50,7 @@ import EcoUnlinkedPanel from '@/components/eco/EcoUnlinkedPanel.vue'
 import { derivePace } from '@/components/eco/ecoPace'
 import AppTabLayout from '@/components/layout/AppTabLayout.vue'
 import GpButton from '@/components/ui/GpButton.vue'
+import { DEMO_ECO_REPORT_ID } from '@/data/demoEcoReport'
 import GpCard from '@/components/ui/GpCard.vue'
 import { ECO_RESULT_MODAL } from '@/fixtures/ecoResult'
 import { useAuthStore } from '@/stores/auth'
@@ -298,7 +299,7 @@ function onDismissResultModal() {
 function goToResult() {
   const id = resultModalData.value?.roundId
   onDismissResultModal()
-  if (id) router.push(`/whatif/rounds/${id}/result`)
+  router.push({ path: '/mypage/reports', query: { tab: 'ECO', report: DEMO_ECO_REPORT_ID } })
 }
 
 function retry() {

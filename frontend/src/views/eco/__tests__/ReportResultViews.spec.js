@@ -140,12 +140,12 @@ describe('WF-10 평가 결과', () => {
    * 명세에 적어 뒀고, 여기서는 「없다」를 단언해 조용히 되살아나지 않게 한다.
    */
   it('헤더에 제목과 기간 칩만 있고 확정일·누리집 부제는 없다', async () => {
-    const { wrapper, errors } = await openPath('/whatif/rounds/6/result')
+    const { wrapper, errors } = await openPath('/whatif/rounds/7/result')
     expect(errors).toEqual([])
 
     const header = wrapper.get('h1').element.parentElement.parentElement.textContent
     expect(header).toContain('평가 결과')
-    expect(header).toMatch(/\d{4}\.\d{2}~\d{4}\.\d{2}/)
+    expect(header).toMatch(/2026\.04~09/)
     expect(header).not.toContain('누리집')
     expect(header).not.toContain('확정')
     wrapper.unmount()
@@ -157,7 +157,7 @@ describe('WF-10 평가 결과', () => {
    * ②라는 설명은 이 행이 데려가는 적립 화면(WF-11)의 노티스가 맡는다.
    */
   it('적립 마일리지 행이 금액과 함께 있고 확인 라벨·현금 캡션은 없다', async () => {
-    const { wrapper } = await openPath('/whatif/rounds/6/result')
+    const { wrapper } = await openPath('/whatif/rounds/7/result')
     const text = wrapper.text()
     expect(text).toContain('적립된 마일리지')
     expect(text).toMatch(/[\d,]+M/)
@@ -166,7 +166,7 @@ describe('WF-10 평가 결과', () => {
   })
 
   it('리포트 화면에는 다음 회차 목표 CTA가 없다', async () => {
-    const { wrapper } = await openPath('/whatif/rounds/6/result')
+    const { wrapper } = await openPath('/whatif/rounds/7/result')
     const cta = wrapper.findAll('button').filter((node) => node.text().includes('목표 정하기'))
     expect(cta).toHaveLength(0)
     wrapper.unmount()
@@ -174,7 +174,7 @@ describe('WF-10 평가 결과', () => {
 
   // 확정되지 않은 회차를 열면 픽스처도 서버와 같은 에러를 낸다 — 화면이 덮어 주지 않는다
   it('진행 중 회차를 열면 확정 전 안내가 뜬다', async () => {
-    const { wrapper } = await openPath('/whatif/rounds/7/result')
+    const { wrapper } = await openPath('/whatif/rounds/8/result')
     expect(wrapper.text()).toContain('아직 평가가 확정되지 않았어요')
     wrapper.unmount()
   })
@@ -189,7 +189,7 @@ describe('WF-11 마일리지 적립', () => {
    * 「아직 현금이 아니에요」 노티스가 말한다 — 이게 빠지면 적립 = 입금으로 읽힌다.
    */
   it('적립 금액과 「아직 현금이 아니에요」 노티스가 함께 있다', async () => {
-    const { wrapper, errors } = await openPath('/whatif/rounds/6/settlement')
+    const { wrapper, errors } = await openPath('/whatif/rounds/7/settlement')
     expect(errors).toEqual([])
 
     const text = wrapper.text()
@@ -203,7 +203,7 @@ describe('WF-11 마일리지 적립', () => {
    * 「줄인 금액」 옆에 두던 옛 문장을 지우면서 이 자리가 유일한 방어선이 됐다.
    */
   it('아직 현금이 아니라는 경고가 있다', async () => {
-    const { wrapper } = await openPath('/whatif/rounds/6/settlement')
+    const { wrapper } = await openPath('/whatif/rounds/7/settlement')
     const text = wrapper.text()
     expect(text).toContain('아직 현금이 아니에요')
     expect(text).toContain('그린포켓')
@@ -212,7 +212,7 @@ describe('WF-11 마일리지 적립', () => {
 
   // 「덜 낸 요금」 = 차액 칩 + 기준/이번 막대 둘. 「어떻게 계산됐나요」라 부르지 않는다 (결정 C-38)
   it('덜 낸 요금 칩·기준/이번 요금 막대·비교 기준 문장이 있다', async () => {
-    const { wrapper } = await openPath('/whatif/rounds/6/settlement')
+    const { wrapper } = await openPath('/whatif/rounds/7/settlement')
     const text = wrapper.text()
     expect(text).toContain('덜 낸 요금')
     expect(text).not.toContain('어떻게 계산됐나요')
@@ -228,7 +228,7 @@ describe('WF-11 마일리지 적립', () => {
 
   // 「나중에 할래요」 버튼은 결정 C-39 로 뺐다. 나중에 = 헤더 X 닫기이고, 닫아도 포켓 탭에서 전환할 수 있다 (B-5-03 완료 조건)
   it('CTA 는 현금으로 바꾸기 하나뿐이고 나중에 할래요는 없다', async () => {
-    const { wrapper } = await openPath('/whatif/rounds/6/settlement')
+    const { wrapper } = await openPath('/whatif/rounds/7/settlement')
     const labels = wrapper.findAll('button').map((node) => node.text())
     expect(labels).toContain('현금으로 바꾸기')
     expect(labels).not.toContain('나중에 할래요')
@@ -237,7 +237,7 @@ describe('WF-11 마일리지 적립', () => {
 
   // 헤더가 뒤로가기(←)가 아니라 닫기(X)다 (시안 WF-11)
   it('헤더에 닫기만 있고 뒤로 가기는 없다', async () => {
-    const { wrapper } = await openPath('/whatif/rounds/6/settlement')
+    const { wrapper } = await openPath('/whatif/rounds/7/settlement')
     const labels = wrapper.findAll('button').map((node) => node.attributes('aria-label'))
     expect(labels).toContain('닫기')
     expect(labels).not.toContain('뒤로 가기')

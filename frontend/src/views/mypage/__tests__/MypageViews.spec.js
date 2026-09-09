@@ -236,6 +236,23 @@ beforeEach(() => {
   getPolicy.mockResolvedValue(POLICY_DETAIL)
 })
 
+describe('MY-04 deployment fallback', () => {
+  it('opens the static ECO result when the API report list is empty', async () => {
+    getReports.mockResolvedValue({ ...REPORTS, content: [], totalElements: 0, totalPages: 0 })
+    const { wrapper } = await mountView(
+      ReportArchiveView,
+      '/mypage/reports?tab=ECO&report=DEMO_ECO_RESULT:2026-04-09',
+    )
+
+    expect(wrapper.text()).toContain('2026-04 ~ 09')
+    const dialog = document.body.querySelector('[role="dialog"]')
+    expect(dialog?.getAttribute('aria-label')).toBe('ECO 리포트')
+    expect(dialog?.textContent).toContain('12.5%')
+    dialog.querySelector('[aria-label="리포트 닫기"]').click()
+    await flushPromises()
+  })
+})
+
 describe('MY-01 마이페이지 메인', () => {
   it('본인 정보와 에코마일리지 주소를 그린다', async () => {
     const { wrapper } = await mountView(MypageHomeView)

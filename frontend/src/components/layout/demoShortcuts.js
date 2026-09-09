@@ -8,7 +8,7 @@
  * **여기서 상태를 만들지 않는다.** 전부 뷰가 이미 읽고 있는 쿼리·경로일 뿐이라,
  * 이 파일을 지워도 화면은 그대로 동작한다(`api/eco.js` 의 `previewParam` · 각 뷰의 `route.query`).
  *
- * ⚠️ `roundId 6` 은 **확정된 지난 회차**다. 진행 중인 7 을 넣으면 픽스처가 일부러
+ * ⚠️ `roundId 7` 은 **확정된 지난 회차**다. 진행 중인 8 을 넣으면 픽스처가 일부러
  * `ECO_RESULT_NOT_CONFIRMED` 를 낸다(`api/eco.js` 의 `getRoundResult` 주석).
  */
 export const DEMO_SHORTCUTS = [
@@ -45,8 +45,8 @@ export const DEMO_SHORTCUTS = [
     items: [
       { label: 'WF-07 전달 리포트', to: '/whatif/report' },
       { label: 'WF-07 고지서 없는 달', to: '/whatif/report?month=2026-08' },
-      { label: 'WF-10 평가 결과', to: '/whatif/rounds/6/result' },
-      { label: 'WF-11 마일리지 적립', to: '/whatif/rounds/6/settlement' },
+      { label: 'WF-10 평가 결과', to: '/whatif/rounds/7/result' },
+      { label: 'WF-11 마일리지 적립', to: '/whatif/rounds/7/settlement' },
     ],
   },
 ]
