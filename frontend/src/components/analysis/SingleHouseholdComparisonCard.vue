@@ -1,4 +1,10 @@
 <script setup>
+/*
+ * 1인 가구 평균 사용량 비교 카드 (AN-07 · 기능명세서 A-3-07)
+ * 세그먼트(전기·도시가스·수도) → 나/평균 타일 → 차이 문장 → 최근 6개월 꺾은선 → 출처.
+ * 평균은 점선(icon-off), 나는 실선(primary-soft). 고지서가 없는 달은 선을 끊고 점을 그리지 않는다(C-35).
+ * 마지막 달에는 두 값을 그래프 위에 바로 적는다 — 툴팁 없이도 「지금」이 읽히도록.
+ */
 import { computed, ref, watch } from 'vue'
 
 import {
@@ -11,6 +17,7 @@ import {
 
 const props = defineProps({
   comparison: { type: Object, required: true },
+  yearMonth: { type: String, default: '' },
 })
 
 const selectedUtilityType = ref('ELECTRICITY')
@@ -22,6 +29,7 @@ const selectedTab = computed(
 )
 const series = computed(() => selectedTab.value?.series ?? [])
 const usageUnit = computed(() => formatUnit(selectedTab.value?.usageUnit))
+const monthLabel = computed(() => (props.yearMonth ? `${formatMonthOnly(props.yearMonth)} ` : '이번 달 '))
 const activePoint = computed(() =>
   activePointIndex.value === null ? null : series.value[activePointIndex.value],
 )
@@ -85,6 +93,26 @@ function linePath(key) {
     .join(' ')
 }
 
+/* 마지막 달 값 라벨. 두 점이 가까우면 위·아래로 갈라 붙인다 */
+const lastIndex = computed(() => series.value.length - 1)
+const lastPoint = computed(() => (lastIndex.value >= 0 ? series.value[lastIndex.value] : null))
+const lastLabels = computed(() => {
+  const point = lastPoint.value
+  if (!point) return []
+  const myY = pointY(point.myUsage)
+  const avgY = pointY(point.averageUsage)
+  const labels = []
+  if (avgY !== null) {
+    const above = myY === null || avgY <= myY
+    labels.push({ key: 'avg', y: above ? avgY - 7 : avgY + 13, text: usageLabel(point.averageUsage), mine: false })
+  }
+  if (myY !== null) {
+    const above = avgY === null || myY < avgY
+    labels.push({ key: 'me', y: above ? myY - 7 : myY + 13, text: usageLabel(point.myUsage), mine: true })
+  }
+  return labels
+})
+
 function usageLabel(value) {
   return formatUsage(value, 1, usageUnit.value)
 }
@@ -97,42 +125,40 @@ function activatePoint(index) {
   activePointIndex.value = index
 }
 
-const differenceLabel = computed(() => {
+const difference = computed(() => {
   const tab = selectedTab.value
-  if (!tab?.available || tab.differenceUsage === null || tab.differenceUsage === undefined) return ''
-
-  const difference = Number(tab.differenceUsage)
-  if (difference === 0) return '1인 가구 평균과 같아요'
-
+  if (!tab?.available || tab.differenceUsage === null || tab.differenceUsage === undefined) return null
+  const value = Number(tab.differenceUsage)
+  if (value === 0) return { direction: 'same', text: '1인 가구 평균과 같아요' }
   const rate = formatPercent(Math.abs(Number(tab.differenceRate)))
-  const direction = difference > 0 ? '더 많이' : '더 적게'
-  return `평균보다 ${usageLabel(Math.abs(difference))} (${rate}) ${direction} 사용했어요`
+  return {
+    direction: value > 0 ? 'up' : 'down',
+    text: `평균보다 ${usageLabel(Math.abs(value))} (${rate}) ${value > 0 ? '더 많이' : '더 적게'} 썼어요`,
+  }
 })
 </script>
 
 <template>
-  <section v-if="comparison" class="bg-surface mt-5 rounded-xl px-5 py-6">
-    <div class="flex items-start justify-between gap-3">
-      <div>
-        <h2 class="text-section text-ink mt-0 mb-1">1인 가구 평균 사용량</h2>
-        <p class="text-caption text-muted m-0">최근 6개월 나와 1인 가구 평균 추이</p>
-      </div>
-      <span
-        v-if="selectedTab?.comparisonLabel"
-        class="bg-primary-bg text-primary max-w-36 rounded-full px-3 py-2 text-center text-caption font-semibold break-keep"
-      >
-        {{ selectedTab.comparisonLabel }}
-      </span>
+  <section v-if="comparison" class="bg-surface rounded-card shadow-card mt-3 p-5">
+    <div>
+      <h2 class="text-section tracking-title text-ink m-0">1인 가구 평균과 비교</h2>
+      <p class="text-caption text-muted mt-0.5 mb-0">
+        사용량 · 최근 6개월<template v-if="selectedTab?.comparisonLabel"> · {{ selectedTab.comparisonLabel }}</template>
+      </p>
     </div>
 
-    <div class="mt-5 grid grid-cols-3 gap-2" role="tablist" aria-label="공과금 종류">
+    <div class="bg-surface-sub mt-3.5 grid grid-cols-3 gap-1 rounded-md p-1" role="tablist" aria-label="공과금 종류">
       <button
         v-for="tab in tabs"
         :key="tab.utilityType"
         type="button"
         role="tab"
-        class="min-h-11 rounded-md border-0 text-label font-semibold"
-        :class="selectedUtilityType === tab.utilityType ? 'bg-primary text-white' : 'bg-confirmed-bg text-muted'"
+        class="h-8.5 cursor-pointer rounded-sm border-0 text-label"
+        :class="
+          selectedUtilityType === tab.utilityType
+            ? 'bg-surface text-ink font-extrabold'
+            : 'text-muted bg-transparent font-semibold'
+        "
         :aria-selected="selectedUtilityType === tab.utilityType"
         @click="selectedUtilityType = tab.utilityType"
       >
@@ -141,37 +167,59 @@ const differenceLabel = computed(() => {
     </div>
 
     <template v-if="selectedTab?.available">
-      <div class="mt-5 grid grid-cols-2 gap-3">
-        <div class="bg-canvas rounded-md p-4">
-          <span class="text-caption text-muted block">이번 달 나의 사용량</span>
-          <strong class="text-list-title text-ink mt-2 block tabular-nums">
+      <div class="mt-3.5 grid grid-cols-2 gap-2">
+        <div class="bg-primary-bg rounded-lg px-3.5 pt-3.5 pb-3">
+          <span class="text-caption text-muted block font-semibold">{{ monthLabel }}나</span>
+          <strong class="text-amount tracking-display text-primary-on-soft mt-1.5 block tabular-nums">
             {{ usageLabel(selectedTab.myUsage) }}
           </strong>
         </div>
-        <div class="bg-primary-bg rounded-md p-4">
-          <span class="text-caption text-muted block">1인 가구 평균</span>
-          <strong class="text-list-title text-primary mt-2 block tabular-nums">
+        <div class="bg-surface-sub rounded-lg px-3.5 pt-3.5 pb-3">
+          <span class="text-caption text-muted block font-semibold">1인 가구 평균</span>
+          <strong class="text-amount tracking-display text-ink mt-1.5 block tabular-nums">
             {{ usageLabel(selectedTab.averageUsage) }}
           </strong>
         </div>
       </div>
 
       <p
-        class="text-body-strong mt-4 mb-0"
-        :class="Number(selectedTab.differenceUsage) > 0 ? 'text-negative' : 'text-primary'"
+        v-if="difference"
+        class="text-body-strong mt-3.5 mb-0 flex items-center gap-1 tabular-nums"
+        :class="
+          difference.direction === 'up'
+            ? 'text-increase'
+            : difference.direction === 'down'
+              ? 'text-decrease'
+              : 'text-muted'
+        "
       >
-        {{ differenceLabel }}
+        <svg
+          v-if="difference.direction !== 'same'"
+          class="size-3.5 flex-none"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            v-if="difference.direction === 'down'"
+            d="M11 3h2v12.6l4.3-4.3 1.4 1.4L12 19.4l-6.7-6.7 1.4-1.4L11 15.6z"
+          />
+          <path v-else d="M13 21h-2V8.4l-4.3 4.3-1.4-1.4L12 4.6l6.7 6.7-1.4 1.4L13 8.4z" />
+        </svg>
+        {{ difference.text }}
       </p>
 
-      <div class="text-caption text-muted mt-5 flex justify-end gap-4">
-        <span class="flex items-center gap-1.5"><i class="bg-primary size-2 rounded-full" />나</span>
-        <span class="flex items-center gap-1.5"><i class="bg-control-off size-2 rounded-full" />1인 가구 평균</span>
+      <div class="text-caption-sm text-muted mt-3.5 flex justify-end gap-3">
+        <span class="flex items-center gap-1.5">
+          <i class="border-icon-off block w-3.5 border-t-2 border-dashed" />1인 가구 평균
+        </span>
+        <span class="flex items-center gap-1.5"><i class="border-primary-soft block w-3.5 border-t-[2.4px]" />나</span>
       </div>
 
       <div class="relative" @mouseleave="activePointIndex = null">
         <div
           v-if="activePoint"
-          class="bg-ink text-caption text-surface pointer-events-none absolute top-0 z-10 min-w-36 -translate-x-1/2 rounded-md px-3 py-2 shadow-card"
+          class="bg-ink text-caption text-surface shadow-card pointer-events-none absolute top-0 z-10 min-w-36 -translate-x-1/2 rounded-md px-3 py-2"
           :style="{ left: `${tooltipPosition}%` }"
           role="status"
           data-testid="usage-tooltip"
@@ -182,7 +230,7 @@ const differenceLabel = computed(() => {
         </div>
 
         <svg
-          class="h-40 w-full overflow-visible"
+          class="mt-1 h-40 w-full overflow-visible"
           viewBox="0 0 300 100"
           role="img"
           :aria-label="`${formatUtilityType(selectedTab.utilityType)} 최근 6개월 1인 가구 평균 사용량 비교 그래프`"
@@ -190,12 +238,12 @@ const differenceLabel = computed(() => {
           <line
             v-for="y in [8, 50, 92]"
             :key="y"
-            x1="25"
+            x1="17"
             :y1="y"
-            x2="275"
+            x2="283"
             :y2="y"
             class="stroke-divider"
-            stroke-width="0.5"
+            stroke-width="0.8"
           />
           <line
             v-if="activePointIndex !== null"
@@ -210,8 +258,9 @@ const differenceLabel = computed(() => {
           <path
             :d="linePath('averageUsage')"
             fill="none"
-            class="stroke-control-off"
+            class="stroke-icon-off"
             stroke-width="2"
+            stroke-dasharray="4 4"
             stroke-linecap="round"
             stroke-linejoin="round"
             data-testid="average-line"
@@ -219,7 +268,7 @@ const differenceLabel = computed(() => {
           <path
             :d="linePath('myUsage')"
             fill="none"
-            class="stroke-primary"
+            class="stroke-primary-soft"
             stroke-width="2.4"
             stroke-linecap="round"
             stroke-linejoin="round"
@@ -230,7 +279,7 @@ const differenceLabel = computed(() => {
               :cx="pointX(index)"
               :cy="pointY(point.averageUsage)"
               r="2.8"
-              class="fill-control-off"
+              class="fill-icon-off"
               data-testid="average-point"
             />
             <circle
@@ -238,7 +287,7 @@ const differenceLabel = computed(() => {
               :cx="pointX(index)"
               :cy="pointY(point.myUsage)"
               r="3.2"
-              class="fill-primary stroke-surface"
+              class="fill-primary-soft stroke-surface"
               stroke-width="1"
               data-testid="my-point"
             />
@@ -256,13 +305,26 @@ const differenceLabel = computed(() => {
               @click="activatePoint(index)"
             />
           </template>
+          <text
+            v-for="label in lastLabels"
+            :key="label.key"
+            :x="pointX(lastIndex)"
+            :y="label.y"
+            text-anchor="end"
+            class="text-badge tabular-nums"
+            :class="label.mine ? 'fill-ink' : 'fill-muted'"
+            data-testid="last-label"
+          >
+            {{ label.text }}
+          </text>
         </svg>
         <div class="grid grid-cols-6">
           <button
             v-for="(point, index) in series"
             :key="point.yearMonth"
             type="button"
-            class="text-caption-sm text-muted min-h-11 border-0 bg-transparent p-0"
+            class="text-caption-sm min-h-11 border-0 bg-transparent p-0"
+            :class="index === lastIndex ? 'text-ink font-extrabold' : 'text-muted'"
             data-testid="month-axis"
             @mouseenter="activatePoint(index)"
             @focus="activatePoint(index)"
@@ -273,15 +335,14 @@ const differenceLabel = computed(() => {
         </div>
       </div>
 
-      <p v-if="series.some((point) => point.myUsage === null)" class="text-caption text-muted mt-4 mb-0">
+      <p v-if="series.some((point) => point.myUsage === null)" class="text-caption-sm text-muted mt-2 mb-0">
         고지서가 없는 달은 나의 사용량 선을 연결하지 않았어요.
       </p>
 
-      <p class="border-divider text-caption text-muted mt-5 mb-0 border-t pt-4">
-        출처 · {{ shortSourceName }}
-      </p>
-      <p v-if="selectedTab.note" class="text-caption-sm text-muted mt-3 mb-0 break-keep">
-        {{ selectedTab.note }}
+      <p class="border-divider text-caption-sm text-muted mt-3 mb-0 border-t pt-3 leading-relaxed">
+        <span class="text-ink-soft font-bold">출처 · {{ shortSourceName }}</span>
+        <template v-if="selectedTab.calculationBasis"> {{ selectedTab.calculationBasis }}.</template>
+        <template v-if="selectedTab.note"> {{ selectedTab.note }}</template>
       </p>
     </template>
 
