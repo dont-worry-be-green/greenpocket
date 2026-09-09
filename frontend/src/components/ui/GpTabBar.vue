@@ -33,7 +33,7 @@ defineEmits(['change'])
         :aria-selected="active === t.key"
         :aria-label="t.label"
         class="ease-standard relative flex h-full flex-1 cursor-pointer flex-col items-center justify-end gap-[3px] border-0 bg-transparent pb-[9px] tracking-body transition-colors duration-140"
-        :class="active === t.key || t.fab ? 'text-nav-on' : 'text-nav-off'"
+        :class="active === t.key ? 'text-nav-on' : 'text-nav-off'"
         @click="$emit('change', t.key)"
       >
         <!--
@@ -47,7 +47,7 @@ defineEmits(['change'])
           <component :is="t.icon" :size="25" />
         </span>
         <component :is="t.icon" v-else :size="20" />
-        <span class="text-nav" :class="{ 'font-extrabold': active === t.key || t.fab }">{{
+        <span class="text-nav" :class="{ 'font-extrabold': active === t.key }">{{
           t.label
         }}</span>
       </button>

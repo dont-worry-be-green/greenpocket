@@ -217,6 +217,11 @@ watch(
       router.replace('/analysis/eco-link')
       return
     }
+    // 연동·목표 설정이 끝나 WF-06 이상이면 진단 탭은 고지서 진단 화면으로 이동한다.
+    if (path === '/analysis/eco-link' && IN_PROGRESS_SCREENS.includes(value)) {
+      router.replace('/analysis')
+      return
+    }
     if (value === 'WF_02_LINKING') ensurePolling()
     if (value === 'WF_03_NO_GOAL' && !store.currentRound) store.fetchCurrentRound()
     if (!IN_PROGRESS_SCREENS.includes(value) || !roundId) return

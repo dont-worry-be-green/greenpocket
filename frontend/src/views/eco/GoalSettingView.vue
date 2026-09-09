@@ -159,7 +159,7 @@ async function save() {
 </script>
 
 <template>
-  <AppSubLayout title="평가 기간 목표 정하기" back="/whatif" has-footer>
+  <AppSubLayout title="목표 설정" back="/whatif" center-title has-footer>
     <p v-if="period" class="text-caption text-muted mt-0 mb-4">
       {{ period }} · 직전 2년 같은 기간 평균과 비교해요
     </p>
