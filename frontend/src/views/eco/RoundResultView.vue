@@ -39,17 +39,19 @@ const store = useEcoStore()
 const props = defineProps({
   embedded: { type: Boolean, default: false },
   reportRoundId: { type: [String, Number], default: null },
+  reportData: { type: Object, default: null },
 })
 const emit = defineEmits(['close'])
 
 const roundId = computed(() => props.reportRoundId ?? route.params.roundId)
-const result = computed(() => store.result)
+const result = computed(() => props.reportData ?? store.result)
 const layout = computed(() => (props.embedded ? ReportDialogLayout : AppSubLayout))
 
 function load() {
+  if (props.reportData) return
   store.fetchRoundResult(roundId.value)
 }
-watch(roundId, load, { immediate: true })
+watch([roundId, () => props.reportData], load, { immediate: true })
 
 /**
  * 화면 제목 「평가 결과」 오른쪽 끝 기간 칩 '2025.10~2026.03'. 홈 감축률 카드 칩과 같은 문법.

@@ -45,7 +45,7 @@ async function mountHome(search, { diagnosisEntry = false } = {}) {
 
   const wrapper = mount(WhatIfHomeView, {
     props: { diagnosisEntry },
-    global: { plugins: [createPinia(), router] },
+    global: { plugins: [createPinia(), router], stubs: { Teleport: true } },
   })
   await flushPromises()
   await new Promise((resolve) => setTimeout(resolve, 500))
@@ -64,8 +64,24 @@ describe('WhatIfHomeView', () => {
   it('?preview=WF_09_RESULT_READY — 첫 렌더에서 터지지 않고 결산 모달이 뜬다', async () => {
     const { wrapper, errors } = await mountHome('?preview=WF_09_RESULT_READY')
     expect(errors).toEqual([])
-    expect(document.body.textContent).toContain('평가 결과가 나왔어요')
-    expect(document.body.textContent).toContain('30,000M')
+    expect(wrapper.text()).toContain('평가 결과가 나왔어요')
+    expect(wrapper.text()).toContain('30,000M')
+    wrapper.unmount()
+  })
+
+  it('결과 보러 가기를 누르면 2026년 4~9월 평가 결과 화면으로 이동한다', async () => {
+    const { wrapper, router } = await mountHome('?preview=WF_09_RESULT_READY')
+    const modal = wrapper.findComponent({ name: 'EcoResultModal' })
+    expect(modal.exists()).toBe(true)
+    const push = vi.spyOn(router, 'push')
+
+    modal.vm.$emit('view')
+    await flushPromises()
+
+    expect(push).toHaveBeenCalledWith({
+      path: '/mypage/reports',
+      query: { tab: 'ECO', report: 'DEMO_ECO_RESULT:2026-04-09' },
+    })
     wrapper.unmount()
   })
 

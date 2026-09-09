@@ -25,6 +25,7 @@ import MypageState from '@/components/mypage/MypageState.vue'
 import ReportArchiveYear from '@/components/mypage/ReportArchiveYear.vue'
 import GpCard from '@/components/ui/GpCard.vue'
 import IconLeaf from '@/components/ui/icons/IconLeaf.vue'
+import { DEMO_ECO_REPORT, DEMO_ECO_REPORT_ID } from '@/data/demoEcoReport'
 import { useMypageStore } from '@/stores/mypage'
 import MonthlyReportView from '@/views/eco/MonthlyReportView.vue'
 import RoundResultView from '@/views/eco/RoundResultView.vue'
@@ -45,15 +46,23 @@ const activeTab = computed(() =>
 const pageTitle = computed(() => (activeTab.value === 'ECO' ? 'ECO 리포트' : '월별 리포트'))
 const selectedYear = ref(null)
 const selectedReport = ref(null)
+const archiveReports = computed(() => {
+  const reports = store.reports?.content ?? []
+  const serverHasCurrentResult = reports.some(
+    (report) => report.type === 'ECO_RESULT' && Number(report.targetParams?.roundId) === 7,
+  )
+
+  return serverHasCurrentResult ? reports : [DEMO_ECO_REPORT, ...reports]
+})
 const years = computed(() => [...new Set(
-  (store.reports?.content ?? []).map((report) => report.yearMonth.slice(0, 4)),
+  archiveReports.value.map((report) => report.yearMonth.slice(0, 4)),
 )].sort((a, b) => b.localeCompare(a)))
 
 const bootstrapping = computed(() => !store.reports && !store.reportsError)
 
 const rows = computed(() => {
   const types = TABS.find((tab) => tab.key === activeTab.value)?.types ?? []
-  return (store.reports?.content ?? []).filter((report) => types.includes(report.type) && (!selectedYear.value || report.yearMonth.startsWith(selectedYear.value)))
+  return archiveReports.value.filter((report) => types.includes(report.type) && (!selectedYear.value || report.yearMonth.startsWith(selectedYear.value)))
 })
 
 /** 연도별로 묶는다. 목록은 이미 최신순이라 순서를 다시 만들지 않는다 (E-2-01) */
@@ -78,8 +87,14 @@ function open(report) {
   if (VIEWABLE_SCREENS.has(report.targetScreen)) selectedReport.value = report
 }
 
+function openRequestedReport() {
+  if (route.query.report !== DEMO_ECO_REPORT_ID) return
+  selectedReport.value = archiveReports.value.find((report) => report.reportId === DEMO_ECO_REPORT_ID) ?? null
+}
+
 onMounted(() => {
   if (!store.reports) store.fetchReports()
+  openRequestedReport()
 })
 </script>
 
@@ -109,7 +124,7 @@ onMounted(() => {
 
       <MypageState
         :loading="bootstrapping"
-        :error="store.reports ? null : store.reportsError"
+        :error="archiveReports.length > 0 ? null : store.reportsError"
         :empty="groups.length === 0"
         :empty-message="selectedYear ? '선택한 연도에 저장된 리포트가 없어요.' : activeTab === 'ECO' ? '아직 저장된 ECO 리포트가 없어요.' : '아직 저장된 리포트가 없어요. 고지서를 등록한 달부터 쌓여요.'"
         @retry="store.fetchReports()"
@@ -137,6 +152,7 @@ onMounted(() => {
       v-else-if="selectedReport?.type === 'ECO_RESULT'"
       embedded
       :report-round-id="selectedReport.targetParams?.roundId"
+      :report-data="selectedReport.result ?? null"
       @close="selectedReport = null"
     />
   </AppSubLayout>

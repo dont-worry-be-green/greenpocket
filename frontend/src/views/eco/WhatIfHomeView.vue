@@ -50,6 +50,7 @@ import EcoUnlinkedPanel from '@/components/eco/EcoUnlinkedPanel.vue'
 import { derivePace } from '@/components/eco/ecoPace'
 import AppTabLayout from '@/components/layout/AppTabLayout.vue'
 import GpButton from '@/components/ui/GpButton.vue'
+import { DEMO_ECO_REPORT_ID } from '@/data/demoEcoReport'
 import GpCard from '@/components/ui/GpCard.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useEcoStore } from '@/stores/eco'
@@ -270,9 +271,8 @@ function onDismissResultModal() {
  * 방금 본 것을 또 보라는 말이 된다.
  */
 function goToResult() {
-  const id = store.home?.resultModal?.roundId
   onDismissResultModal()
-  if (id) router.push(`/whatif/rounds/${id}/result`)
+  router.push({ path: '/mypage/reports', query: { tab: 'ECO', report: DEMO_ECO_REPORT_ID } })
 }
 
 function retry() {
