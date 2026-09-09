@@ -9,13 +9,16 @@
  *     evidenceAmount, evidenceUnit, evidenceText, calculationBasis, sourceOrg,
  *     deviceGroup, seasonTags, computedRate, capped, selected }
  *
+ * 계절 한정 미션(`seasonTags` 가 사계절이 아닌 것)에는 「여름 전용」 칩을 단다 — 오늘의 실천은
+ * 현재 계절 태그로 거르므로(B-3-05) 9월에 고른 냉방 미션은 홈에 안 보인다. 고를 때 알려야 한다.
+ *
  * 합계 제외 여부는 미션 자체가 아니라 목표 미리보기(`POST .../goal/preview`)가 판단한다.
  * 같은 deviceGroup 중 computedRate 최대값만 counted:true 이고, 나머지는
  * exclusionReason("냉방 겹침 · 합계 제외")이 문구까지 내려온다. **프론트가 만들지 않는다.**
  */
 import GpTag from './GpTag.vue'
 import GpDelta from './GpDelta.vue'
-import { formatDifficulty } from '@/utils/format'
+import { formatDifficulty, formatSeasonTags } from '@/utils/format'
 
 defineProps({
   mission: { type: Object, required: true },
@@ -49,6 +52,9 @@ defineEmits(['update:modelValue'])
 
       <span class="mt-[7px] flex flex-wrap items-center gap-[5px]">
         <GpTag small>{{ formatDifficulty(mission.difficulty) }}</GpTag>
+        <GpTag v-if="formatSeasonTags(mission.seasonTags)" small tone="sub">
+          {{ formatSeasonTags(mission.seasonTags) }} 전용
+        </GpTag>
         <GpTag v-if="mission.evidenceText" small :tone="counted ? 'primary' : 'sub'">
           {{ mission.evidenceText }}
         </GpTag>

@@ -1,7 +1,8 @@
 /*
  * 마이페이지 화면 (MY) — api-spec.md 15.3
- *   MY-01 마이페이지 메인      MY-03 고지서 보관함
- *   MY-02 기본 정보 수정       MY-04 리포트 보관함
+ *   MY-01 마이 메인            MY-03 고지서 보관함
+ *   MY-02 정책 추천 조건       MY-04 리포트 보관함
+ *   MY-05 청년정책 목록        MY-06 청년정책 상세
  *
  * meta 형태는 routes/eco.js 주석 참고. 추가 형태는 routes/onboarding.js 주석 참고.
  */
@@ -13,14 +14,10 @@ export default [
     meta: { tab: 'mypage', title: '마이' },
   },
   {
-    path: '/mypage/profile',
-    name: 'my-02-profile-edit',
-    /*
-     * MY-02. **시안이 없다** — 기능명세서 화면 목록이 "ONB-01·02 폼 재사용" 이라고 적었다.
-     * 그래서 이 화면은 `components/onboarding/` 의 폼 조각을 그대로 쓴다(뷰 주석 참고).
-     */
+    path: '/mypage/policy-preferences',
+    name: 'my-02-policy-preferences',
     component: () => import('@/views/mypage/ProfileEditView.vue'),
-    meta: { title: '기본 정보 수정' },
+    meta: { title: '추천 조건 설정' },
   },
   {
     path: '/mypage/bills',
@@ -44,5 +41,17 @@ export default [
      */
     component: () => import('@/views/mypage/ReportArchiveView.vue'),
     meta: { title: '리포트 보관함' },
+  },
+  {
+    path: '/mypage/policies',
+    name: 'my-05-policy-list',
+    component: () => import('@/views/mypage/PolicyListView.vue'),
+    meta: { title: '청년정책' },
+  },
+  {
+    path: '/mypage/policies/:policyId',
+    name: 'my-06-policy-detail',
+    component: () => import('@/views/mypage/PolicyDetailView.vue'),
+    meta: { title: '청년정책 상세' },
   },
 ]

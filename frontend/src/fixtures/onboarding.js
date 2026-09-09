@@ -115,3 +115,24 @@ export function buildProfileResult({ sidoCode, sigunguName, housingType, areaBan
     seoulResident: sidoCode === '11',
   }
 }
+
+/*
+ * GET /users/me — 목데이터 모드의 부트스트랩 사용자 (api-spec.md 4.2).
+ *
+ * 온보딩 가드(`router/guards.js`)는 세션 복구가 되어야 `/whatif` 로 보내 준다.
+ * 목데이터 모드에서 실 `/auth/refresh` 를 부르면 서버가 없어 실패하고, 데모 도구의
+ * 화면 바로가기가 전부 ONB-01 로 튕겼다. `api/auth.js` 가 이 값을 돌려 준다.
+ * `entryScreen` 은 `ECO_HOME_IN_PROGRESS.screen` 과 맞춘다 — 어긋나면 첫 화면이 두 벌이 된다.
+ */
+export const USER_ME = {
+  userId: 1,
+  name: '김수현',
+  onboardingCompleted: true,
+  ecoLinkStatus: 'LINKED',
+  ecoLinkedAt: '2026-09-01T09:00:00+09:00',
+  greenlifeParticipating: true,
+  greenlifeLinkedAt: '2026-09-01T09:12:00+09:00',
+  hasBill: true,
+  currentRoundId: 7,
+  entryScreen: 'WF-06',
+}

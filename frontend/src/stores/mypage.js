@@ -17,7 +17,13 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
-import { getBills, getMypage, getProfile, getReports, updateProfile } from '@/api/mypage'
+import {
+  getBills,
+  getMypage,
+  getPolicyPreferences,
+  getReports,
+  updatePolicyPreferences,
+} from '@/api/mypage'
 
 /** 리포트는 한 번에 받아 화면이 두 탭·연도 그룹으로 가른다. 서버 상한이 100 이다(14.2) */
 const REPORT_PAGE_SIZE = 100
@@ -25,7 +31,7 @@ const REPORT_PAGE_SIZE = 100
 export const useMypageStore = defineStore('mypage', () => {
   // 서버 응답을 원형 그대로 담는다
   const mypage = ref(null)
-  const profile = ref(null)
+  const policyPreferences = ref(null)
   const bills = ref(null)
   const reports = ref(null)
 
@@ -41,8 +47,6 @@ export const useMypageStore = defineStore('mypage', () => {
    * 지역 변경 경고 (A-1-06 예외). 서버가 `409` + `details.warning` 으로 준 문구다.
    * **에러 자리에 두지 않는다** — 실패가 아니라 확인을 받아야 하는 상태다.
    */
-  const baselineWarning = ref(null)
-
   const billsLoading = ref(false)
   const billsError = ref(null)
 
@@ -67,11 +71,6 @@ export const useMypageStore = defineStore('mypage', () => {
   /** 미연동이면 `ecoAddress` 가 null 이다. 그때는 카드를 숨긴다 — 없는 주소를 지어내지 않는다 */
   const ecoAddress = computed(() => mypage.value?.ecoAddress ?? null)
 
-  /** 프로필 주소와 누리집 등록 주소의 시군구가 다른 상태 (B-1-08 이사 안내) */
-  const needsMovingNotice = computed(
-    () => Boolean(ecoAddress.value) && ecoAddress.value.matchesProfile === false,
-  )
-
   const billCounts = computed(() => bills.value?.counts ?? null)
 
   // ── MY-01 ─────────────────────────────────────────────────────────────
@@ -85,12 +84,12 @@ export const useMypageStore = defineStore('mypage', () => {
   // ── MY-02 ─────────────────────────────────────────────────────────────
 
   /** 수정 폼 프리필. `GET /mypage` 에는 지역 **코드**가 없어 이걸 따로 부른다 */
-  async function fetchProfile() {
+  async function fetchPolicyPreferences() {
     profileLoading.value = true
     profileError.value = null
     try {
-      const data = await getProfile()
-      profile.value = data
+      const data = await getPolicyPreferences()
+      policyPreferences.value = data
       return data
     } catch (nextError) {
       profileError.value = nextError
@@ -100,38 +99,21 @@ export const useMypageStore = defineStore('mypage', () => {
     }
   }
 
-  /**
-   * 프로필 저장 (A-1-06).
-   *
-   * 진행 중 회차가 있는데 지역이 바뀌면 서버가 `409 CONFLICT` +
-   * `field: 'confirmBaselineChange'` 로 막는다. 그 경우만 `baselineWarning` 에 담아
-   * **뷰가 확인 다이얼로그를 띄우고 같은 payload + `confirmBaselineChange: true` 로 다시 부른다.**
-   * 사용자 확인 없이 여기서 플래그를 붙여 재시도하지 않는다(핵심 규칙 9).
-   */
-  async function saveProfile(payload) {
+  /** 정책 추천 조건 저장. 성공 후 MY-01 요약을 다음 진입 때 다시 조회한다. */
+  async function savePolicyPreferences(payload) {
     saveLoading.value = true
     saveError.value = null
-    baselineWarning.value = null
     try {
-      const data = await updateProfile(payload)
+      const data = await updatePolicyPreferences(payload)
       // 저장이 성공하면 MY-01 이 들고 있던 값은 낡았다. 다음 진입에서 다시 받게 비운다
       mypage.value = null
       return data
     } catch (nextError) {
-      if (nextError.field === 'confirmBaselineChange') {
-        baselineWarning.value =
-          nextError.details?.warning ?? '지역을 바꾸면 비교 기준이 다시 계산돼요.'
-      } else {
-        saveError.value = nextError
-      }
+      saveError.value = nextError
       return null
     } finally {
       saveLoading.value = false
     }
-  }
-
-  function dismissBaselineWarning() {
-    baselineWarning.value = null
   }
 
   // ── MY-03 ─────────────────────────────────────────────────────────────
@@ -194,7 +176,7 @@ export const useMypageStore = defineStore('mypage', () => {
 
   return {
     mypage,
-    profile,
+    policyPreferences,
     bills,
     reports,
     isLoading,
@@ -203,18 +185,15 @@ export const useMypageStore = defineStore('mypage', () => {
     profileError,
     saveLoading,
     saveError,
-    baselineWarning,
     billsLoading,
     billsError,
     reportsLoading,
     reportsError,
     ecoAddress,
-    needsMovingNotice,
     billCounts,
     fetchMypage,
-    fetchProfile,
-    saveProfile,
-    dismissBaselineWarning,
+    fetchPolicyPreferences,
+    savePolicyPreferences,
     fetchBills,
     appendBills,
     fetchReports,

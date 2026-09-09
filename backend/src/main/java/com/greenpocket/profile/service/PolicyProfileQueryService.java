@@ -1,6 +1,7 @@
 package com.greenpocket.profile.service;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
@@ -11,7 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.greenpocket.eco.entity.EcoLinkStatus;
 import com.greenpocket.profile.entity.AnnualIncomeBand;
 import com.greenpocket.profile.entity.CurrentStatus;
-import com.greenpocket.profile.entity.HouseholdStatus;
+import com.greenpocket.profile.entity.EducationStatus;
+import com.greenpocket.profile.entity.PolicyInterestCategory;
 import com.greenpocket.profile.repository.ProfileRepository;
 
 @Service
@@ -28,7 +30,8 @@ public class PolicyProfileQueryService {
 				profile.birthDate(),
 				profile.currentStatus(),
 				profile.annualIncomeBand(),
-				profile.householdStatus(),
+				profile.educationStatus(),
+				profile.interestCategories(),
 				profile.ecoLinkStatus() == EcoLinkStatus.LINKED ? profile.ecoSidoCode() : null,
 				profile.ecoLinkStatus() == EcoLinkStatus.LINKED ? profile.ecoSigunguCode() : null,
 				profile.ecoLinkStatus() == EcoLinkStatus.LINKED ? profile.ecoAddressLabel() : null
@@ -38,14 +41,15 @@ public class PolicyProfileQueryService {
 	public Optional<PolicyProfile> findCompleted(Long userId) {
 		return find(userId)
 			.filter(profile -> profile.currentStatus() != null && profile.annualIncomeBand() != null
-				&& profile.householdStatus() != null);
+				&& profile.educationStatus() != null && !profile.interestCategories().isEmpty());
 	}
 
 	public record PolicyProfile(
 		LocalDate birthDate,
 		CurrentStatus currentStatus,
 		AnnualIncomeBand annualIncomeBand,
-		HouseholdStatus householdStatus,
+		EducationStatus educationStatus,
+		List<PolicyInterestCategory> interestCategories,
 		String ecoSidoCode,
 		String ecoSigunguCode,
 		String ecoAddressLabel

@@ -18,7 +18,6 @@ import * as authApi from '@/api/auth'
 import { DATA_SOURCE, setDataSource } from '@/api/dataSource'
 import routes from '@/router/routes/onboarding'
 import LoginView from '@/views/onboarding/LoginView.vue'
-import ProfileView from '@/views/onboarding/ProfileView.vue'
 import SignupView from '@/views/onboarding/SignupView.vue'
 import StartView from '@/views/onboarding/StartView.vue'
 
@@ -26,7 +25,10 @@ async function mountView(component, path) {
   window.history.replaceState({}, '', path)
   const pinia = createPinia()
   setActivePinia(pinia)
-  const router = createRouter({ history: createWebHistory(), routes })
+  const router = createRouter({
+    history: createWebHistory(),
+    routes: [...routes, { path: '/whatif', component: { template: '<div />' } }],
+  })
   await router.push(path)
   await router.isReady()
   const wrapper = mount(component, { global: { plugins: [pinia, router] } })
@@ -40,6 +42,8 @@ function buttonWith(wrapper, text) {
 
 async function verifyPhone(wrapper) {
   await wrapper.find('input[autocomplete="name"]').setValue('이아영')
+  await wrapper.find('input[autocomplete="bday"]').setValue('1998-03-15')
+  await buttonWith(wrapper, '여성').trigger('click')
   await buttonWith(wrapper, 'SKT').trigger('click')
   await wrapper.find('input[type="tel"]').setValue('01011111111')
   await buttonWith(wrapper, '인증번호 받기').trigger('click')
@@ -78,12 +82,12 @@ describe('LoginView', () => {
     expect(cta().attributes('disabled')).toBeUndefined()
   })
 
-  it('실제 로그인 응답의 entryScreen으로 이동한다', async () => {
+  it('실제 로그인 응답을 받은 뒤 What-if 홈으로 이동한다', async () => {
     authApi.login.mockResolvedValue({
       userId: 1,
       name: '이아영',
-      onboardingCompleted: false,
-      entryScreen: 'ONB-02',
+      onboardingCompleted: true,
+      entryScreen: 'WF-01',
     })
     const { wrapper, router } = await mountView(LoginView, '/onboarding/login')
     await wrapper.find('input[autocomplete="email"]').setValue('user@example.com')
@@ -95,7 +99,7 @@ describe('LoginView', () => {
       email: 'user@example.com',
       password: 'password1234',
     })
-    expect(router.currentRoute.value.path).toBe('/onboarding/profile')
+    expect(router.currentRoute.value.path).toBe('/whatif')
   })
 
   it('서버 인증 오류 문구를 로그인 화면에 표시한다', async () => {
@@ -117,6 +121,36 @@ describe('SignupView', () => {
     expect(wrapper.find('input[autocomplete="email"]').exists()).toBe(true)
     expect(wrapper.text()).not.toContain('중복확인')
     expect(wrapper.text()).not.toContain('아이디')
+    expect(wrapper.find('input[autocomplete="bday"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('성별')
+  })
+
+  it('본인정보를 모두 입력하기 전에는 인증번호를 요청할 수 없다', async () => {
+    const { wrapper } = await mountView(SignupView, '/onboarding/signup')
+    await wrapper.find('input[autocomplete="name"]').setValue('이아영')
+    await buttonWith(wrapper, 'SKT').trigger('click')
+    await wrapper.find('input[type="tel"]').setValue('01011111111')
+
+    expect(buttonWith(wrapper, '인증번호 받기').attributes('disabled')).toBeDefined()
+
+    await wrapper.find('input[autocomplete="bday"]').setValue('1998-03-15')
+    await buttonWith(wrapper, '여성').trigger('click')
+    expect(buttonWith(wrapper, '인증번호 받기').attributes('disabled')).toBeUndefined()
+  })
+
+  it('인증번호 발송 후에는 인증 대상 정보를 잠근다', async () => {
+    const { wrapper } = await mountView(SignupView, '/onboarding/signup')
+    await wrapper.find('input[autocomplete="name"]').setValue('이아영')
+    await wrapper.find('input[autocomplete="bday"]').setValue('1998-03-15')
+    await buttonWith(wrapper, '여성').trigger('click')
+    await buttonWith(wrapper, 'SKT').trigger('click')
+    await wrapper.find('input[type="tel"]').setValue('01011111111')
+    await buttonWith(wrapper, '인증번호 받기').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('input[autocomplete="name"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('input[autocomplete="bday"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('input[type="tel"]').attributes('disabled')).toBeDefined()
   })
 
   it('본인확인 뒤 실제 signup 계약으로 가입한다', async () => {
@@ -124,8 +158,8 @@ describe('SignupView', () => {
       userId: 1,
       email: 'user@example.com',
       name: '이아영',
-      onboardingCompleted: false,
-      nextScreen: 'ONB-02',
+      onboardingCompleted: true,
+      nextScreen: 'WF-01',
     })
     const { wrapper, router } = await mountView(SignupView, '/onboarding/signup')
     await verifyPhone(wrapper)
@@ -138,18 +172,13 @@ describe('SignupView', () => {
 
     expect(authApi.signup).toHaveBeenCalledWith({
       name: '이아영',
+      birthDate: '1998-03-15',
+      gender: 'FEMALE',
+      phoneNumber: '01011111111',
       email: 'user@example.com',
       password: 'password1234',
     })
-    expect(router.currentRoute.value.path).toBe('/onboarding/profile')
+    expect(router.currentRoute.value.path).toBe('/whatif')
     expect(JSON.stringify(localStorage)).not.toContain('password1234')
-  })
-})
-
-describe('ProfileView', () => {
-  it('새로고침 뒤에도 스토어의 임시 사용자 없이 프로필 화면이 그려진다', async () => {
-    const { wrapper, router } = await mountView(ProfileView, '/onboarding/profile')
-    expect(wrapper.text()).toContain('어디에 살고 계세요?')
-    expect(router.currentRoute.value.path).toBe('/onboarding/profile')
   })
 })

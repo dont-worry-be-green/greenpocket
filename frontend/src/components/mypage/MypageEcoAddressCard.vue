@@ -15,7 +15,6 @@
  */
 import GpCard from '@/components/ui/GpCard.vue'
 import GpTag from '@/components/ui/GpTag.vue'
-import IconWarning from '@/components/ui/icons/IconWarning.vue'
 import { formatMonth } from '@/utils/format'
 
 defineProps({
@@ -33,18 +32,7 @@ defineProps({
         <GpTag>{{ formatMonth(ecoAddress.registeredAt) }} 등록</GpTag>
       </div>
 
-      <p class="text-caption text-muted mt-2 mb-0">
-        누리집에 등록된 주소예요. 프로필 주소를 바꿔도 다음 연동 때까지 그대로예요.
-      </p>
-
-      <!-- 프로필 주소와 시군구가 다르다. 지금 살지 않는 집과 비교되는 상태다 -->
-      <p
-        v-if="ecoAddress.matchesProfile === false"
-        class="bg-confirmed-bg text-caption text-on-confirmed mt-3 mb-0 flex items-start gap-2 rounded-md px-3 py-2.5"
-      >
-        <IconWarning :size="16" class="mt-0.5 flex-none" />
-        <span>{{ ecoAddress.notice }}</span>
-      </p>
+      <p class="text-caption text-muted mt-2 mb-0">{{ ecoAddress.notice }}</p>
     </GpCard>
   </section>
 </template>

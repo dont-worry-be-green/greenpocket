@@ -23,7 +23,12 @@ public class YouthPolicyPersistenceService {
 		youthPolicyRepository.deactivateAll();
 		int upsertedCount = 0;
 		for (YouthPolicySourcePolicy source : policies) {
-			YouthPolicyNormalizer.NormalizedPolicy normalized = youthPolicyNormalizer.normalize(source, syncedAt);
+			YouthPolicyNormalizer.NormalizedPolicy normalized = youthPolicyNormalizer
+				.normalizeRecommendable(source, syncedAt)
+				.orElse(null);
+			if (normalized == null) {
+				continue;
+			}
 			Long policyId = youthPolicyRepository.upsert(normalized.policy());
 			youthPolicyRepository.replaceRegions(policyId, normalized.regions());
 			youthPolicyRepository.replaceConditions(policyId, normalized.conditions());

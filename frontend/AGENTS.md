@@ -20,18 +20,20 @@
 
 ### 디자인 토큰 — `src/assets/main.css` 하나가 전부다
 
-205개 토큰이 `@theme static` 블록에 있고, **토큰이 곧 Tailwind 클래스**다.
+228개 토큰이 `@theme static` 블록에 있고, **토큰이 곧 Tailwind 클래스**다. (v3 · 2026-09-09, `docs/design/design-system.md`)
 
 | 쓸 것 | 쓰지 말 것 |
 | --- | --- |
-| `bg-primary` · `text-muted` · `border-divider` | `bg-green-600` (Tailwind 기본 팔레트), `#078753` |
-| `text-body` · `text-amount` · `text-caption` (크기+굵기+행간이 함께 붙는다) | `text-[15px] font-normal leading-[1.6]` |
-| `rounded-lg`(16) · `rounded-md`(12) — 7단계만 | `rounded-[14px]` |
+| `bg-primary` · `text-muted` · `border-divider` | `bg-green-600` (Tailwind 기본 팔레트), `#057441` |
+| `text-body` · `text-amount` · `text-caption` (크기+굵기+행간이 함께 붙는다) | `text-[14px] font-normal leading-[1.55]` |
+| 카드는 `GpCard` 또는 `rounded-card`(24) + `shadow-card` · `rounded-md`(12) 버튼 — 8단계만 | `rounded-[14px]` · Tailwind 기본 `shadow-sm`/`shadow-lg` |
+| 요금색은 글자 `text-elec` · 막대 `bg-elec-fill` · 배지 바탕 `bg-elec-bg` 세 벌 | 채움색을 글자에 (전기 채움은 2.44:1) |
 | `p-4`·`gap-3` (Tailwind 기본 4px 스케일이 시안과 맞는다) | 별도 간격 토큰 |
-| `h-(--gp-cta-h)` · `size-(--gp-fab)` — 유틸리티가 없는 치수 | `h-[48px]` |
+| `h-(--gp-cta-h)` · `size-(--gp-fab)` — 유틸리티가 없는 치수 | `h-[46px]` |
 
-- **색 이름 3개만 원본과 다르다.** `text-strong`→`ink`, `text`→`ink-soft`, `bg`→`canvas`. 값은 같다.
+- **색 이름 3개만 원본과 다르다.** `text-strong`→`ink`, `text`→`ink-soft`, `bg`→`canvas`.
 - 필요한 토큰이 없으면 `main.css`에 **추가**한다. 화면에서 hex를 쓰지 않는다.
+- **토큰을 지우거나 이름을 바꾸지 않는다.** 값을 바꿨으면 `node scripts/tokens-json.mjs` 로 `docs/design/tokens.json` 을 다시 만든다.
 - **`@theme static`인 이유** — 기본 `@theme`는 안 쓰인 토큰을 지워서 `var(--gp-cta-h)`가 조용히 깨진다.
 - 시안 원본(`design-system/greenpocket.css`)은 **쓰지 않는다.** px 하드코딩 428곳에 아트보드 좌표계라 실제 화면에서 깨진다. 토큰만 위 `@theme`로 흡수했다.
 

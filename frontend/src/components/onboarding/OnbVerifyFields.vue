@@ -13,9 +13,9 @@
  * (카본페이·공공/금융권이 같은 순서다)
  *
  * ── 인증이 끝나면 **입력칸을 접고 카드 하나만 남긴다** ──────────────────
- * 잠긴 입력칸을 그대로 두면 끝난 일이 화면의 절반을 계속 차지한다. 그래서 이름·통신사·번호를
+ * 잠긴 입력칸을 그대로 두면 끝난 일이 화면의 절반을 계속 차지한다. 그래서 본인정보·통신사·번호를
  * 감추고 「본인인증 완료」 카드로 대체한다 — 인증한 값은 그 카드가 보여준다.
- * 「번호 변경」을 누르면 입력칸이 돌아오고 **인증도 함께 풀린다**(`reset`). 한 화면이 되면서
+ * 「정보 변경」을 누르면 입력칸이 돌아오고 **인증도 함께 풀린다**(`reset`). 한 화면이 되면서
  * **인증한 번호와 제출되는 번호가 어긋날 수 있는 길**이 새로 생겼고, 그 길을 막는 자리다.
  *
  * ⚠️ **실제 문자를 보내지 않고 입력값도 서버로 가지 않는다.** 사정은 `api/auth.js` 주석에 있다.
@@ -32,10 +32,15 @@ import IconSealCheck from '@/components/ui/icons/IconSealCheck.vue'
 
 /** 이름은 가입에도 쓰는 값이라 화면이 갖는다. 본인확인의 대상이기도 해서 여기 있다 */
 const name = defineModel('name', { type: String, default: '' })
+const birthDate = defineModel('birthDate', { type: String, default: '' })
+const gender = defineModel('gender', { type: String, default: '' })
+const phoneNumber = defineModel('phoneNumber', { type: String, default: '' })
 
 const props = defineProps({
   /** 이름이 `api-spec.md` 4.1 규칙을 통과했나. 판정과 문구는 화면이 갖는다 */
   nameValid: { type: Boolean, default: false },
+  birthDateValid: { type: Boolean, default: false },
+  maxBirthDate: { type: String, required: true },
   /** 인증번호를 보냈나. `false` 로 돌아오면 입력을 비운다(번호 변경·재입력) */
   sent: { type: Boolean, default: false },
   verified: { type: Boolean, default: false },
@@ -51,29 +56,44 @@ const props = defineProps({
   errorMessage: { type: String, default: '' },
   /** 이름 오류. 판정과 문구는 화면이 갖고, 여기는 이름칸 아래에 놓기만 한다 */
   nameError: { type: String, default: '' },
+  birthDateError: { type: String, default: '' },
+  genderError: { type: String, default: '' },
 })
 const emit = defineEmits(['request', 'verify', 'resend', 'reset', 'name-blur'])
 
 /* 통신사는 응답 필드가 아니라 화면 선택지다. ENUM 을 만들지 않는다 */
 const CARRIERS = ['SKT', 'KT', 'LG U+', '알뜰폰']
+const GENDERS = [
+  { value: 'MALE', label: '남성' },
+  { value: 'FEMALE', label: '여성' },
+]
 const CODE_LENGTH = 6
 
 const carrier = ref(null)
-const phone = ref('')
 const code = ref('')
 const remaining = ref(0)
 
 // 숫자만 남긴다. 붙여넣기로 하이픈이 섞여 들어오는 것을 막는다
-const phoneDigits = computed(() => phone.value.replace(/\D/g, ''))
+const phoneInput = computed({
+  get: () => phoneNumber.value,
+  set: (value) => {
+    phoneNumber.value = String(value ?? '')
+      .replace(/\D/g, '')
+      .slice(0, 11)
+  },
+})
+const phoneDigits = computed(() => phoneNumber.value.replace(/\D/g, ''))
+const phoneValid = computed(() => /^01[016789][0-9]{7,8}$/.test(phoneDigits.value))
 const codeDigits = computed(() => code.value.replace(/\D/g, '').slice(0, CODE_LENGTH))
 const expired = computed(() => remaining.value <= 0)
 
 const canRequest = computed(
   () =>
     props.nameValid &&
+    props.birthDateValid &&
+    Boolean(gender.value) &&
     Boolean(carrier.value) &&
-    phoneDigits.value.length >= 10 &&
-    phoneDigits.value.length <= 11 &&
+    phoneValid.value &&
     !props.sending,
 )
 const canVerify = computed(
@@ -90,8 +110,15 @@ const clock = computed(() => {
 /** 010-1234-5678. 인증이 끝난 번호를 확인만 하는 자리라 가리지 않는다 */
 const phoneLabel = computed(() => {
   const raw = phoneDigits.value
-  if (raw.length < 10) return phone.value
+  if (raw.length < 10) return phoneNumber.value
   return `${raw.slice(0, 3)}-${raw.slice(3, raw.length - 4)}-${raw.slice(-4)}`
+})
+
+const identityLabel = computed(() => {
+  const genderLabel = GENDERS.find((item) => item.value === gender.value)?.label ?? ''
+  return [name.value, birthDate.value.replaceAll('-', '.'), genderLabel, phoneLabel.value]
+    .filter(Boolean)
+    .join(' · ')
 })
 
 let timer = null
@@ -161,11 +188,11 @@ function unlock() {
           class="text-body-sm text-primary-on-soft shrink-0 cursor-pointer border-0 bg-transparent p-0 underline"
           @click="unlock"
         >
-          번호 변경
+          정보 변경
         </button>
       </div>
       <p class="text-body-sm text-ink-soft mt-1.5 mb-0">
-        {{ name }} · <span class="tabular-nums">{{ phoneLabel }}</span>
+        {{ identityLabel }}
       </p>
     </div>
 
@@ -181,12 +208,54 @@ function unlock() {
             maxlength="20"
             placeholder="이름을 입력하세요"
             class="bg-surface border-border text-body placeholder:text-disabled-text min-h-14 w-full rounded-lg border px-4 outline-hidden"
+            :disabled="sent"
             @blur="emit('name-blur')"
           />
           <span v-if="nameError" class="text-body-sm text-negative mt-1.5 block">
             {{ nameError }}
           </span>
         </label>
+
+        <label class="block">
+          <span class="text-body-strong text-muted mb-2 block">생년월일</span>
+          <input
+            v-model="birthDate"
+            type="date"
+            autocomplete="bday"
+            :max="maxBirthDate"
+            :disabled="sent"
+            class="bg-surface border-border text-body disabled:bg-disabled-bg disabled:text-disabled-text min-h-14 w-full rounded-lg border px-4 tabular-nums outline-hidden"
+          />
+          <span v-if="birthDateError" class="text-body-sm text-negative mt-1.5 block">
+            {{ birthDateError }}
+          </span>
+        </label>
+
+        <div>
+          <span class="text-body-strong text-muted mb-2 block" id="gender-label">성별</span>
+          <div class="grid grid-cols-2 gap-2" role="radiogroup" aria-labelledby="gender-label">
+            <button
+              v-for="item in GENDERS"
+              :key="item.value"
+              type="button"
+              role="radio"
+              :aria-checked="item.value === gender"
+              :disabled="sent"
+              class="ease-standard text-body-strong min-h-11 cursor-pointer rounded-lg border px-4 transition-colors duration-140 disabled:cursor-not-allowed"
+              :class="
+                item.value === gender
+                  ? 'bg-primary border-primary text-on-primary'
+                  : 'bg-surface border-border text-ink-soft'
+              "
+              @click="gender = item.value"
+            >
+              {{ item.label }}
+            </button>
+          </div>
+          <span v-if="genderError" class="text-body-sm text-negative mt-1.5 block">
+            {{ genderError }}
+          </span>
+        </div>
 
         <div>
           <span class="text-body-strong text-muted mb-2 block" id="carrier-label">통신사</span>
@@ -197,6 +266,7 @@ function unlock() {
               type="button"
               role="radio"
               :aria-checked="item === carrier"
+              :disabled="sent"
               class="ease-standard text-body-strong min-h-11 cursor-pointer rounded-full border px-3.5 transition-colors duration-140"
               :class="
                 item === carrier
@@ -214,14 +284,15 @@ function unlock() {
           <span class="text-body-strong text-muted mb-2 block" id="phone-label">휴대폰 번호</span>
           <div class="flex gap-2">
             <input
-              v-model="phone"
+              v-model="phoneInput"
               type="tel"
               inputmode="numeric"
               autocomplete="tel"
-              maxlength="13"
+              maxlength="11"
               placeholder="01012345678"
               aria-labelledby="phone-label"
-              class="bg-surface border-border text-body placeholder:text-disabled-text min-h-14 w-full rounded-lg border px-4 tabular-nums outline-hidden"
+              :disabled="sent"
+              class="bg-surface border-border text-body placeholder:text-disabled-text disabled:bg-disabled-bg disabled:text-disabled-text min-h-14 w-full rounded-lg border px-4 tabular-nums outline-hidden"
             />
 
             <!-- 보낸 뒤에는 아래 인증번호 칸이 재전송·번호 수정을 맡는다 -->

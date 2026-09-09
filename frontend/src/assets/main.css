@@ -1,23 +1,28 @@
 /* ════════════════════════════════════════════════════════════════════
-   그린포켓 디자인 토큰  ·  팀 돈워리비그린 · 2026 KB IT's Your Life 해커톤
+   그린포켓 디자인 토큰 v3  ·  팀 돈워리비그린 · 2026 KB IT's Your Life 해커톤
 
    Tailwind CSS v4 — 설정 파일(tailwind.config.js)이 없다.
    토큰은 전부 아래 @theme 블록 하나에 있다. (frontend/AGENTS.md 1절)
 
-   원본은 Claude cowork 로 뽑은 design-system/tokens.css 205개다.
-   Tailwind 네임스페이스에 맞춰 옮겼기 때문에 토큰이 곧 유틸리티가 된다.
+   Tailwind 네임스페이스에 맞춰 두었기 때문에 토큰이 곧 유틸리티가 된다.
      --color-primary  →  bg-primary  text-primary  border-primary
      --text-body      →  text-body   (크기 + 굵기 + 행간이 함께 붙는다)
-     --radius-lg      →  rounded-lg
+     --radius-card    →  rounded-card
 
-   색 근거
-     신한 슈퍼SOL 스크린샷 11장 픽셀 추출 → OKLCH 색상 회전 261.6° → 157.3°
-     157.3° = 그린포켓 앱 아이콘 그린. 전 조합 WCAG AA(4.5:1) 통과.
+   v3 (2026-09-09) — 줄이기 홈(WF-06) 확정 시안에서 값을 다시 잡았다.
+     · 토큰 이름은 v2 205개를 하나도 지우거나 바꾸지 않았다. 값만 바뀌고, 새 토큰이 붙었다.
+       기존 화면은 그대로 컴파일되고, 새 팔레트·새 글자 스케일로 다시 칠해진다.
+     · 글자 스케일은 신한 슈퍼SOL 홈과 @3x 스크린샷 잉크 높이를 직접 맞춰 정했다.
+       v2 가 1.29배 컸다. 탭 라벨만 반대로 11 → 14 로 커졌다.
+     · 색은 초록으로 살짝 기울인 중립 + 브랜드 초록 + 요금 3종(채움·글자·바탕 세 벌) + 페이스 4단계.
+       대비값은 전부 실측이고 docs/design/design-system.md 2-8절에 표가 있다.
+     · 카드는 그림자를 쓴다(v2 는 금지였다). 배경과 카드의 면 대비 1.083:1 위에 2겹 그림자를 얹는다.
 
    규칙
      · 화면 코드에서 hex 를 직접 쓰지 않는다. 없으면 여기에 토큰을 추가한다.
      · 원시값(--gp-green-700 등)을 화면에서 참조하지 않는다. 의미 토큰을 거친다.
      · 금액·사용량 숫자에는 예외 없이 .tabular-nums 를 붙인다.
+     · 토큰을 지우거나 이름을 바꾸지 않는다. 넷이 같은 파일을 보고 있다.
    ════════════════════════════════════════════════════════════════════ */
 
 @import 'tailwindcss';
@@ -27,39 +32,43 @@
 
 /* static 인 이유 — 기본 @theme 는 실제로 쓰인 토큰만 남기고 나머지를 지운다.
    그러면 --gp-cta-h 처럼 유틸리티가 없는 치수 토큰이 CSS 에서 사라져 var() 가 깨진다.
-   205개를 전부 :root 에 내보내서 scoped 스타일·SVG·차트에서도 var() 로 쓸 수 있게 한다. */
+   전부 :root 에 내보내서 scoped 스타일·SVG·차트에서도 var() 로 쓸 수 있게 한다. */
 @theme static {
   /* ┌────────────────────────────────────────────────────────────┐
      │ 1. 원시값 — 화면에서 직접 참조 금지                          │
+     │    괄호 안 숫자는 흰 카드 위 WCAG 대비. 4.5 미만은 글자로 쓰지 않는다 │
      └────────────────────────────────────────────────────────────┘ */
-  --gp-green-900: #026a3f;
-  --gp-green-800: #037d4c;
-  --gp-green-700: #078753; /* 브랜드 기준색 */
+  --gp-green-900: #046b3e; /* 6.61 · 연한 배경 위 글자 · 눌린 상태 */
+  --gp-green-850: #146e3a; /* 6.32 · 탭바 활성 라벨 (레퍼런스 실측) */
+  --gp-green-800: #057441; /* 5.86 · 흰 글씨를 얹는 초록 — 버튼·활성·글자 */
+  --gp-green-700: #06894f; /* 4.47 · 브랜드 기준색. 채움·아이콘·그래프 전용, 글자 금지 */
   --gp-green-600: #0a8a55;
-  --gp-green-500: #00a968;
+  --gp-green-500: #12a05f; /* 3.38 · 페이스 「달성」 채움 */
   --gp-green-400: #1daf6e;
   --gp-green-300: #2ecb84;
-  --gp-green-200: #9fdfbe;
-  --gp-green-150: #d3e8dc;
-  --gp-green-100: #e7f3ec;
-  --gp-green-75: #e2f8ea;
-  --gp-green-50: #f5f8f6;
-  --gp-green-ink: #0a5c39; /* 연한 그린 배경 위 텍스트 */
+  --gp-green-200: #9bd8b7;
+  --gp-green-150: #a9dfc2;
+  --gp-green-100: #e2f0e8; /* 브랜드 워시 — pill 버튼 · 아이콘 바탕 */
+  --gp-green-75: #e6f6ed;
+  --gp-green-50: #f2f7f4; /* 앱 배경. 흰 카드 대비 1.083 — 1.06 아래로 내리면 카드가 안 보인다 */
+  --gp-green-ink: #0a5c39; /* 7.21 on green-75 · 연한 그린 배경 위 텍스트 */
 
-  --gp-neutral-900: #161917;
-  --gp-neutral-700: #3c413e;
-  --gp-neutral-500: #6f716f;
-  --gp-neutral-450: #8a8e8b;
-  --gp-neutral-400: #a2a6a3;
-  --gp-neutral-350: #c6cac8;
+  /* 중립은 순회색이 아니라 초록 쪽으로 살짝 기울였다 */
+  --gp-neutral-900: #16201b; /* 16.71 */
+  --gp-neutral-700: #3b4741; /* 9.71 */
+  --gp-neutral-500: #616f67; /* 5.28 · 앱 배경 위에서도 4.87 — 12.5px 캡션까지 AA */
+  --gp-neutral-450: #818c85; /* 3.49 · 탭 비활성. 글자는 14px 600 이상에서만 */
+  --gp-neutral-400: #afb8b2; /* 비활성 아이콘 · chevron · 비활성 글자 */
+  --gp-neutral-350: #ccd5cf; /* 체크박스 테두리 */
   --gp-neutral-325: #d5d9d7;
-  --gp-neutral-300: #dfe3e0;
-  --gp-neutral-250: #e1e3e2;
-  --gp-neutral-200: #e7eae8;
-  --gp-neutral-100: #f3f5f4;
+  --gp-neutral-300: #e4e9e6; /* 트랙 */
+  --gp-neutral-250: #ebefec; /* 테두리 · 헤어라인 */
+  --gp-neutral-200: #eef1ef; /* 카드 안 구분선 */
+  --gp-neutral-100: #f6faf8; /* 카드 안 서브 블록 */
   --gp-neutral-50: #fafbfa;
   --gp-neutral-0: #ffffff;
 
+  /* 앰버 = 확정된 돈(마일리지). 요금 「전기」와 겹치지 않도록 전기는 elec-* 를 따로 둔다 */
   --gp-amber-700: #906603;
   --gp-amber-600: #8a6512;
   --gp-amber-500: #f8bc47;
@@ -69,53 +78,69 @@
   --gp-amber-100: #ffeed2;
   --gp-amber-50: #fff3d2;
 
-  --gp-red-600: #ba2b28; /* 화면의 유일한 빨강 */
+  /* 오렌지 = 페이스 「근접」 */
+  --gp-orange-500: #d87c16; /* 3.08 · 시안 #E8861A(2.67)는 35px 대형 글자에서도 AA 미달이라 한 단계 내렸다 */
+  --gp-orange-200: #f8d3a0;
+  --gp-orange-100: #fdf0df;
+
+  /* 빨강 = 오류 · 요금 증가 · 페이스 「미달」 */
+  --gp-red-600: #ba2b28; /* 6.06 · 글자 */
+  --gp-red-500: #e03b2a; /* 4.35 · 페이스 「미달」 채움 · 대형 수치 */
+  --gp-red-200: #f6c3bc;
+  --gp-red-100: #fcecea;
   --gp-red-50: #ffedeb;
 
-  --gp-elec-600: #078753;
-  --gp-elec-100: #e7f3ec;
-  --gp-gas-600: #e08a1e;
-  --gp-gas-100: #fdf0dc;
-  --gp-water-600: #1b7fc4;
-  --gp-water-100: #dfeef9;
+  /* 요금 3종 — 채움(600) · 글자(800) · 바탕(100) 세 벌.
+     한 값으로 쓰면 세로선에서 선명한 색이 글자에선 안 읽힌다 (전기 600 은 2.44) */
+  --gp-elec-800: #8a6508; /* 5.32 · 바탕 위 4.83 */
+  --gp-elec-600: #d99a1e;
+  --gp-elec-100: #fdf3e0;
+  --gp-gas-800: #94411a; /* 6.93 · 바탕 위 6.10 */
+  --gp-gas-600: #d2692c; /* 경고색과 겹치던 #C9601F 에서 오렌지 쪽으로 벌렸다 */
+  --gp-gas-100: #fceee4;
+  --gp-water-800: #145e85; /* 7.07 · 바탕 위 6.11 */
+  --gp-water-600: #2b7bb8;
+  --gp-water-100: #e4f0f9;
 
   /* ┌────────────────────────────────────────────────────────────┐
      │ 2. 의미 색 — 화면이 쓰는 층. bg-* / text-* / border-* 로 나온다 │
      └────────────────────────────────────────────────────────────┘ */
 
-  /* 브랜드 · 액션 */
-  --color-primary: var(--gp-green-700); /* 채움 버튼 · 탭 활성 */
+  /* 브랜드 · 액션
+     primary 는 흰 글씨를 얹거나 글자로 쓰는 초록(5.86), primary-soft 는 브랜드 기준색(4.47)으로
+     아이콘·그래프·체크 채움에 쓴다. v2 는 둘이 반대였는데 버튼 위 흰 글씨가 4.47 로 AA 에 못 미쳤다. */
+  --color-primary: var(--gp-green-800); /* 채움 버튼 · 탭 활성 · 초록 글자 */
   --color-primary-pressed: var(--gp-green-900);
-  --color-primary-on-soft: var(--gp-green-800); /* 연한 배경 위 그린 텍스트 */
-  --color-primary-soft: var(--gp-green-500); /* 아이콘 · 그래프 */
-  --color-primary-bg: var(--gp-green-100); /* pill 버튼 배경 */
+  --color-primary-on-soft: var(--gp-green-900); /* 연한 배경 위 그린 텍스트 (워시 위 5.62) */
+  --color-primary-soft: var(--gp-green-700); /* 아이콘 · 그래프 · 체크 채움 — 브랜드 기준색 */
+  --color-primary-bg: var(--gp-green-100); /* pill 버튼 배경 · 워시 */
   --color-primary-bg-strong: var(--gp-green-150);
   --color-on-primary: var(--gp-neutral-0);
 
-  /* 중립 · 표면. tokens.css 의 text-strong→ink · text→ink-soft · text-muted→muted 로
-     이름만 줄였다. text-text-strong 처럼 읽히는 클래스를 피하기 위한 것이고 값은 그대로다.
+  /* 중립 · 표면. v2 에서 text-strong→ink · text→ink-soft · text-muted→muted 로 이름만 줄였다.
+     text-text-strong 처럼 읽히는 클래스를 피하기 위한 것이다.
      색을 ink-soft 로 둔 이유 — --text-body(글자 크기)와 클래스명이 겹치기 때문이다. */
   --color-canvas: var(--gp-green-50); /* 앱 배경 */
   --color-surface: var(--gp-neutral-0); /* 카드 */
-  --color-surface-sub: var(--gp-neutral-100); /* 카드 안 서브 블록 */
+  --color-surface-sub: var(--gp-neutral-100); /* 카드 안 서브 블록 · 기간 칩 */
   --color-ink: var(--gp-neutral-900); /* 제목 · 금액 */
   --color-ink-soft: var(--gp-neutral-700); /* 본문 */
-  --color-muted: var(--gp-neutral-500); /* 캡션 · 출처 */
+  --color-muted: var(--gp-neutral-500); /* 캡션 · 출처 · 작은 링크 */
   --color-icon-off: var(--gp-neutral-400); /* 비활성 아이콘 · chevron */
   --color-chip-dark: var(--gp-neutral-700);
 
   /* 선 — 3단계로 통일한다. 이 밖의 회색을 새로 만들지 않는다 */
-  --color-border: var(--gp-neutral-200); /* 카드 테두리 · 입력 */
-  --color-divider: var(--gp-neutral-250); /* 카드 안 행 구분선 */
-  --color-track: var(--gp-neutral-300); /* 슬라이더 · 비교 바 트랙 */
+  --color-border: var(--gp-neutral-250); /* 카드 테두리 · 입력 · 헤어라인 */
+  --color-divider: var(--gp-neutral-200); /* 카드 안 행 구분선 */
+  --color-track: var(--gp-neutral-300); /* 슬라이더 · 구간 바 · 진행 바 트랙 */
 
-  /* 폼 컨트롤 */
+  /* 폼 컨트롤. 켜진 상태는 브랜드 초록이다(2026-09-09 결정 — 코발트·인디고와 비교해 확정) */
   --color-control-border: var(--gp-neutral-350);
   --color-control-off: var(--gp-neutral-325);
-  --color-control-on: var(--gp-neutral-500);
+  --color-control-on: var(--gp-green-700);
 
   /* 돈의 3단계 — 예상 / 확정 / 성공 / 오류 (기능명세서 COM-06) */
-  --color-estimated: var(--gp-neutral-500); /* 예상값. 아웃라인 배지 전용 */
+  --color-estimated: var(--gp-neutral-500); /* 예상값. 아웃라인 배지 전용 — 색을 주지 않는다 */
   --color-estimated-bg: var(--gp-neutral-50);
   --color-estimated-border: var(--gp-neutral-300);
 
@@ -132,17 +157,44 @@
   --color-negative: var(--gp-red-600); /* 평균 초과 · 오류 */
   --color-negative-bg: var(--gp-red-50);
 
-  /* 증감 표기 — 부호 대신 화살표 + 말 */
-  --color-decrease: var(--gp-green-800); /* ↓ 줄었어요 */
-  --color-increase: var(--gp-amber-600); /* ↑ 늘었어요 */
+  /* 증감 표기 — 부호 대신 화살표 + 말. 늘어난 것은 나쁜 소식이라 빨강이다(v2 는 앰버였는데
+     앰버가 확정된 돈·전기 두 곳과 겹쳐서 옮겼다) */
+  --color-decrease: var(--gp-green-900); /* ↓ 줄었어요 */
+  --color-decrease-bg: var(--gp-green-100);
+  --color-increase: var(--gp-red-600); /* ↑ 늘었어요 */
+  --color-increase-bg: var(--gp-red-50);
 
-  /* 요금 계열 */
-  --color-elec: var(--gp-elec-600);
+  /* 요금 계열 — 세 벌. text-elec 은 글자용(AA), *-fill 은 막대·선·아이콘용, *-bg 는 배지 바탕.
+     v2 의 --color-elec 은 브랜드 초록과 같은 값이라 전기가 「성공」처럼 보였다 */
+  --color-elec: var(--gp-elec-800);
+  --color-elec-fill: var(--gp-elec-600);
   --color-elec-bg: var(--gp-elec-100);
-  --color-gas: var(--gp-gas-600);
+  --color-gas: var(--gp-gas-800);
+  --color-gas-fill: var(--gp-gas-600);
   --color-gas-bg: var(--gp-gas-100);
-  --color-water: var(--gp-water-600);
+  --color-water: var(--gp-water-800);
+  --color-water-fill: var(--gp-water-600);
   --color-water-bg: var(--gp-water-100);
+
+  /* 페이스 4단계 — 감축률이 목표 구간에 대해 어디 있나. 같은 마일리지 구간이라도
+     목표가 다르면 색이 뒤집힌다(목표 대비 상대값). 채움 · 바탕 · 연한 채움 세 벌.
+       behind 회복 어려움 · near 회복 가능 · on 목표 달성 · ahead 초과 달성 */
+  --color-pace-behind: var(--gp-red-500);
+  --color-pace-behind-bg: var(--gp-red-100);
+  --color-pace-behind-soft: var(--gp-red-200);
+  --color-pace-near: var(--gp-orange-500);
+  --color-pace-near-bg: var(--gp-orange-100);
+  --color-pace-near-soft: var(--gp-orange-200);
+  --color-pace-on: var(--gp-green-500);
+  --color-pace-on-bg: var(--gp-green-75);
+  --color-pace-on-soft: var(--gp-green-150);
+  --color-pace-ahead: var(--gp-green-700);
+  --color-pace-ahead-bg: var(--gp-green-100);
+  --color-pace-ahead-soft: var(--gp-green-200);
+
+  /* 하단 탭바 — 레퍼런스 실측색. 가운데 What-if 는 활성 여부와 무관하게 늘 nav-on 이다 */
+  --color-nav-off: var(--gp-neutral-450);
+  --color-nav-on: var(--gp-green-850);
 
   /* 차트 */
   --color-chart-series-1: var(--gp-elec-600); /* 전기 */
@@ -169,78 +221,93 @@
     'Noto Sans KR', sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* 393pt 기준. 아래 15개만 쓴다. 15.5px·13.5px 같은 중간값을 새로 만들지 않는다.
-     크기 · 굵기 · 행간이 한 클래스에 묶여 있어 text-body 하나로 셋이 다 붙는다. */
-  --text-display-lg: 42px; /* 결과 화면 대형 수치 */
-  --text-display-lg--line-height: 1.15;
-  --text-display-lg--font-weight: 700;
-  --text-display: 34px; /* 진행률 등 대형 수치 */
+  /* 393pt 기준. 아래 16개만 쓴다. 중간값을 새로 만들지 않는다.
+     크기 · 굵기 · 행간이 한 클래스에 묶여 있어 text-body 하나로 셋이 다 붙는다.
+
+     v3 스케일 — 신한 슈퍼SOL 홈과 @3x 스크린샷의 한글 잉크 높이를 직접 맞췄다.
+     (카드 제목 52px · 강조 46 · 캡션 34 · 탭 라벨 32 → 18.5 · 16 · 12.5 · 14)
+     단계 폭은 실비율 1.139 다. ⚠️ 측정은 Noto Sans KR 로 했고 앱은 Pretendard 다.
+     받침 있는 한글의 잉크 비율은 두 서체가 0.9 안팎으로 같지만, 첫 화면을 옮긴 뒤
+     같은 방법으로 한 번 다시 재야 한다. */
+  --text-display-lg: 36px; /* 감축률 헤드라인 · 결과 화면 대형 수치 */
+  --text-display-lg--line-height: 1.06;
+  --text-display-lg--font-weight: 900;
+  --text-display: 32px; /* 진행률 등 대형 수치 */
   --text-display--line-height: 1.15;
-  --text-display--font-weight: 700;
-  --text-amount-hero: 28px; /* 금액 히어로 */
-  --text-amount-hero--line-height: 1.25;
-  --text-amount-hero--font-weight: 700;
-  --text-title: 26px; /* 페이지 타이틀 */
-  --text-title--line-height: 1.3;
-  --text-title--font-weight: 700;
-  --text-amount: 24px; /* 강조 수치 */
-  --text-amount--line-height: 1.3;
-  --text-amount--font-weight: 700;
-  --text-section: 20px; /* 카드 섹션 제목 */
+  --text-display--font-weight: 800;
+  --text-amount-hero: 28px; /* 금액 히어로 (포켓 잔액) */
+  --text-amount-hero--line-height: 1.2;
+  --text-amount-hero--font-weight: 800;
+  --text-title: 24px; /* 홈 헤드라인 「오늘 실천 N개가 남았어요」 · 페이지 타이틀 */
+  --text-title--line-height: 1.34;
+  --text-title--font-weight: 800;
+  --text-amount: 21.5px; /* 강조 수치 (예상 적립 30,000M) */
+  --text-amount--line-height: 1.12;
+  --text-amount--font-weight: 900;
+  --text-section: 18.5px; /* 카드 제목 */
   --text-section--line-height: 1.35;
-  --text-section--font-weight: 700;
-  --text-list-title: 17px; /* 리스트 제목 */
-  --text-list-title--line-height: 1.4;
-  --text-list-title--font-weight: 600;
-  --text-button: 16px; /* 버튼 · 입력 */
+  --text-section--font-weight: 800;
+  --text-list-title: 16px; /* 강조 한 줄 (상태 문장) · 리스트 제목 */
+  --text-list-title--line-height: 1.38;
+  --text-list-title--font-weight: 800;
+  --text-button: 15px; /* 버튼 · 입력 */
   --text-button--line-height: 1;
-  --text-button--font-weight: 600;
-  --text-body-strong: 15px;
-  --text-body-strong--line-height: 1.5;
-  --text-body-strong--font-weight: 600;
-  --text-body: 15px; /* 본문 */
-  --text-body--line-height: 1.6;
+  --text-button--font-weight: 700;
+  --text-body-strong: 14px; /* 목록 항목(미션명) */
+  --text-body-strong--line-height: 1.35;
+  --text-body-strong--font-weight: 700;
+  --text-body: 14px; /* 본문 */
+  --text-body--line-height: 1.55;
   --text-body--font-weight: 400;
-  --text-label: 14px;
-  --text-label--line-height: 1.4;
+  --text-label: 13px; /* 태그 · pill 버튼 라벨 */
+  --text-label--line-height: 1.35;
   --text-label--font-weight: 600;
-  --text-body-sm: 14px; /* 리스트 보조 · 배지 */
+  --text-body-sm: 12.5px; /* 리스트 보조 */
   --text-body-sm--line-height: 1.5;
   --text-body-sm--font-weight: 400;
-  --text-caption: 13px; /* 캡션 · 출처 · 기준일 */
+  --text-caption: 12.5px; /* 캡션 · 출처 · 기준일 · 작은 링크 */
   --text-caption--line-height: 1.5;
   --text-caption--font-weight: 400;
-  --text-caption-sm: 12px; /* 보조 캡션 · 차트 축 */
-  --text-caption-sm--line-height: 1.5;
-  --text-caption-sm--font-weight: 400;
-  --text-nav: 11px; /* 탭바 라벨 · 마이크로 배지 */
+  --text-caption-sm: 11px; /* 구간 축 라벨 · 기간 칩 */
+  --text-caption-sm--line-height: 1.4;
+  --text-caption-sm--font-weight: 500;
+  --text-badge: 10.5px; /* 요금 배지(전기 · 도시가스 · 수도) · 목표 마커 */
+  --text-badge--line-height: 1.35;
+  --text-badge--font-weight: 700;
+  --text-nav: 14px; /* 탭바 라벨. 레퍼런스 실측 14.2 — v2 의 11 은 너무 작았다 */
   --text-nav--line-height: 1;
-  --text-nav--font-weight: 500;
+  --text-nav--font-weight: 600;
 
   --leading-tight: 1.25;
   --leading-heading: 1.35;
-  --leading-body: 1.6;
+  --leading-body: 1.55;
   --leading-loose: 1.7;
 
-  --tracking-display: -0.03em; /* 20px 이상 */
-  --tracking-title: -0.025em;
-  --tracking-body: -0.02em;
-  --tracking-normal: 0;
+  --tracking-display: -0.05em; /* 대형 수치 */
+  --tracking-title: -0.04em; /* 20px 이상 제목 */
+  --tracking-body: -0.03em;
+  --tracking-normal: -0.02em; /* 캡션 · 배지 */
 
   /* ┌────────────────────────────────────────────────────────────┐
      │ 4. 형태 · 그림자 · 모션                                       │
      └────────────────────────────────────────────────────────────┘ */
-  /* rounded-* 7단계만 쓴다. Tailwind 기본값을 덮어쓴 것이므로 시안과 대조할 것 */
-  --radius-xs: 5px; /* 수치 · 상태 배지. 알약 아님 */
+  /* rounded-* 8단계만 쓴다. Tailwind 기본값을 덮어쓴 것이므로 시안과 대조할 것 */
+  --radius-xs: 5px; /* 수치 · 상태 배지 · 요금 배지. 알약 아님 */
   --radius-sm: 8px; /* 작은 칩 · 막대 끝 */
-  --radius-md: 12px; /* 입력 · CTA · 아이콘 타일 · 배너 */
-  --radius-lg: 16px; /* 카드 */
-  --radius-xl: 20px; /* 히어로 그라데이션 카드 · 세그먼트 */
+  --radius-md: 12px; /* 입력 · CTA · 아이콘 타일 · 배너 · 카드 안 버튼 */
+  --radius-lg: 16px; /* 카드 안 서브 블록 · 드롭다운 */
+  --radius-xl: 20px; /* 그라데이션 배너(포켓 잔액 요약) · 세그먼트 */
+  --radius-card: 24px; /* 카드. v2 의 rounded-lg(16) 카드는 이걸로 옮긴다 */
   --radius-2xl: 26px; /* 바텀시트 상단 */
-  --radius-full: 999px; /* pill 버튼 · 필터 칩 · 토스트 */
+  --radius-full: 999px; /* pill 버튼 · 필터 칩 · 토스트 · 탭바 */
 
-  /* 카드에 그림자를 쓰지 않는다. 떠 있는 것(탭바 · 토스트 · 모달)만 예외 */
-  --shadow-float: 0 4px 16px rgb(19 26 21 / 0.1);
+  /* 카드 그림자 — 2겹. 접촉(key: y·blur 작게) + 확산(ambient: y·blur 크게, 음수 spread 로 옆 번짐 차단).
+     색은 검정이 아니라 잉크 rgb(16 40 28) — 초록 기미 배경 위에서 검정은 회색으로 죽는다.
+     접촉점 #BFC8C3 · 배경 대비 1.582. 배경과 카드의 면 대비 1.083 위에 얹는 것이라 둘 중 하나만 쓰면 안 된다 */
+  --shadow-card: 0 1px 3px 0 rgb(16 40 28 / 0.08), 0 8px 20px -6px rgb(16 40 28 / 0.16);
+  --shadow-float:
+    0 0 0 1px rgb(20 40 32 / 0.05), 0 6px 18px rgb(16 40 28 / 0.1); /* 탭바 · 토스트 */
+  --shadow-fab: 0 4px 12px rgb(16 60 32 / 0.26); /* 탭바 가운데 원 */
   --shadow-sheet: 0 -6px 24px rgb(19 26 21 / 0.12);
 
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
@@ -262,42 +329,50 @@
   --gp-z-modal: 60;
   --gp-z-toast: 70;
 
-  /* 그라데이션은 두 곳에만 쓴다. 모든 화면에 얹으면 흐린 그림자처럼 보인다 */
-  --gp-grad-glow: linear-gradient(180deg, #f5f8f6 0%, #e3ede6 30%, #f5f8f6 72%);
-  --gp-grad-hero: linear-gradient(165deg, #006a3f 0%, #099f62 100%);
+  /* 그라데이션은 세 곳에만 쓴다. 모든 화면에 얹으면 흐린 그림자처럼 보인다 */
+  --gp-grad-glow: linear-gradient(180deg, #f2f7f4 0%, #e2f0e8 30%, #f2f7f4 72%);
+  --gp-grad-hero: linear-gradient(165deg, #006a3f 0%, #099f62 100%); /* 포켓 잔액 카드 전용 */
+  --gp-grad-fab: linear-gradient(
+    150deg,
+    #74ba52 0%,
+    #2e8443 100%
+  ); /* 탭바 가운데 원 (레퍼런스 실측) */
 
   /* ┌────────────────────────────────────────────────────────────┐
-     │ 5. 컴포넌트 치수 — 스크린샷 실측값. 4/8 그리드로 반올림하지 말 것 │
-     │    유틸리티가 아니므로 h-[--gp-cta-h] 처럼 쓴다               │
+     │ 5. 컴포넌트 치수 — 시안 실측값. 4/8 그리드로 반올림하지 말 것    │
+     │    유틸리티가 아니므로 h-(--gp-cta-h) 처럼 쓴다               │
      └────────────────────────────────────────────────────────────┘ */
   --gp-viewport-w: 393px; /* iPhone 14 Pro 기준 */
-  --gp-gutter: 12px; /* 화면 좌우 여백. 카드 폭 369 @393 */
-  --gp-card-pad: 16px;
-  --gp-card-gap: 20px;
-  --gp-safe-bottom: 112px; /* 탭바 + 여백. 스크롤 컨테이너 하단 패딩 */
+  --gp-gutter: 16px; /* 화면 좌우 여백. 카드 폭 361 @393 */
+  --gp-card-pad: 20px; /* 카드 내부 (감축률 카드는 18/16 으로 예외) */
+  --gp-card-gap: 12px; /* 카드 사이 */
+  --gp-safe-bottom: 112px; /* 탭바 64 + 하단 8 + 돌출 18 + 여백. 스크롤 컨테이너 하단 패딩 */
 
-  --gp-row-h: 60px; /* 리스트 행. 행 전체가 터치 영역 */
+  --gp-row-h: 62px; /* 리스트 행. 행 전체가 터치 영역 */
   --gp-tile: 48px;
   --gp-tile-sm: 36px;
   --gp-pill-h: 28px;
-  --gp-wbtn-h: 40px; /* 카드 안 전체폭 버튼 */
-  --gp-cta-h: 48px; /* 화면 하단 CTA */
+  --gp-wbtn-h: 40px; /* 카드 안 전체폭 버튼 · pill 3개 */
+  --gp-cta-h: 46px; /* 화면 하단 CTA */
   --gp-chip-h: 36px;
   --gp-tag-h: 24px;
   --gp-tag-sm-h: 20px;
   --gp-field-h: 48px;
   --gp-seg-h: 50px;
-  --gp-tabbar-h: 60px;
-  --gp-fab: 56px;
+  --gp-tabbar-h: 64px; /* 레퍼런스 275 → 64 */
+  --gp-fab: 50px; /* 가운데 원 지름 (바 높이의 0.85) */
+  --gp-fab-lift: 18px; /* 원이 바 위로 솟는 높이 (0.29) */
+  --gp-tab-icon: 20px;
   --gp-hero-h: 193px;
   --gp-hero-pad: 12px;
   --gp-heroin-h: 46px;
   --gp-toast-h: 48px;
   --gp-obj: 36px;
-  --gp-checkbox: 22px;
+  --gp-checkbox: 22px; /* 오늘의 실천 체크 원 */
   --gp-checkbox-sm: 20px;
   --gp-band-h: 66px;
   --gp-bar-h: 12px;
+  --gp-seg-bar-h: 9px; /* 감축률 구간 바 */
   --gp-min-touch: 44px; /* 최소 터치 영역 */
 }
 
@@ -312,6 +387,7 @@
 
   body {
     @apply bg-canvas text-ink font-sans text-body antialiased;
+    word-break: keep-all;
   }
 
   button,

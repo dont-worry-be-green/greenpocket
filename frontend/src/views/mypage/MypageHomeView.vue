@@ -5,8 +5,8 @@
  * 탭 최상위라 `AppTabLayout` 이다. `GET /mypage` 하나로 전부 그린다.
  *
  * ── 화면이 하지 않는 것 ─────────────────────────────────────────────────
- * **`GET /profile` 을 부르지 않는다.** `GET /mypage` 의 `profile` 에 표시할 값이 다 있다.
- * 지역 코드가 필요한 것은 수정 폼(MY-02)뿐이라 그 화면이 자기 것을 받는다.
+ * **별도 프로필 API를 부르지 않는다.** `GET /mypage` 의 `profile` 에 표시할 값이 다 있다.
+ * 정책 추천 조건과 지역 코드가 필요한 것은 MY-02뿐이라 그 화면이 자기 것을 받는다.
  *
  * ── 응답에 있지만 그리지 않는 두 값 ─────────────────────────────────────
  * `pocketAccountNo` 와 `integration`(에코 연동 상태·녹색생활실천 참여·등록 요금)은
@@ -31,6 +31,7 @@ import { useRouter } from 'vue-router'
 
 import AppTabLayout from '@/components/layout/AppTabLayout.vue'
 import MypageArchiveLinks from '@/components/mypage/MypageArchiveLinks.vue'
+import MypageEcoAddressCard from '@/components/mypage/MypageEcoAddressCard.vue'
 import MypageInfoTable from '@/components/mypage/MypageInfoTable.vue'
 import MypageProfileCard from '@/components/mypage/MypageProfileCard.vue'
 import MypageState from '@/components/mypage/MypageState.vue'
@@ -66,11 +67,22 @@ onMounted(() => {
 
         <MypageInfoTable :profile="store.mypage.profile" />
 
-        <MypageSupportBenefits :profile="store.mypage.profile" />
+        <MypageEcoAddressCard
+          v-if="store.mypage.ecoAddress"
+          :eco-address="store.mypage.ecoAddress"
+        />
 
         <MypageArchiveLinks
           @monthly="router.push({ path: '/mypage/reports', query: { tab: 'MONTHLY' } })"
           @eco="router.push({ path: '/mypage/reports', query: { tab: 'ECO' } })"
+        />
+
+        <MypageSupportBenefits
+          :youth-policy="store.mypage.youthPolicy"
+          @configure="router.push('/mypage/policy-preferences')"
+          @all="router.push('/mypage/policies?mode=recommended')"
+          @select="router.push(`/mypage/policies/${$event.policyId}`)"
+          @link-eco="router.push('/whatif')"
         />
 
         <button
