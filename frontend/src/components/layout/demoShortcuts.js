@@ -13,11 +13,11 @@
  */
 export const DEMO_SHORTCUTS = [
   {
-    group: 'What-if 홈 (한 화면의 다섯 상태)',
+    group: '에코 연동 · What-if 홈',
     items: [
-      { label: 'WF-01 연동 전', to: '/whatif?preview=WF_01_UNLINKED' },
-      { label: 'WF-02 불러오는 중', to: '/whatif?preview=WF_02_LINKING' },
-      { label: 'WF-03 목표 미설정', to: '/whatif?preview=WF_03_NO_GOAL' },
+      { label: 'WF-01 연동 전', to: '/analysis/eco-link?preview=WF_01_UNLINKED' },
+      { label: 'WF-02 불러오는 중', to: '/analysis/eco-link?preview=WF_02_LINKING' },
+      { label: 'WF-03 기준 사용량', to: '/analysis/eco-link?preview=WF_03_NO_GOAL' },
       { label: 'WF-06 목표 설정 후', to: '/whatif?preview=WF_06_IN_PROGRESS' },
       { label: 'WF-09 결산 모달', to: '/whatif?preview=WF_09_RESULT_READY' },
     ],

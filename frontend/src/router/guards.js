@@ -9,5 +9,5 @@ export async function onboardingGuard(to) {
   const isAuthRoute = AUTH_PATHS.includes(to.path)
 
   if (!auth.authenticated) return isAuthRoute ? true : '/onboarding/start'
-  return isAuthRoute ? '/whatif' : true
+  return isAuthRoute ? '/analysis/eco-link' : true
 }

@@ -118,7 +118,7 @@ async function submit() {
     email: trimmedEmail.value,
     password: password.value,
   })
-  if (created) router.replace('/whatif')
+  if (created) router.replace('/analysis/eco-link')
 }
 </script>
 

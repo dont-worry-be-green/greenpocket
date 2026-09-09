@@ -82,7 +82,7 @@ onMounted(() => {
           @configure="router.push('/mypage/policy-preferences')"
           @all="router.push('/mypage/policies?mode=recommended')"
           @select="router.push(`/mypage/policies/${$event.policyId}`)"
-          @link-eco="router.push('/whatif')"
+          @link-eco="router.push('/analysis/eco-link')"
         />
 
         <button

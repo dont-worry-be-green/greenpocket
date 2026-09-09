@@ -27,7 +27,7 @@ async function mountView(component, path) {
   setActivePinia(pinia)
   const router = createRouter({
     history: createWebHistory(),
-    routes: [...routes, { path: '/whatif', component: { template: '<div />' } }],
+    routes: [...routes, { path: '/analysis/eco-link', component: { template: '<div />' } }],
   })
   await router.push(path)
   await router.isReady()
@@ -82,7 +82,7 @@ describe('LoginView', () => {
     expect(cta().attributes('disabled')).toBeUndefined()
   })
 
-  it('실제 로그인 응답을 받은 뒤 What-if 홈으로 이동한다', async () => {
+  it('실제 로그인 응답을 받은 뒤 진단 탭의 에코 연동 화면으로 이동한다', async () => {
     authApi.login.mockResolvedValue({
       userId: 1,
       name: '이아영',
@@ -99,7 +99,7 @@ describe('LoginView', () => {
       email: 'user@example.com',
       password: 'password1234',
     })
-    expect(router.currentRoute.value.path).toBe('/whatif')
+    expect(router.currentRoute.value.path).toBe('/analysis/eco-link')
   })
 
   it('서버 인증 오류 문구를 로그인 화면에 표시한다', async () => {
@@ -178,7 +178,7 @@ describe('SignupView', () => {
       email: 'user@example.com',
       password: 'password1234',
     })
-    expect(router.currentRoute.value.path).toBe('/whatif')
+    expect(router.currentRoute.value.path).toBe('/analysis/eco-link')
     expect(JSON.stringify(localStorage)).not.toContain('password1234')
   })
 })

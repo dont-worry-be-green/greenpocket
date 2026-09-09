@@ -16,9 +16,9 @@ import IconUser from '@/components/ui/icons/IconUser.vue'
  * key 는 AppTabLayout 의 tab prop 과 GpTabBar 의 active 가 함께 쓴다.
  */
 export const TABS = [
-  { key: 'analysis', label: '진단', path: '/analysis', icon: IconChart },
+  { key: 'analysis', label: '진단', path: '/analysis/eco-link', icon: IconChart },
   { key: 'benefit', label: '혜택', path: '/benefit', icon: IconGift },
-  // fab: 가운데 솟은 원형 버튼. 온보딩 완료 후 항상 여기로 진입한다 (결정 C-1)
+  // fab: 가운데 솟은 원형 버튼.
   { key: 'whatif', label: 'What-if', path: '/whatif', icon: IconLeaf, fab: true },
   { key: 'pocket', label: '포켓', path: '/pocket', icon: IconPocket },
   { key: 'mypage', label: '마이', path: '/mypage', icon: IconUser },

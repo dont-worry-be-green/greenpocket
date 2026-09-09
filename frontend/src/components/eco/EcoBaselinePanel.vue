@@ -11,6 +11,7 @@ import { computed } from 'vue'
 
 import GpButton from '@/components/ui/GpButton.vue'
 import GpCard from '@/components/ui/GpCard.vue'
+import IconCheck from '@/components/ui/icons/IconCheck.vue'
 import UtilityIcon from './UtilityIcon.vue'
 import {
   formatDateTime,
@@ -26,6 +27,7 @@ const props = defineProps({
   // GET /eco/home 의 links.movingNotice 를 그대로 받는다.
   // (근거는 GET /eco/status 의 ecoAddress.matchesProfile === false — 누리집 주소가 프로필과 다름)
   showMovingNotice: { type: Boolean, default: true },
+  actionLabel: { type: String, default: '평가 기간 목표 정하기' },
 })
 defineEmits(['set-goal'])
 
@@ -35,10 +37,6 @@ const registeredItems = computed(() => props.round.baseline.items.filter((item) 
 // 총액 0 이면 비중 자체가 성립하지 않아 카드를 통째로 숨긴다 (B-1-06 예외)
 const showShareCard = computed(() => props.round.baseline.totalAmount > 0)
 
-const largestShareLabel = computed(() =>
-  formatUtilityType(props.round.baseline.largestShareUtility),
-)
-
 const SERIES_COLOR = {
   ELECTRICITY: 'bg-chart-series-1',
   GAS: 'bg-chart-series-2',
@@ -47,12 +45,61 @@ const SERIES_COLOR = {
 </script>
 
 <template>
-  <div class="space-y-5">
+  <div class="space-y-4">
+    <div class="text-primary-on-soft flex items-center gap-2 px-3 pt-1">
+      <span class="bg-primary text-primary-fg flex size-5 items-center justify-center rounded-full">
+        <IconCheck :size="14" />
+      </span>
+      <p class="text-body-strong m-0">에코마일리지 연동완료</p>
+    </div>
+
     <GpCard title="기준 사용량" badge="6개월">
-      <p class="text-caption text-muted mt-0 mb-1">{{ round.baselineDescription }}</p>
-      <p class="text-amount-hero tabular-nums mt-0 mb-4">
+      <p class="text-body-sm text-muted mt-0 mb-3">{{ round.baselineDescription }}</p>
+
+      <div class="bg-surface-sub rounded-md mb-5 px-4 py-3">
+        <p class="text-caption text-muted mt-0 mb-1">
+          에코마일리지는 직전 2년 같은 기간 평균과 비교해요 ·
+          {{ formatDateTime(round.baselineQueriedAt) }} 조회
+        </p>
+        <p class="text-caption text-muted m-0">
+          작년에 이 집에 살지 않았다면 전입자 사용분이, 신축이면 비슷한 가구가 기준이에요
+        </p>
+      </div>
+
+      <p class="text-display tabular-nums mt-0 mb-4">
         {{ formatWon(round.baseline.totalAmount) }}
       </p>
+
+      <div v-if="showShareCard" class="mb-5">
+        <div class="flex h-(--gp-bar-h) overflow-hidden rounded-sm" aria-hidden="true">
+          <span
+            v-for="item in registeredItems"
+            :key="item.utilityType"
+            :class="SERIES_COLOR[item.utilityType]"
+            :style="{ width: `${item.shareRate}%` }"
+          />
+        </div>
+
+        <ul class="mt-3 mb-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0">
+          <li
+            v-for="item in registeredItems"
+            :key="item.utilityType"
+            class="flex items-center gap-1.5"
+          >
+            <span
+              class="size-2.5 rounded-full"
+              :class="SERIES_COLOR[item.utilityType]"
+              aria-hidden="true"
+            />
+            <span class="text-caption text-ink-soft">{{
+              formatUtilityType(item.utilityType)
+            }}</span>
+            <span class="text-caption text-ink tabular-nums font-semibold">
+              {{ formatPercent(item.shareRate) }}
+            </span>
+          </li>
+        </ul>
+      </div>
 
       <div class="border-divider border-t">
         <div
@@ -72,57 +119,8 @@ const SERIES_COLOR = {
           </div>
         </div>
       </div>
-
-      <p class="text-caption text-muted border-divider mt-0 mb-1 border-t pt-4">
-        에코마일리지는 직전 2년 같은 기간 평균과 비교해요 ·
-        {{ formatDateTime(round.baselineQueriedAt) }} 조회
-      </p>
-      <p class="text-caption text-muted m-0">
-        작년에 이 집에 살지 않았다면 전입자 사용분이, 신축이면 비슷한 가구가 기준이에요
-      </p>
     </GpCard>
 
-    <GpCard v-if="showShareCard" title="어디부터 줄일까요" caption="기준 요금에서 차지한 몫이에요">
-      <div class="flex h-(--gp-bar-h) overflow-hidden rounded-sm" aria-hidden="true">
-        <span
-          v-for="item in registeredItems"
-          :key="item.utilityType"
-          :class="SERIES_COLOR[item.utilityType]"
-          :style="{ width: `${item.shareRate}%` }"
-        />
-      </div>
-
-      <ul class="mt-3 mb-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0">
-        <li
-          v-for="item in registeredItems"
-          :key="item.utilityType"
-          class="flex items-center gap-1.5"
-        >
-          <span
-            class="size-2.5 rounded-full"
-            :class="SERIES_COLOR[item.utilityType]"
-            aria-hidden="true"
-          />
-          <span class="text-caption text-ink-soft">{{ formatUtilityType(item.utilityType) }}</span>
-          <span class="text-caption text-ink-soft tabular-nums font-semibold">
-            {{ formatPercent(item.shareRate) }}
-          </span>
-        </li>
-      </ul>
-
-      <p class="text-body text-ink-soft border-divider mt-4 mb-0 border-t pt-4">
-        <strong class="text-ink font-semibold">{{ largestShareLabel }}가 가장 커요.</strong><br />
-        같은 %를 줄여도 {{ largestShareLabel }}에서 줄이는 쪽이 요금이 더 많이 내려가요.
-      </p>
-    </GpCard>
-
-    <!-- B-1-08 이사 안내 -->
-    <p v-if="showMovingNotice" class="text-caption text-muted m-0 px-1">
-      이사했다면
-      <RouterLink to="/mypage" class="text-primary-on-soft underline">마이</RouterLink>에서 주소를
-      바꿔주세요. 바꾸지 않으면 지금 살지 않는 집의 사용량과 비교돼요.
-    </p>
-
-    <GpButton @click="$emit('set-goal')">평가 기간 목표 정하기</GpButton>
+    <GpButton @click="$emit('set-goal')">{{ actionLabel }}</GpButton>
   </div>
 </template>

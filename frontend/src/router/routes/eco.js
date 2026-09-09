@@ -18,12 +18,9 @@
  */
 export default [
   {
-    /*
-     * 홈. 온보딩을 마치면 항상 What-if 탭으로 진입한다 — 마지막 방문 탭 복원은 만들지 않는다(결정 C-1).
-     * 온보딩 미완료 시 ONB-01 로 보내는 가드(COM-02)는 `router/guards.js` 에 있다.
-     */
+    // 로그인 직후 에코 연동은 진단 탭에서 시작한다.
     path: '/',
-    redirect: '/whatif',
+    redirect: '/analysis/eco-link',
   },
   {
     path: '/whatif',
