@@ -18,6 +18,7 @@
  */
 import GpTag from './GpTag.vue'
 import GpDelta from './GpDelta.vue'
+import IconCheck from './icons/IconCheck.vue'
 import { formatDifficulty, formatSeasonTags } from '@/utils/format'
 
 defineProps({
@@ -36,15 +37,31 @@ defineEmits(['update:modelValue'])
     class="flex cursor-pointer items-start gap-3 py-[13px]"
     :class="{ 'opacity-60': !counted }"
   >
-    <input
-      type="checkbox"
-      class="accent-primary mt-0.5 size-(--gp-checkbox) flex-none"
-      :checked="modelValue"
-      @change="$emit('update:modelValue', $event.target.checked)"
-    />
+    <!--
+      브라우저 기본 체크박스는 모서리를 못 깎는다. input 에 appearance-none 을 주고 input 자체를 둥근 사각형(7px)으로
+      그린 뒤, 체크 아이콘은 peer-checked 로 겹쳐 올린다 — 홈 오늘의 실천(EcoTodayMissions)과 같은 control 토큰이되
+      거긴 「완료」라 원이고 여긴 「고르기」라 사각형이다(2026-09-09 수현). input 을 sr-only 로 숨기는 방식은
+      클릭 때 문서 맨 위로 튀어서 쓰지 않는다.
+    -->
+    <span class="relative mt-0.5 size-(--gp-checkbox) flex-none">
+      <input
+        type="checkbox"
+        class="peer ease-standard border-control-border bg-surface checked:border-control-on checked:bg-control-on focus-visible:ring-primary/40 m-0 size-full cursor-pointer appearance-none rounded-[7px] border-[1.8px] transition-colors duration-140 outline-hidden focus-visible:ring-2"
+        :checked="modelValue"
+        @change="$emit('update:modelValue', $event.target.checked)"
+      />
+      <span
+        class="text-on-primary pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 peer-checked:opacity-100"
+        aria-hidden="true"
+      >
+        <IconCheck :size="13" />
+      </span>
+    </span>
 
     <span class="min-w-0 flex-1">
-      <span class="text-list-title tracking-body block leading-[1.35] font-normal">{{ mission.title }}</span>
+      <span class="text-list-title tracking-body block leading-[1.35] font-normal">{{
+        mission.title
+      }}</span>
 
       <span class="mt-[7px] flex flex-wrap items-center gap-[5px]">
         <GpTag small>{{ formatDifficulty(mission.difficulty) }}</GpTag>

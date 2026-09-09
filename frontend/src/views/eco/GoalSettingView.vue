@@ -3,7 +3,14 @@
  * 평가 기간 목표 정하기 — WF-04(등록) · WF-05(일부 미등록)
  *
  * **둘은 라우트가 아니라 한 화면의 두 상태다.** `segments[].registered` 가 false 인 요금이
- * 섞여 있으면 그 탭만 안내로 바뀐다. 경로를 나누면 새로고침·뒤로가기에서 상태가 어긋난다.
+ * 섞여 있으면 목표 카드의 그 행이 「미등록」으로, 그 미션 탭 위에 안내가 붙는다.
+ * 경로를 나누면 새로고침·뒤로가기에서 상태가 어긋난다.
+ *
+ * ── 화면 순서 (2026-09-09 수현, 결정 C-37) ──────────────────────────────
+ *   ① 목표 카드(EcoGoalPlanner) — 요금 3종 행 + 0·5·10·15 단계 바 + 합계 + 예상 마일리지
+ *   ② 요금 세그먼트 — 아래 미션 카드의 카테고리 전환만 맡는다
+ *   ③ 미션 카드(EcoMissionPicker) — 고른 요금의 실천 목록. 미등록이면 위에 EcoGoalSegment 안내
+ * 탭으로 요금을 오가며 구간을 고르던 이전 구조는 「탭 → 구간 → 합산 → 다시 탭 → 미션」으로 끊겼다.
  *
  * ── 목표 초안은 스토어에 두지 않는다 ─────────────────────────────────────
  * 고른 구간 맵과 미션 체크 집합은 서버 데이터가 아니라 이 화면에서만 살다 죽는 폼 상태다.
@@ -21,9 +28,10 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
+import EcoGoalPlanner from '@/components/eco/EcoGoalPlanner.vue'
 import EcoGoalSegment from '@/components/eco/EcoGoalSegment.vue'
-import EcoGoalSummary from '@/components/eco/EcoGoalSummary.vue'
 import EcoMissionPicker from '@/components/eco/EcoMissionPicker.vue'
+import UtilityIcon from '@/components/eco/UtilityIcon.vue'
 import AppSubLayout from '@/components/layout/AppSubLayout.vue'
 import GpButton from '@/components/ui/GpButton.vue'
 import { useEcoStore } from '@/stores/eco'
@@ -86,10 +94,6 @@ const visibleSegment = computed(() => {
 })
 
 const preview = computed(() => store.goalPreview)
-const targetByUtility = computed(
-  () => new Map((preview.value?.utilities ?? []).map((item) => [item.utilityType, item])),
-)
-
 /** 미등록 요금은 목표를 만들 수 없어 targets 에서 뺀다 (서버는 409 로 막는다) */
 const payload = computed(() => ({
   targets: segments.value
@@ -115,7 +119,12 @@ let firstPreview = true
 function requestPreview(delay) {
   window.clearTimeout(previewTimer)
   const roundId = store.roundId
-  if (!roundId || payload.value.targets.length === 0) return
+  if (!roundId) return
+  if (payload.value.targets.length === 0) {
+    // 세 요금 전부 0 — 옛 미리보기가 남아 「30,000M」처럼 보이면 안 된다
+    store.goalPreview = null
+    return
+  }
   previewTimer = window.setTimeout(() => store.fetchGoalPreview(roundId, payload.value), delay)
 }
 onUnmounted(() => window.clearTimeout(previewTimer))
@@ -177,48 +186,60 @@ async function save() {
     </div>
 
     <div v-else class="space-y-4">
-      <!-- 요금 3종 전환. 한 화면에 세 벌을 쌓으면 스크롤이 너무 길어진다 -->
-      <div class="bg-surface-sub flex gap-1 rounded-md p-1" role="tablist">
-        <button
-          v-for="segment in segments"
-          :key="segment.utilityType"
-          type="button"
-          role="tab"
-          :aria-selected="segment.utilityType === activeSegment?.utilityType"
-          class="ease-standard text-label flex-1 cursor-pointer rounded-sm border-0 py-2 font-semibold transition-colors duration-140"
-          :class="
-            segment.utilityType === activeSegment?.utilityType
-              ? 'bg-surface text-ink'
-              : 'bg-transparent text-muted'
-          "
-          @click="activeUtility = segment.utilityType"
-        >
-          {{ formatUtilityType(segment.utilityType) }}
-          <span v-if="!segment.registered" class="text-muted font-normal"> · 미등록</span>
-        </button>
-      </div>
-
-      <template v-if="activeSegment">
-        <EcoGoalSegment
-          v-model="tierByUtility[activeSegment.utilityType]"
-          :segment="activeSegment"
-          :tiers="goalForm.tiers"
-          :target="targetByUtility.get(activeSegment.utilityType) ?? null"
-        />
-
-        <EcoMissionPicker
-          v-model:selected-ids="selectedMissionIds"
-          :segment="visibleSegment"
-          :preview-items="preview?.missions?.items ?? []"
-          :summary="preview?.missions ?? null"
-        />
-      </template>
-
-      <EcoGoalSummary
-        :combined="preview?.combined ?? null"
-        :utilities="preview?.utilities ?? []"
+      <EcoGoalPlanner
+        v-model="tierByUtility"
+        :segments="segments"
+        :tiers="goalForm.tiers"
+        :preview="preview"
         :loading="store.previewLoading"
       />
+
+      <!--
+        요금 세그먼트 — 아래 미션 카드의 카테고리만 바꾼다. 미션 카드 바로 위에 붙여 「이 탭이 저 목록을
+        고른다」가 보이게 한다. 진단 탭과 같은 슬라이딩 세그먼트 + 이름 왼쪽 요금색 아이콘(비선택도 색 유지).
+      -->
+      <div class="!mt-6 space-y-2">
+        <!-- 목표 카드와 미션 영역이 다른 일이라는 걸 제목으로 가른다 (2026-09-09 수현) -->
+        <div class="mb-3">
+          <h2 class="text-section tracking-display m-0">실천 미션 고르기</h2>
+          <p class="text-caption text-muted mt-0.5 mb-0">목표를 채울 실천을 요금별로 골라요</p>
+        </div>
+        <div
+          class="bg-track grid grid-cols-3 gap-0.5 rounded-md p-[3px]"
+          role="tablist"
+          aria-label="실천 미션 요금 종류"
+        >
+          <button
+            v-for="segment in segments"
+            :key="segment.utilityType"
+            type="button"
+            role="tab"
+            :aria-selected="segment.utilityType === activeSegment?.utilityType"
+            class="ease-standard text-label flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-sm border-0 whitespace-nowrap transition duration-140"
+            :class="
+              segment.utilityType === activeSegment?.utilityType
+                ? 'bg-surface text-ink font-extrabold shadow-[0_1px_2px_rgb(16_40_28/0.12),0_3px_8px_rgb(16_40_28/0.1)]'
+                : 'text-muted bg-transparent font-semibold'
+            "
+            @click="activeUtility = segment.utilityType"
+          >
+            <UtilityIcon :utility-type="segment.utilityType" xs />
+            {{ formatUtilityType(segment.utilityType) }}
+            <span v-if="!segment.registered" class="text-badge text-muted">미등록</span>
+          </button>
+        </div>
+
+        <template v-if="activeSegment">
+          <!-- WF-05 · 미등록 요금이면 사유·등록 안내를 미션 위에 -->
+          <EcoGoalSegment v-if="!activeSegment.registered" :segment="activeSegment" />
+
+          <EcoMissionPicker
+            v-model:selected-ids="selectedMissionIds"
+            :segment="visibleSegment"
+            :preview-items="preview?.missions?.items ?? []"
+          />
+        </template>
+      </div>
 
       <p v-if="store.goalSaveError" class="text-caption text-negative mt-0 mb-0">
         {{ store.goalSaveError.message }}
