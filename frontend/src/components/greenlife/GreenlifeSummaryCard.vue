@@ -48,9 +48,9 @@ const caption = computed(() => {
 </script>
 
 <template>
-  <GpCard v-if="monthSummary" :title="title">
+  <GpCard v-if="monthSummary">
     <template #action>
-      <span class="flex items-center gap-0.5">
+      <div class="flex flex-1 items-center justify-between">
         <button
           type="button"
           class="text-ink disabled:text-disabled-text flex size-7 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent disabled:cursor-not-allowed"
@@ -60,6 +60,7 @@ const caption = computed(() => {
         >
           <IconCaretRight :size="16" class="rotate-180" />
         </button>
+        <h2 class="text-section tracking-display m-0">{{ title }}</h2>
         <button
           type="button"
           class="text-ink disabled:text-disabled-text flex size-7 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent disabled:cursor-not-allowed"
@@ -69,7 +70,7 @@ const caption = computed(() => {
         >
           <IconCaretRight :size="16" />
         </button>
-      </span>
+      </div>
     </template>
 
     <ul class="divide-divider -mt-1 m-0 list-none divide-y p-0">
