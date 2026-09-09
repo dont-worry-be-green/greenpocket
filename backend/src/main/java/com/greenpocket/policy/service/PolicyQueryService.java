@@ -297,6 +297,9 @@ public class PolicyQueryService {
 				? "전국 대상 정책이에요"
 				: "에코마일리지 연동 지역과 일치해요");
 		}
+		else if (regionMatch == RegionMatch.UNKNOWN) {
+			reasons.add("거주 지역을 연동하면 지역 조건을 확인할 수 있어요");
+		}
 
 		int age = age(profile.birthDate(), LocalDate.now(KOREA_ZONE_ID));
 		if ((policy.minAge() != null && age < policy.minAge())
@@ -518,7 +521,7 @@ public class PolicyQueryService {
 			return RegionMatch.YES;
 		}
 		if (!profile.regionLinked()) {
-			return RegionMatch.NO;
+			return RegionMatch.UNKNOWN;
 		}
 		if (regions.contains("SIGUNGU:" + profile.ecoSigunguCode())
 			|| regions.contains("SIDO:" + profile.ecoSidoCode())) {
@@ -553,9 +556,7 @@ public class PolicyQueryService {
 		return new PolicyListResponse.Region(
 			profile.regionLinked(),
 			profile.ecoAddressLabel(),
-			profile.regionLinked()
-				? List.of(PolicyRegionLevel.NATIONAL, PolicyRegionLevel.SIDO, PolicyRegionLevel.SIGUNGU)
-				: List.of(PolicyRegionLevel.NATIONAL)
+			List.of(PolicyRegionLevel.NATIONAL, PolicyRegionLevel.SIDO, PolicyRegionLevel.SIGUNGU)
 		);
 	}
 

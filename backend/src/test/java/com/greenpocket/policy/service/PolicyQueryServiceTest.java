@@ -44,7 +44,7 @@ class PolicyQueryServiceTest {
 	}
 
 	@Test
-	void recommendsOnlyNationalPoliciesWhenEcoAddressIsNotLinked() {
+	void keepsLocalPoliciesAsRegionCheckRequiredWhenEcoAddressIsNotLinked() {
 		when(profileQueryService.findCompleted(USER_ID)).thenReturn(Optional.of(profile(null, null)));
 		when(repository.findAllActive()).thenReturn(List.of(
 			policy("NATIONAL", "전국 취업 지원", PolicyInterestCategory.JOB, "NATIONAL:00000", 19, 39, false),
@@ -53,11 +53,53 @@ class PolicyQueryServiceTest {
 
 		var response = service.getRecommendations(USER_ID);
 
-		assertThat(response.content()).hasSize(1);
-		assertThat(response.content().getFirst().policyId()).isEqualTo("NATIONAL");
+		assertThat(response.content()).extracting(card -> card.policyId())
+			.containsExactly("NATIONAL", "LOCAL");
 		assertThat(response.content().getFirst().matchStatus()).isEqualTo(PolicyMatchStatus.ELIGIBLE);
+		assertThat(response.content().get(1).matchStatus()).isEqualTo(PolicyMatchStatus.CHECK_REQUIRED);
+		assertThat(response.content().get(1).matchReasons())
+			.contains("거주 지역을 연동하면 지역 조건을 확인할 수 있어요");
 		assertThat(response.region().linked()).isFalse();
-		assertThat(response.region().appliedLevels()).containsExactly(PolicyRegionLevel.NATIONAL);
+		assertThat(response.region().appliedLevels()).containsExactly(
+			PolicyRegionLevel.NATIONAL,
+			PolicyRegionLevel.SIDO,
+			PolicyRegionLevel.SIGUNGU
+		);
+	}
+
+	@Test
+	void returnsFiveHousingMatchesWithoutEcoAddressForTheRequestedFourConditions() {
+		PolicyProfile requestedProfile = new PolicyProfile(
+			LocalDate.of(2001, 6, 15),
+			CurrentStatus.UNEMPLOYED,
+			AnnualIncomeBand.NO_INCOME,
+			EducationStatus.UNIVERSITY_GRADUATE,
+			List.of(PolicyInterestCategory.HOUSING),
+			null, null, null
+		);
+		when(profileQueryService.findCompleted(USER_ID)).thenReturn(Optional.of(requestedProfile));
+		when(repository.findAllActive()).thenReturn(List.of(
+			policy("HOME-1", "청년주택드림청약통장", PolicyInterestCategory.HOUSING,
+				"NATIONAL:00000", 19, 34, false),
+			policy("HOME-2", "청년 매입임대주택 사업", PolicyInterestCategory.HOUSING,
+				"SIDO:11", 19, 39, false),
+			policy("HOME-3", "청년 부동산 중개보수 및 이사비 지원사업", PolicyInterestCategory.HOUSING,
+				"SIDO:11", 19, 39, false),
+			policy("HOME-4", "청년안심주택 공급", PolicyInterestCategory.HOUSING,
+				"SIDO:11", 19, 39, false),
+			policy("HOME-5", "청년안심주택 임차보증금 지원", PolicyInterestCategory.HOUSING,
+				"SIDO:11", 19, 39, false),
+			policy("EDUCATION", "온라인 공개강좌", PolicyInterestCategory.EDUCATION,
+				"NATIONAL:00000", 19, 39, false)
+		));
+
+		var response = service.getRecommendations(USER_ID);
+
+		assertThat(response.content()).hasSize(5);
+		assertThat(response.content()).allSatisfy(card -> {
+			assertThat(card.category()).isEqualTo(PolicyInterestCategory.HOUSING);
+			assertThat(card.title()).doesNotContain("공개강좌");
+		});
 	}
 
 	@Test
