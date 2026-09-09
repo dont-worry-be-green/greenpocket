@@ -75,9 +75,7 @@ describe('청년정책 API', () => {
     const list = await getPolicyRecommendations()
 
     expect(list.content).toHaveLength(5)
-    expect(list.content).toEqual(
-      expect.arrayContaining([expect.objectContaining({ category: 'HOUSING' })]),
-    )
+    expect(list.content.every((policy) => policy.category === 'HOUSING')).toBe(true)
 
     const details = await Promise.all(list.content.map((policy) => getPolicy(policy.policyId)))
     expect(details).toHaveLength(5)
@@ -86,6 +84,9 @@ describe('청년정책 API', () => {
       expect(detail.supportContent).not.toBe('')
       expect(detail.application.method).not.toBe('')
       expect(detail.application.url).toMatch(/^https:/)
+      expect(detail.conditions.age).not.toBe('제한 없음')
+      expect(detail.conditions.income).not.toBe('제한 없음')
+      expect(detail.conditions.special).not.toBe('제한 없음')
     })
   })
 })

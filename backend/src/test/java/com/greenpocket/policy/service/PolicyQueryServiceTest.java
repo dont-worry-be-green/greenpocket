@@ -199,7 +199,7 @@ class PolicyQueryServiceTest {
 	}
 
 	@Test
-	void excludesMarriageRestrictedPoliciesBecauseMarriageIsNotCollected() {
+	void keepsMarriageRestrictedPoliciesAsExplicitManualChecks() {
 		when(profileQueryService.findCompleted(USER_ID)).thenReturn(Optional.of(profile(
 			CurrentStatus.EMPLOYED, AnnualIncomeBand.UNDER_24M,
 			"11", "11620"
@@ -213,7 +213,24 @@ class PolicyQueryServiceTest {
 
 		var response = service.getRecommendations(USER_ID);
 
-		assertThat(response.content()).isEmpty();
+		assertThat(response.content()).hasSize(2);
+		assertThat(response.content()).allSatisfy(card ->
+			assertThat(card.matchStatus()).isEqualTo(PolicyMatchStatus.CHECK_REQUIRED));
+	}
+
+	@Test
+	void rendersKnownEmploymentAndMarriageConditionsWithExactLabels() {
+		YouthPolicySnapshot policy = policyWithConditions(
+			"UNMARRIED-JOBSEEKER", "미혼 미취업자 주거 지원", "NATIONAL:00000",
+			"0055002", "0043001", null, null, null, "0013003", "0014010"
+		);
+		when(repository.findActiveByExternalId("UNMARRIED-JOBSEEKER")).thenReturn(Optional.of(policy));
+		when(profileQueryService.findCompleted(USER_ID)).thenReturn(Optional.of(profile("11", "11620")));
+
+		var response = service.getDetail(USER_ID, "UNMARRIED-JOBSEEKER");
+
+		assertThat(response.conditions().employment()).isEqualTo("미취업자");
+		assertThat(response.conditions().marriage()).isEqualTo("미혼");
 	}
 
 	@Test

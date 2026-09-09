@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -57,6 +58,28 @@ public class PolicyQueryService {
 		"0042003", // 직접대출
 		"0042007", // 대출보증
 		"0042008"  // 공적보험
+	);
+	private static final Map<String, String> EMPLOYMENT_LABELS = Map.of(
+		"0013001", "재직자",
+		"0013002", "자영업자",
+		"0013003", "미취업자",
+		"0013004", "프리랜서",
+		"0013006", "창업 준비 중"
+	);
+	private static final Map<String, String> EDUCATION_LABELS = Map.of(
+		"0049001", "고졸 미만",
+		"0049002", "고교 재학",
+		"0049003", "고졸 예정",
+		"0049004", "고교 졸업",
+		"0049005", "대학 재학",
+		"0049006", "대졸 예정",
+		"0049007", "대학 졸업",
+		"0049008", "석·박사",
+		"0049009", "기타"
+	);
+	private static final Map<String, String> MARRIAGE_LABELS = Map.of(
+		"0055001", "기혼",
+		"0055002", "미혼"
 	);
 
 	private final YouthPolicyRepository youthPolicyRepository;
@@ -154,7 +177,10 @@ public class PolicyQueryService {
 				employmentCondition(policy),
 				educationCondition(policy),
 				codedCondition(policy.majorCodes(), MAJOR_NO_LIMIT, "세부 전공 조건 확인"),
-				codedCondition(policy.marriageStatusCode(), MARRIAGE_NO_LIMIT, "세부 혼인 조건 확인"),
+				labeledCondition(
+					policy.marriageStatusCode(), MARRIAGE_NO_LIMIT, MARRIAGE_LABELS,
+					"세부 혼인 조건 확인"
+				),
 				specialCondition(policy)
 			),
 			match == null ? null : new PolicyDetailResponse.Match(match.status(), match.score(), match.reasons()),
@@ -195,9 +221,6 @@ public class PolicyQueryService {
 		}
 		if (match.status() == PolicyMatchStatus.ELIGIBLE) {
 			return true;
-		}
-		if (!MARRIAGE_NO_LIMIT.equals(policy.marriageStatusCode())) {
-			return false;
 		}
 		if (INCOME_ANNUAL.equals(policy.incomeConditionCode())
 			&& incomeMatch(policy, profile.annualIncomeBand()) == ConditionMatch.CHECK_REQUIRED) {
@@ -611,14 +634,20 @@ public class PolicyQueryService {
 		if (requiresFinancialReview(policy)) {
 			return "취업·재직 조건 확인";
 		}
-		return codedCondition(policy.employmentCodes(), EMPLOYMENT_NO_LIMIT, "세부 취업 상태 조건 확인");
+		return labeledCondition(
+			policy.employmentCodes(), EMPLOYMENT_NO_LIMIT, EMPLOYMENT_LABELS,
+			"세부 취업 상태 조건 확인"
+		);
 	}
 
 	private static String educationCondition(YouthPolicySnapshot policy) {
 		if (requiresFinancialReview(policy)) {
 			return "학업·취업 상태 조건 확인";
 		}
-		return codedCondition(policy.schoolCodes(), SCHOOL_NO_LIMIT, "세부 학력 조건 확인");
+		return labeledCondition(
+			policy.schoolCodes(), SCHOOL_NO_LIMIT, EDUCATION_LABELS,
+			"세부 학력 조건 확인"
+		);
 	}
 
 	private static String specialCondition(YouthPolicySnapshot policy) {
@@ -641,6 +670,28 @@ public class PolicyQueryService {
 	private static String codedCondition(String rawCodes, String noLimitCode, String fallback) {
 		Set<String> codes = conditionCodes(rawCodes);
 		return isExplicitNoLimit(codes, noLimitCode) ? "제한 없음" : fallback;
+	}
+
+	private static String labeledCondition(
+		String rawCodes,
+		String noLimitCode,
+		Map<String, String> labels,
+		String fallback
+	) {
+		Set<String> codes = conditionCodes(rawCodes);
+		if (codes.isEmpty()) {
+			return fallback;
+		}
+		if (isExplicitNoLimit(codes, noLimitCode)) {
+			return "제한 없음";
+		}
+		List<String> resolved = codes.stream()
+			.filter(code -> !noLimitCode.equals(code))
+			.map(labels::get)
+			.filter(java.util.Objects::nonNull)
+			.sorted()
+			.toList();
+		return resolved.size() == codes.size() ? String.join(", ", resolved) : fallback;
 	}
 
 	private static boolean containsIgnoreCase(String value, String normalizedKeyword) {
