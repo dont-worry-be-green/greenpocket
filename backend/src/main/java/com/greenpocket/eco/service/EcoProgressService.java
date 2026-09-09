@@ -114,7 +114,7 @@ public class EcoProgressService {
 		EcoHomeResponse.LatestReport latestReport = latestReport(calculations, round.combinedTargetRate());
 		LocalDate today = LocalDate.now(clock);
 		MissionProgressSnapshot missionProgress = goalSet
-			? ecoProgressRepository.findMissionProgress(userId, round.id(), today, season(today))
+			? ecoProgressRepository.findMissionProgress(userId, round.id(), today)
 			: new MissionProgressSnapshot(0, 0);
 
 		return new EcoHomeResponse(
@@ -540,15 +540,6 @@ public class EcoProgressService {
 			case ELECTRICITY -> "전기";
 			case GAS -> "도시가스";
 			case WATER -> "수도";
-		};
-	}
-
-	private String season(LocalDate date) {
-		return switch (date.getMonthValue()) {
-			case 3, 4, 5 -> "SPRING";
-			case 6, 7, 8 -> "SUMMER";
-			case 9, 10, 11 -> "AUTUMN";
-			default -> "WINTER";
 		};
 	}
 

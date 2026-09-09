@@ -183,6 +183,7 @@ class EcoControllerTest {
 						"냉방 온도 26℃로 맞추기",
 						UtilityType.ELECTRICITY,
 						MissionDifficulty.EASY,
+						List.of("SUMMER"),
 						true
 					)
 				),

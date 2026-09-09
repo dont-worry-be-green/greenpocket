@@ -156,7 +156,8 @@ public class EcoProgressRepository {
 			)).list();
 	}
 
-	public MissionProgressSnapshot findMissionProgress(Long userId, Long roundId, LocalDate today, String season) {
+	/** 홈 「오늘 실천 N개」 요약. 오늘의 실천 목록과 같은 기준 — 고른 미션 전부, 계절 필터 없음(결정 C-34) */
+	public MissionProgressSnapshot findMissionProgress(Long userId, Long roundId, LocalDate today) {
 		int totalCount = jdbcClient.sql("""
 				SELECT COUNT(*)
 				FROM user_mission selected
@@ -164,11 +165,9 @@ public class EcoProgressRepository {
 				WHERE selected.user_id = :userId
 				  AND selected.eco_round_id = :roundId
 				  AND mission.is_active = 1
-				  AND FIND_IN_SET(:season, mission.season_tags) > 0
 				""")
 			.param("userId", userId)
 			.param("roundId", roundId)
-			.param("season", season)
 			.query(Integer.class)
 			.single();
 		int completedCount = jdbcClient.sql("""
@@ -182,13 +181,11 @@ public class EcoProgressRepository {
 				WHERE selected.user_id = :userId
 				  AND selected.eco_round_id = :roundId
 				  AND mission.is_active = 1
-				  AND FIND_IN_SET(:season, mission.season_tags) > 0
 				  AND JSON_CONTAINS(daily.completed_mission_ids, CAST(selected.mission_id AS JSON), '$')
 				""")
 			.param("userId", userId)
 			.param("roundId", roundId)
 			.param("today", today)
-			.param("season", season)
 			.query(Integer.class)
 			.single();
 		return new MissionProgressSnapshot(Math.min(completedCount, totalCount), totalCount);

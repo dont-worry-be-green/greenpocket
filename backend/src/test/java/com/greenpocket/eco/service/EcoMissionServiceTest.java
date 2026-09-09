@@ -59,9 +59,9 @@ class EcoMissionServiceTest {
 	}
 
 	@Test
-	void returnsSeasonalMissionsAndCompletionProgress() {
+	void returnsAllSelectedMissionsAndCompletionProgress() {
 		when(ecoMissionRepository.findOwnedRoundId(USER_ID, ROUND_ID)).thenReturn(Optional.of(ROUND_ID));
-		when(ecoMissionRepository.findTodayMissions(USER_ID, ROUND_ID, LocalDate.of(2026, 8, 3), "SUMMER"))
+		when(ecoMissionRepository.findTodayMissions(USER_ID, ROUND_ID, LocalDate.of(2026, 8, 3)))
 			.thenReturn(List.of(
 				mission(12L, "냉방 온도 26℃로 맞추기", UtilityType.ELECTRICITY, true),
 				mission(31L, "온수 온도 낮추기", UtilityType.GAS, false)
@@ -79,9 +79,9 @@ class EcoMissionServiceTest {
 	}
 
 	@Test
-	void usesTodayAndReturnsEmptyReasonWhenSeasonHasNoMission() {
+	void usesTodayAndReturnsEmptyReasonWhenNoMissionSelected() {
 		when(ecoMissionRepository.findOwnedRoundId(USER_ID, ROUND_ID)).thenReturn(Optional.of(ROUND_ID));
-		when(ecoMissionRepository.findTodayMissions(USER_ID, ROUND_ID, TODAY, "AUTUMN"))
+		when(ecoMissionRepository.findTodayMissions(USER_ID, ROUND_ID, TODAY))
 			.thenReturn(List.of());
 
 		EcoTodayMissionsResponse response = ecoMissionService.getTodayMissions(USER_ID, ROUND_ID, null);
@@ -91,14 +91,14 @@ class EcoMissionServiceTest {
 		assertThat(response.completedCount()).isZero();
 		assertThat(response.totalCount()).isZero();
 		assertThat(response.missions()).isEmpty();
-		assertThat(response.emptyReason()).isEqualTo("SEASON_FILTERED_EMPTY");
+		assertThat(response.emptyReason()).isEqualTo("NO_MISSION");
 	}
 
 	@Test
 	void savesDistinctCompletedMissionIds() {
 		LocalDate date = LocalDate.of(2026, 9, 3);
 		when(ecoMissionRepository.findOwnedRoundId(USER_ID, ROUND_ID)).thenReturn(Optional.of(ROUND_ID));
-		when(ecoMissionRepository.findTodayMissions(USER_ID, ROUND_ID, date, "AUTUMN"))
+		when(ecoMissionRepository.findTodayMissions(USER_ID, ROUND_ID, date))
 			.thenReturn(List.of(
 				mission(12L, "절전 실천", UtilityType.ELECTRICITY, false),
 				mission(31L, "온수 절약", UtilityType.GAS, false),
@@ -122,7 +122,7 @@ class EcoMissionServiceTest {
 	void rejectsMissionThatIsNotAvailableForDate() {
 		LocalDate date = LocalDate.of(2026, 9, 3);
 		when(ecoMissionRepository.findOwnedRoundId(USER_ID, ROUND_ID)).thenReturn(Optional.of(ROUND_ID));
-		when(ecoMissionRepository.findTodayMissions(USER_ID, ROUND_ID, date, "AUTUMN"))
+		when(ecoMissionRepository.findTodayMissions(USER_ID, ROUND_ID, date))
 			.thenReturn(List.of(mission(12L, "절전 실천", UtilityType.ELECTRICITY, false)));
 
 		assertThatThrownBy(() -> ecoMissionService.saveMissionLog(
@@ -143,7 +143,7 @@ class EcoMissionServiceTest {
 	@Test
 	void rejectsMissingCompletedMissionIds() {
 		when(ecoMissionRepository.findOwnedRoundId(USER_ID, ROUND_ID)).thenReturn(Optional.of(ROUND_ID));
-		when(ecoMissionRepository.findTodayMissions(USER_ID, ROUND_ID, TODAY, "AUTUMN"))
+		when(ecoMissionRepository.findTodayMissions(USER_ID, ROUND_ID, TODAY))
 			.thenReturn(List.of());
 
 		assertThatThrownBy(() -> ecoMissionService.saveMissionLog(
@@ -191,6 +191,7 @@ class EcoMissionServiceTest {
 			title,
 			utilityType,
 			MissionDifficulty.EASY,
+			List.of("SPRING", "SUMMER", "AUTUMN", "WINTER"),
 			completed
 		);
 	}

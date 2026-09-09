@@ -27,14 +27,14 @@ public class EcoMissionRepository {
 			.optional();
 	}
 
-	public List<TodayMissionSnapshot> findTodayMissions(
-		Long userId,
-		Long roundId,
-		LocalDate date,
-		String season
-	) {
+	/**
+	 * 오늘의 실천 — 목표에서 고른 미션 **전부**다(결정 C-34). 계절로 거르지 않는다.
+	 * 계절 태그는 화면이 「여름 전용」 칩으로 알리는 용도로만 함께 내려준다.
+	 */
+	public List<TodayMissionSnapshot> findTodayMissions(Long userId, Long roundId, LocalDate date) {
 		return jdbcClient.sql("""
 				SELECT selected.mission_id, mission.title, mission.utility_type, mission.difficulty,
+				       mission.season_tags,
 				       COALESCE(JSON_CONTAINS(daily.completed_mission_ids,
 				                              CAST(selected.mission_id AS JSON), '$'), 0) AS completed
 				FROM user_mission selected
@@ -46,22 +46,29 @@ public class EcoMissionRepository {
 				WHERE selected.user_id = :userId
 				  AND selected.eco_round_id = :roundId
 				  AND mission.is_active = 1
-				  AND FIND_IN_SET(:season, mission.season_tags) > 0
 				ORDER BY FIELD(mission.utility_type, 'ELECTRICITY', 'GAS', 'WATER'),
 				         mission.display_order, mission.id
 				""")
 			.param("date", date)
 			.param("userId", userId)
 			.param("roundId", roundId)
-			.param("season", season)
 			.query((resultSet, rowNum) -> new TodayMissionSnapshot(
 				resultSet.getLong("mission_id"),
 				resultSet.getString("title"),
 				UtilityType.valueOf(resultSet.getString("utility_type")),
 				MissionDifficulty.valueOf(resultSet.getString("difficulty")),
+				seasonTags(resultSet.getString("season_tags")),
 				resultSet.getBoolean("completed")
 			))
 			.list();
+	}
+
+	/** MySQL SET('SPRING,SUMMER') → 목록. 비어 있으면 빈 목록 */
+	private static List<String> seasonTags(String value) {
+		if (value == null || value.isBlank()) {
+			return List.of();
+		}
+		return List.of(value.split(","));
 	}
 
 	public void saveDailyLog(Long userId, Long roundId, LocalDate date, List<Long> completedMissionIds) {
@@ -90,6 +97,7 @@ public class EcoMissionRepository {
 		String title,
 		UtilityType utilityType,
 		MissionDifficulty difficulty,
+		List<String> seasonTags,
 		boolean completed
 	) {
 	}

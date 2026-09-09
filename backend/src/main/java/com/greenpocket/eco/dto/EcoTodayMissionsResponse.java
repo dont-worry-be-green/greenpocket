@@ -19,6 +19,7 @@ public record EcoTodayMissionsResponse(
 		String title,
 		UtilityType utilityType,
 		MissionDifficulty difficulty,
+		List<String> seasonTags,
 		boolean completed
 	) {
 	}
