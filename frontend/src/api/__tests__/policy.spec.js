@@ -50,7 +50,7 @@ describe('청년정책 API', () => {
     setDataSource(DATA_SOURCE.FIXTURE)
 
     const list = await getPolicies({ category: 'HOUSING', page: 0, size: 20 })
-    expect(list.content).toHaveLength(1)
+    expect(list.content).toHaveLength(5)
     expect(list.content[0].category).toBe('HOUSING')
 
     const detail = await getPolicy(list.content[0].policyId)
@@ -66,12 +66,26 @@ describe('청년정책 API', () => {
     setDataSource(DATA_SOURCE.FIXTURE)
     updateFixturePolicyPreferences({
       ...POLICY_PREFERENCES,
+      currentStatus: 'UNEMPLOYED',
+      annualIncomeBand: 'NO_INCOME',
+      educationStatus: 'UNIVERSITY_GRADUATE',
       interestCategories: ['HOUSING'],
     })
 
     const list = await getPolicyRecommendations()
 
-    expect(list.content).toEqual([])
-    expect(list.totalElements).toBe(0)
+    expect(list.content).toHaveLength(5)
+    expect(list.content).toEqual(
+      expect.arrayContaining([expect.objectContaining({ category: 'HOUSING' })]),
+    )
+
+    const details = await Promise.all(list.content.map((policy) => getPolicy(policy.policyId)))
+    expect(details).toHaveLength(5)
+    details.forEach((detail) => {
+      expect(detail.description).not.toBe('')
+      expect(detail.supportContent).not.toBe('')
+      expect(detail.application.method).not.toBe('')
+      expect(detail.application.url).toMatch(/^https:/)
+    })
   })
 })

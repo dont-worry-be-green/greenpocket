@@ -13,7 +13,6 @@ export function getPolicyRecommendations() {
     return fake(() =>
       buildPolicyList({
         size: 5,
-        matchStatus: 'ELIGIBLE',
         categories: getFixturePolicyPreferences().interestCategories,
       }),
     )

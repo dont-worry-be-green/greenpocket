@@ -35,11 +35,14 @@ public class YouthPolicyNormalizer {
 	private static final Set<String> INDIVIDUAL_PROVISION_METHODS = Set.of(
 		"0042002", // 프로그램
 		"0042003", // 직접대출
+		"0042004", // 현금대여
+		"0042005", // 현물지급
 		"0042006", // 보조금
 		"0042007", // 대출보증
 		"0042008", // 공적보험
 		"0042009", // 조세지출
-		"0042010"  // 바우처
+		"0042010", // 바우처
+		"0042013"  // 금융상품
 	);
 	private static final Set<String> NON_ACTIONABLE_APPLICATION_METHODS = Set.of(
 		"-", "해당없음", "해당 없음", "별도문의", "별도 문의",

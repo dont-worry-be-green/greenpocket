@@ -39,4 +39,20 @@ class CuratedYouthPolicyCatalogTest {
 		)).isInstanceOf(IllegalStateException.class)
 			.hasMessageContaining("일부");
 	}
+
+	@Test
+	void containsFiveDetailedSeoulOrNationalHousingPolicies() {
+		var housing = catalog.snapshot().stream()
+			.filter(policy -> "주거".equals(policy.largeCategoryName()))
+			.filter(policy -> policy.regionCodes().contains("11620"))
+			.toList();
+
+		assertThat(housing).hasSizeGreaterThanOrEqualTo(5);
+		assertThat(housing.stream().limit(5).toList()).allSatisfy(policy -> {
+			assertThat(policy.description()).isNotBlank();
+			assertThat(policy.supportContent()).isNotBlank();
+			assertThat(policy.applicationMethod()).isNotBlank();
+			assertThat(policy.applicationUrl()).startsWith("https://");
+		});
+	}
 }

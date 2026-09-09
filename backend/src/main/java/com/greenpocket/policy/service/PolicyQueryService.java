@@ -169,14 +169,45 @@ public class PolicyQueryService {
 			.filter(policy -> policy.applicationStatus() == PolicyApplicationStatus.OPEN)
 			.filter(policy -> profile.interestCategories().contains(policy.interestCategory()))
 			.map(policy -> new ScoredPolicy(policy, match(policy, profile)))
-			.filter(scored -> scored.match().status() == PolicyMatchStatus.ELIGIBLE)
-			.sorted(Comparator.comparingInt((ScoredPolicy scored) -> scored.match().score()).reversed()
+			.filter(scored -> isRecommendationCandidate(scored.policy(), scored.match(), profile))
+			.sorted(Comparator.comparingInt((ScoredPolicy scored) -> recommendationPriority(scored.match())).reversed()
+				.thenComparing(Comparator.comparingInt(
+					(ScoredPolicy scored) -> scored.match().score()).reversed())
 				.thenComparing(scored -> scored.policy().applicationEndDate(),
 					Comparator.nullsLast(Comparator.naturalOrder())))
 			.limit(RECOMMENDATION_LIMIT)
 			.map(scored -> toCard(scored.policy(), scored.match()))
 			.toList();
 		return page(cards, 0, RECOMMENDATION_LIMIT, region(profile));
+	}
+
+	private static int recommendationPriority(PolicyMatch match) {
+		return match.status() == PolicyMatchStatus.ELIGIBLE ? 1 : 0;
+	}
+
+	private static boolean isRecommendationCandidate(
+		YouthPolicySnapshot policy,
+		PolicyMatch match,
+		PolicyProfile profile
+	) {
+		if (match.status() == PolicyMatchStatus.NOT_ELIGIBLE || requiresFinancialReview(policy)) {
+			return false;
+		}
+		if (match.status() == PolicyMatchStatus.ELIGIBLE) {
+			return true;
+		}
+		if (!MARRIAGE_NO_LIMIT.equals(policy.marriageStatusCode())) {
+			return false;
+		}
+		if (INCOME_ANNUAL.equals(policy.incomeConditionCode())
+			&& incomeMatch(policy, profile.annualIncomeBand()) == ConditionMatch.CHECK_REQUIRED) {
+			return false;
+		}
+		return !conditionCodes(policy.employmentCodes()).isEmpty()
+			&& hasText(policy.incomeConditionCode())
+			&& !conditionCodes(policy.schoolCodes()).isEmpty()
+			&& !("Y".equalsIgnoreCase(policy.ageLimitYn())
+				&& policy.minAge() == null && policy.maxAge() == null);
 	}
 
 	private List<YouthPolicySnapshot> activePolicies() {

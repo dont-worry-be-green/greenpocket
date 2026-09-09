@@ -57,9 +57,9 @@ public class CuratedYouthPolicyCatalog {
 		if (!missing.isEmpty()) {
 			throw new IllegalStateException("검증된 청년정책 60건 중 일부를 원본 API에서 찾지 못했습니다.");
 		}
-		return snapshot.stream()
-			.map(policy -> byId.get(policy.externalPolicyId()))
-			.toList();
+		// API는 선별 ID의 존재와 최신 제공 여부만 확인한다. 화면에 쓰는 대상·신청 정보는
+		// 사람이 검증한 스냅샷을 유지해 원본의 과거 사업연도·누락 링크가 다시 덮지 않게 한다.
+		return snapshot;
 	}
 
 	private static List<YouthPolicySourcePolicy> loadSnapshot(ObjectMapper objectMapper) {

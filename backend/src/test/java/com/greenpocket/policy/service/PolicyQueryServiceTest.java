@@ -61,7 +61,7 @@ class PolicyQueryServiceTest {
 	}
 
 	@Test
-	void excludesPoliciesThatNeedManualConditionReview() {
+	void includesPotentialMatchesWithAnExplicitManualReviewStatus() {
 		when(profileQueryService.findCompleted(USER_ID)).thenReturn(Optional.of(profile("11", "11620")));
 		when(repository.findAllActive()).thenReturn(List.of(
 			policy("LOCAL", "관악 취업 지원", PolicyInterestCategory.JOB, "SIGUNGU:11620", 19, 39, true)
@@ -69,7 +69,10 @@ class PolicyQueryServiceTest {
 
 		var response = service.getRecommendations(USER_ID);
 
-		assertThat(response.content()).isEmpty();
+		assertThat(response.content()).singleElement().satisfies(card -> {
+			assertThat(card.matchStatus()).isEqualTo(PolicyMatchStatus.CHECK_REQUIRED);
+			assertThat(card.matchReasons()).contains("세부 자격 조건은 공고에서 확인해 주세요");
+		});
 		assertThat(response.region().linked()).isTrue();
 	}
 
@@ -120,6 +123,39 @@ class PolicyQueryServiceTest {
 
 		assertThat(response.content()).extracting(card -> card.policyId()).containsExactly("JOB");
 		assertThat(response.content().getFirst().matchReasons()).contains("관심 분야와 일치해요");
+	}
+
+	@Test
+	void returnsFiveHousingMatchesForTheRequestedProfile() {
+		PolicyProfile requestedProfile = new PolicyProfile(
+			LocalDate.of(2001, 6, 15),
+			CurrentStatus.UNEMPLOYED,
+			AnnualIncomeBand.NO_INCOME,
+			EducationStatus.UNIVERSITY_GRADUATE,
+			List.of(PolicyInterestCategory.HOUSING),
+			"11", "11620", "서울특별시 관악구"
+		);
+		when(profileQueryService.findCompleted(USER_ID)).thenReturn(Optional.of(requestedProfile));
+		when(repository.findAllActive()).thenReturn(List.of(
+			policy("HOME-1", "청년주택드림청약통장", PolicyInterestCategory.HOUSING,
+				"NATIONAL:00000", 19, 34, false),
+			policy("HOME-2", "청년 매입임대주택 사업", PolicyInterestCategory.HOUSING,
+				"SIDO:11", 19, 39, false),
+			policy("HOME-3", "청년 부동산 중개보수 및 이사비 지원사업", PolicyInterestCategory.HOUSING,
+				"SIDO:11", 19, 39, false),
+			policy("HOME-4", "청년안심주택 공급", PolicyInterestCategory.HOUSING,
+				"SIDO:11", 19, 39, false),
+			policy("HOME-5", "청년안심주택 임차보증금 지원", PolicyInterestCategory.HOUSING,
+				"SIDO:11", 19, 39, false),
+			policy("JOB", "취업 지원", PolicyInterestCategory.JOB,
+				"NATIONAL:00000", 19, 39, false)
+		));
+
+		var response = service.getRecommendations(USER_ID);
+
+		assertThat(response.content()).hasSize(5);
+		assertThat(response.content()).allSatisfy(card ->
+			assertThat(card.category()).isEqualTo(PolicyInterestCategory.HOUSING));
 	}
 
 	@Test
